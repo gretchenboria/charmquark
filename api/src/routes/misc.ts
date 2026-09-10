@@ -288,16 +288,44 @@ export function mountMisc(app: App): void {
     return c.json(S.doc(row!), 201);
   });
 
+  /**
+   * Vault content.
+   *
+   * This Worker is routed at charmquark.app/api/*, i.e. the SAME ORIGIN as the
+   * app. Anything served here executes in the app's origin with access to its
+   * DOM and the viewer's Access session — so replaying a caller-supplied
+   * Content-Type inline would turn the vault into a stored-XSS primitive: upload
+   * text/html, send a Fleet Lead the link, run script as them.
+   *
+   * Three defences, all required:
+   *   - `attachment`, so the browser downloads rather than renders;
+   *   - a narrow render allowlist, everything else demoted to octet-stream;
+   *   - `nosniff`, so a demoted type is not sniffed back into HTML.
+   * The filename is quote-stripped: it lands inside a quoted header parameter
+   * and a `"` would let the caller append their own directives.
+   */
+  const INLINE_SAFE = new Set([
+    "application/pdf", "text/csv", "text/plain",
+    "image/png", "image/jpeg", "image/gif", "image/webp",
+  ]);
+
   app.get("/documents/:id/content", async (c) => {
     const row = await c.env.DB.prepare(`SELECT * FROM documents WHERE id = ?`)
       .bind(c.req.param("id")).first<Row>();
     if (!row) throw notFound("document");
     const obj = await requireVault(c.env).get(str(row, "file_path"));
     if (!obj) throw notFound("document content");
+
+    const declared = str(row, "mime_type");
+    const type = INLINE_SAFE.has(declared) ? declared : "application/octet-stream";
+    const safeName = str(row, "filename").replace(/["\\\r\n]/g, "_") || "download";
+
     return new Response(obj.body, {
       headers: {
-        "Content-Type": str(row, "mime_type"),
-        "Content-Disposition": `inline; filename="${str(row, "filename")}"`,
+        "Content-Type": type,
+        "Content-Disposition": `attachment; filename="${safeName}"`,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
       },
     });
   });

@@ -6,14 +6,22 @@
  * lives in runs.ts or autoschedule.ts instead.
  */
 import { Hono } from "hono";
+import type { Context } from "hono";
 import type { Env, Vars } from "../types";
 import { buildUpdate, fromBool, jsonCol, uuid, type Row } from "../db";
 import { badRequest, notFound } from "../errors";
+import { requireUserAdmin } from "../auth";
 import * as S from "../serialize";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
 interface CrudSpec {
+  /**
+   * Authorization check run before create/update/delete. Throws to deny.
+   * Reads are left open; only writes are gated, which is what the `users`
+   * table needs — everyone may see the roster, only an admin may change it.
+   */
+  writeGuard?: (c: Context<{ Bindings: Env; Variables: Vars }>) => Promise<void>;
   /** URL segment, e.g. "robots". */
   path: string;
   table: string;
@@ -48,7 +56,12 @@ function crud(app: App, spec: CrudSpec): void {
     return c.json(serialize(row));
   });
 
+  const guard = async (c: Context<{ Bindings: Env; Variables: Vars }>) => {
+    if (spec.writeGuard) await spec.writeGuard(c);
+  };
+
   app.post(`/${path}`, async (c) => {
+    await guard(c);
     const body = await c.req.json<Record<string, unknown>>();
     for (const key of spec.required ?? []) {
       if (body[key] === undefined || body[key] === null || body[key] === "") {
@@ -71,6 +84,7 @@ function crud(app: App, spec: CrudSpec): void {
   });
 
   app.patch(`/${path}/:id`, async (c) => {
+    await guard(c);
     const id = c.req.param("id");
     const body = await c.req.json<Record<string, unknown>>();
     const upd = buildUpdate(table, id, body, spec.updateColumns, transform);
@@ -81,6 +95,7 @@ function crud(app: App, spec: CrudSpec): void {
   });
 
   app.delete(`/${path}/:id`, async (c) => {
+    await guard(c);
     const res = await c.env.DB.prepare(`DELETE FROM ${table} WHERE id = ?`).bind(c.req.param("id")).run();
     if (!res.meta.changes) throw notFound(label);
     return c.body(null, 204);
@@ -169,6 +184,7 @@ export function mountResources(app: App): void {
     path: "users",
     table: "users",
     label: "user",
+    writeGuard: requireUserAdmin,
     serialize: S.user,
     required: ["subject", "name"],
     orderBy: "name",

@@ -10,7 +10,7 @@
  * in one place. Swap `resolvePrincipal` for a real IdP (Cloudflare Access JWT)
  * without touching any route.
  */
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import type { Env, Principal, Role, Vars } from "./types";
 import { badRequest, forbidden } from "./errors";
 import { accessConfig, readAssertion, verifyAccessJwt } from "./access";
@@ -134,6 +134,36 @@ export const crudGuard: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = 
   }
   await next();
 };
+
+/**
+ * Gate for administering the `users` table.
+ *
+ * That table IS the authorization source of record — resolvePrincipal reads
+ * `role` from it — so leaving it under the open CRUD matrix meant any signed-in
+ * operator could PATCH their own row to FLEET_LEAD and grant themselves the one
+ * privilege the app actually gates. The RBAC system must not be writable by the
+ * subjects it governs.
+ */
+export async function requireUserAdmin(c: Context<{ Bindings: Env; Variables: Vars }>): Promise<void> {
+  const p = c.get("principal");
+  if (p.role !== "FLEET_LEAD") {
+    throw forbidden(`role ${p.role} may not administer users (requires: FLEET_LEAD)`);
+  }
+  // A Fleet Lead may manage the roster but not quietly escalate or lock out
+  // peers by editing themselves — self-service role changes are the exact
+  // escalation path being closed, and demoting yourself is how you lock the
+  // last admin out of the account.
+  const targetId = c.req.param("id");
+  if (targetId && (c.req.method === "PATCH" || c.req.method === "DELETE")) {
+    const row = await c.env.DB
+      .prepare(`SELECT subject, lower(email) AS email FROM users WHERE id = ?`)
+      .bind(targetId).first<{ subject: string; email: string | null }>();
+    const me = p.name.toLowerCase();
+    if (row && (row.subject?.toLowerCase() === me || (row.email ?? "") === me)) {
+      throw forbidden("you cannot change your own role or status; ask another Fleet Lead");
+    }
+  }
+}
 
 /** Explicit gate for the legal-review verdict. */
 export const requireLegalReviewer: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = async (c, next) => {
