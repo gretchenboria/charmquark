@@ -79,7 +79,7 @@ export function GlobalSearch({ campaignId }: { campaignId: string | null }) {
     const days = weekDays(monday, 5);
 
     api
-      .listStudies()
+      .listCampaigns()
       .then((rows: Campaign[]) =>
         add(
           rows.map((s) => ({

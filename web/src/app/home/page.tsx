@@ -49,7 +49,7 @@ export default function HomePage() {
   // roles, as a safe fuller default) get the full analytics dashboard.
   const showAnalytics = canSeeAnalytics(user?.role);
 
-  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<CampaignMetrics | null>(null);
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -63,9 +63,9 @@ export default function HomePage() {
 
   useEffect(() => {
     api
-      .listStudies()
+      .listCampaigns()
       .then((s) => {
-        setStudies(s);
+        setCampaigns(s);
         if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
       .catch(() => setErr("Backend unreachable. Start it on :8000."));

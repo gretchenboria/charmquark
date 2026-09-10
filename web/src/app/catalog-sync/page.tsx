@@ -19,7 +19,7 @@ function downloadCsv(filename: string, text: string) {
 export default function CatalogSyncPage() {
   const toast = useToast();
 
-  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [csvText, setCsvText] = useState<string>("");
   const [diff, setDiff] = useState<CatalogDiff | null>(null);
@@ -29,9 +29,9 @@ export default function CatalogSyncPage() {
 
   useEffect(() => {
     api
-      .listStudies()
+      .listCampaigns()
       .then((s) => {
-        setStudies(s);
+        setCampaigns(s);
         if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));

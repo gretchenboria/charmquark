@@ -11,6 +11,9 @@ import type {
   AutoFillResult,
   CatalogApplyResult,
   CatalogDiff,
+  CoverageCell,
+  CoverageReport,
+  CoverageSpace,
   CloudStatus,
   Sensor,
   SensorRig,
@@ -103,7 +106,7 @@ const del = (p: string) => req<void>(p, { method: "DELETE" });
 
 export const api = {
   // campaigns
-  listStudies: () => req<Campaign[]>("/campaigns"),
+  listCampaigns: () => req<Campaign[]>("/campaigns"),
   getCampaign: (id: string) => req<Campaign>(`/campaigns/${id}`),
   createCampaign: (b: { name: string; campaign_type: string; target_n?: number }) => post<Campaign>("/campaigns", b),
   updateCampaign: (id: string, b: Partial<{ name: string; status: string; target_n: number }>) =>
@@ -256,6 +259,13 @@ export const api = {
     post<CatalogDiff>(`/campaigns/${campaignId}/catalog/preview`, { csv_text: csvText }),
   applyCatalog: (campaignId: string, csvText: string) =>
     post<CatalogApplyResult>(`/campaigns/${campaignId}/catalog/apply`, { csv_text: csvText }),
+
+  // coverage space
+  getCoverage: (campaignId: string) => req<CoverageReport>(`/campaigns/${campaignId}/coverage`),
+  setCoverageSpace: (campaignId: string, space: CoverageSpace) =>
+    put<CoverageReport>(`/campaigns/${campaignId}/coverage-space`, space),
+  setRunCoverageCell: (runId: string, cell: CoverageCell) =>
+    put<{ run_id: string; cell: CoverageCell; cell_key: string }>(`/runs/${runId}/coverage-cell`, { cell }),
 
   // dev / sample data
   seedSample: () => post<Run>("/dev/seed/sample", {}),

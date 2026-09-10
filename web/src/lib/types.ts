@@ -458,3 +458,63 @@ export interface CheckoutStart {
   url: string;
   session_id: string;
 }
+
+// ---- Coverage space ------------------------------------------------------
+// What a campaign needs, expressed as a state space rather than a rep count.
+
+export interface CoverageDimension {
+  key: string;
+  label: string;
+  levels: string[];
+}
+
+export interface CoverageSpace {
+  dimensions: CoverageDimension[];
+  target_per_cell: number;
+}
+
+export type CoverageCell = Record<string, string>;
+
+export interface CellState {
+  key: string;
+  cell: CoverageCell;
+  observed: number;
+  target: number;
+  gap: number;
+  /** observed/target capped at 1 — for colour, not arithmetic. */
+  fill: number;
+}
+
+export interface DimensionMarginal {
+  key: string;
+  label: string;
+  levels: { level: string; observed: number; target: number; gap: number }[];
+}
+
+export interface CoverageState {
+  target_per_cell: number;
+  total_cells: number;
+  touched_cells: number;
+  complete_cells: number;
+  total_observed: number;
+  total_target: number;
+  /** Fraction of CELLS complete — cannot be gamed by over-collecting one cell. */
+  coverage: number;
+  cells: CellState[];
+  marginals: DimensionMarginal[];
+}
+
+export interface CellRecommendation {
+  key: string;
+  cell: CoverageCell;
+  gap: number;
+  priority: number;
+  reason: string;
+}
+
+export interface CoverageReport {
+  configured: boolean;
+  space: CoverageSpace | null;
+  state: CoverageState | null;
+  next: CellRecommendation[];
+}

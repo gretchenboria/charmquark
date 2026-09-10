@@ -52,6 +52,40 @@ const variants = (name: string, errorLabel: string): string =>
 const steps = (...lines: string[]): string =>
   JSON.stringify(lines.map((text, n) => ({ step: n + 1, text })));
 
+
+/**
+ * The demo campaign's coverage space.
+ *
+ * Three dimensions, deliberately small (3 x 3 x 2 = 18 cells at 3 each = 54
+ * observations) so the grid is readable and the gaps are obvious at a glance.
+ * These are the conditions that actually change what a perception model sees in
+ * a warehouse: how much light there is, what the floor does to odometry and
+ * reflectance, and whether the robot is carrying something.
+ */
+const COVERAGE_SPACE = {
+  target_per_cell: 3,
+  dimensions: [
+    { key: "lighting", label: "Lighting", levels: ["bright", "normal", "low"] },
+    { key: "surface", label: "Floor surface", levels: ["concrete", "epoxy", "grating"] },
+    { key: "payload", label: "Payload", levels: ["empty", "loaded"] },
+  ],
+};
+
+/**
+ * Seeded observations, deliberately lopsided: bright/concrete is over-collected
+ * while low light and grating are nearly untouched. That is the realistic
+ * failure mode — teams collect what is easy — and it is what the coverage map
+ * exists to make visible.
+ */
+const COVERAGE_OBSERVATIONS: [string, string, string, number][] = [
+  ["bright", "concrete", "empty", 5], ["bright", "concrete", "loaded", 4],
+  ["bright", "epoxy", "empty", 3],    ["bright", "epoxy", "loaded", 2],
+  ["normal", "concrete", "empty", 3], ["normal", "concrete", "loaded", 3],
+  ["normal", "epoxy", "empty", 2],    ["normal", "epoxy", "loaded", 1],
+  ["normal", "grating", "empty", 1],
+  ["low", "concrete", "empty", 1],
+];
+
 // ---------------------------------------------------------------- rows
 const USERS: [string, string, string, string, string][] = [
   [u(1), "s.okafor", "Sade Okafor", "s.okafor@example.invalid", "PM"],
@@ -300,7 +334,9 @@ export function seedStatements(): string[] {
     out.push(`INSERT INTO sensors (id, asset_name, sensor_type, status) VALUES (${q(id)}, ${q(asset)}, ${q(type)}, ${q(status)})`);
   }
 
+  const spaceJson = JSON.stringify(COVERAGE_SPACE);
   out.push(`INSERT INTO campaigns (id, name, campaign_type, target_n, status, default_sensor_rig_id) VALUES (${q(ID.campaign)}, 'Warehouse Perception Baseline', 'PERCEPTION', 60, 'ACTIVE', ${q(ID.fleetStd)})`);
+  out.push(`UPDATE campaigns SET coverage_space = ${q(spaceJson)} WHERE id = ${q(ID.campaign)}`);
 
   const groups: [string, string, number][] = [
     [ID.groupNav, "Navigation", 1],
@@ -346,6 +382,19 @@ export function seedStatements(): string[] {
       `${q(result.verdict)}, ${q(JSON.stringify(manifest))}, ${q(result.profile_name)}, '2026-09-08 14:20:00')`,
     );
   }
+
+
+  // Coverage observations. Attributed to the completed run so the ledger has a
+  // real origin; the unique index is (run_id, mission_id), so each row uses a
+  // distinct mission to stay insertable.
+  COVERAGE_OBSERVATIONS.forEach(([lighting, surface, payload, count], i) => {
+    const key = `lighting=${lighting}|payload=${payload}|surface=${surface}`;
+    const obsId = `cccccccc-0000-4000-8000-${String(i + 1).padStart(12, "0")}`;
+    out.push(`INSERT INTO coverage_observations (id, campaign_id, run_id, cell_key, count, mission_id) VALUES (${q(obsId)}, ${q(ID.campaign)}, ${q(s(1))}, ${q(key)}, ${count}, ${q(t((i % 10) + 1))})`);
+  });
+
+  // The completed run carries the cell it ran in, so the run detail can show it.
+  out.push(`UPDATE runs SET coverage_cell = ${q(JSON.stringify({ lighting: "bright", surface: "concrete", payload: "empty" }))} WHERE id = ${q(s(1))}`);
 
   return out;
 }

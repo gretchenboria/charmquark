@@ -46,7 +46,7 @@ export default function AutoSchedulePage() {
   const canBuild = canCreate(user?.role); // generating a proposal creates a run (PM)
   const canDrive = canUpdate(user?.role); // accept/reject/upload (PM + Robot Operator)
 
-  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [slotDate, setSlotDate] = useState<string>("");
   const [robots, setRobots] = useState<Robot[]>([]);
@@ -68,9 +68,9 @@ export default function AutoSchedulePage() {
 
   useEffect(() => {
     api
-      .listStudies()
+      .listCampaigns()
       .then((s) => {
-        setStudies(s);
+        setCampaigns(s);
         if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));

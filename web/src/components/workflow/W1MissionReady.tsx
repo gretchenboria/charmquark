@@ -24,7 +24,7 @@ export function W1MissionReady({
   log: LogFn;
   onProgress: (currentIndex: number, doneIndex: number) => void;
 }) {
-  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState("");
   const [missions, setMissions] = useState<Mission[]>([]);
   const [missionId, setMissionId] = useState("");
@@ -32,8 +32,8 @@ export function W1MissionReady({
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.listStudies().then((s) => {
-      setStudies(s);
+    api.listCampaigns().then((s) => {
+      setCampaigns(s);
       if (s[0]) setCampaignId((c) => c || s[0].id);
     }).catch(() => log("error", "Backend unreachable — start it on :8000."));
     // eslint-disable-next-line react-hooks/exhaustive-deps

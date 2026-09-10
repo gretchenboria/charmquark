@@ -18,14 +18,14 @@ const columns: Column[] = [
   { key: "status", header: "Status" },
 ];
 
-export default function StudiesPage() {
+export default function CampaignsPage() {
   const user = useUser();
   const toast = useToast();
   const [rows, setRows] = useState<Campaign[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    api.listStudies().then(setRows).catch(() => setErr("Backend unreachable (start it on :8000)."));
+    api.listCampaigns().then(setRows).catch(() => setErr("Backend unreachable (start it on :8000)."));
   }, []);
   useEffect(load, [load]);
 

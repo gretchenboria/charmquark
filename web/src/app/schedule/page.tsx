@@ -20,7 +20,7 @@ export default function SchedulePage() {
   const canWrite = canWriteRun(user?.role);
   const canConfirm = canConfirmRun(user?.role);
 
-  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [monday, setMonday] = useState<Date>(() => startOfWeekMonday(new Date()));
   const [runs, setRuns] = useState<Run[]>([]);
@@ -36,9 +36,9 @@ export default function SchedulePage() {
 
   useEffect(() => {
     api
-      .listStudies()
+      .listCampaigns()
       .then((s) => {
-        setStudies(s);
+        setCampaigns(s);
         if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
       .catch(() => setError("Could not reach backend. Is it running on :8000?"));

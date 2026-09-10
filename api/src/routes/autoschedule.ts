@@ -21,6 +21,7 @@ import {
 } from "../domain";
 import * as S from "../serialize";
 import { parseCsv } from "./catalog";
+import { recordCoverage } from "./coverage";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
@@ -350,7 +351,20 @@ export function mountAutoschedule(app: App): void {
     ).bind(jsonCol([...completedIds]), jsonCol(rows), id));
 
     await c.env.DB.batch(stmts);
-    return c.json({ recorded, reverted, missions: changes });
+
+    // Coverage moves on evidence of collection, so it is recorded here — after
+    // the repetitions are reconciled — rather than when a run was scheduled.
+    const missionCounts: Record<string, number> = {};
+    for (const mid of completedIds) {
+      missionCounts[mid] = counts[mid] ?? s.mission_reps[mid] ?? 1;
+    }
+    const coverage = await recordCoverage(c.env.DB, {
+      runId: id,
+      campaignId: s.campaign_id,
+      missionCounts,
+    });
+
+    return c.json({ recorded, reverted, missions: changes, coverage });
   });
 
   // ------------------------------------------------------------ auto-fill a date range

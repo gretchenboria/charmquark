@@ -19,7 +19,7 @@ const columns: Column[] = [
 
 export default function InventoryPage() {
   const user = useUser();
-  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [rows, setRows] = useState<InventoryItem[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -28,9 +28,9 @@ export default function InventoryPage() {
 
   useEffect(() => {
     api
-      .listStudies()
+      .listCampaigns()
       .then((s) => {
-        setStudies(s);
+        setCampaigns(s);
         if (s.length > 0) setCampaignId(s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));

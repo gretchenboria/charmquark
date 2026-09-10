@@ -23,16 +23,16 @@ const STATE_FILL: Record<string, string> = {
 };
 
 export default function MonitoringPage() {
-  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [m, setM] = useState<CampaignMetrics | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     api
-      .listStudies()
+      .listCampaigns()
       .then((s) => {
-        setStudies(s);
+        setCampaigns(s);
         if (s.length > 0) setCampaignId(s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));

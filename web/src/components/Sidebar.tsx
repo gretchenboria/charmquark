@@ -103,6 +103,7 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
   {
     title: "Operations",
     items: [
+      { href: "/coverage", label: "Coverage", icon: IconDashboard },
       { href: "/schedule", label: "Run Board", icon: IconCalendar },
       { href: "/auto-schedule", label: "Auto-Schedule", icon: IconWorkflow },
       { href: "/monitoring", label: "Monitoring", icon: IconReport },

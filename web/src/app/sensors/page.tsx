@@ -20,7 +20,7 @@ export default function SensorsPage() {
   const user = useUser();
   const [rows, setRows] = useState<Sensor[]>([]);
   const [fleets, setFleets] = useState<SensorRig[]>([]);
-  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState("");
@@ -32,8 +32,8 @@ export default function SensorsPage() {
   }, []);
   useEffect(load, [load]);
   useEffect(() => {
-    api.listStudies().then((s) => {
-      setStudies(s);
+    api.listCampaigns().then((s) => {
+      setCampaigns(s);
       if (s.length > 0) setCampaignId(s[0].id);
     }).catch(() => undefined);
   }, []);
