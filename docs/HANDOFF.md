@@ -20,7 +20,7 @@ The account is `Me@gretchenboria.com's Account`, id `6c415c903ba42618ddadb9175a6
 |---|---|---|
 | D1 `charmquark` | **created, migrated, seeded** | `817b5862-28b3-489c-a57a-b010f1844e4b` |
 | KV `FLEET_STATUS` | **created** | `634e3230fd224dadbc7546b9535b8a80` |
-| R2 `charmquark-vault` | **NOT created** — R2 not enabled on the account | — |
+| R2 `charmquark-vault` | **created** (R2 enabled 2026-09-10) | Standard storage class |
 | Zone `charmquark.app` | active | `7b85c4188317eecf2885944390901599` |
 | Worker `charmquark-api` | **not deployed yet** | route `charmquark.app/api/*` configured |
 | Worker `charmquark-web` | **not deployed yet** | route `charmquark.app/*` configured |
@@ -52,35 +52,24 @@ done
 The token now in `.env` returns `True` for D1, KV and Workers Scripts. R2 returns
 `False` — but that is **not** a permission problem, see below.
 
-## 4. The one blocking item
+## 4. R2 — resolved
 
-R2 is not switched on for the account:
+R2 was not enabled on the account (`code 10042`), which blocked bucket creation.
+The user enabled it on 2026-09-10 and `charmquark-vault` now exists. All three
+bindings in `api/wrangler.jsonc` are live.
 
-```
-Please enable R2 through the Cloudflare Dashboard. [code: 10042]
-```
-
-Dashboard → **R2** → **Enable** (free tier exists; it needs a one-time
-activation). Then:
-
-```bash
-cd api && set -a && . ../.env && set +a
-wrangler r2 bucket create charmquark-vault
-```
-
-Until that happens the `VAULT` binding is **optional** in `api/src/types.ts`, and
-every vault-backed route calls `requireVault(env)` (`api/src/db.ts`), which throws
-a 503 explaining the cause instead of a `TypeError` on `undefined`. Affected:
-run-sheet CSVs (`routes/autoschedule.ts`), instruction versions
-(`routes/catalog.ts`), the document vault (`routes/misc.ts`). Everything else is
-pure D1 and works.
-
-**When R2 is enabled**, nothing needs reverting — `requireVault` simply stops
-throwing once the binding exists.
+No code change was needed to switch back on: the `VAULT` binding is declared
+optional in `api/src/types.ts` and every vault-backed route calls
+`requireVault(env)` (`api/src/db.ts`), which throws a 503 naming the cause only
+while the binding is absent. With the bucket present it simply stops firing.
+Keep that guard — it is what makes a missing bucket a legible error rather than
+a `TypeError` on `undefined`.
 
 ## 5. Deploying
 
-Not yet done. Once R2 is enabled:
+Not yet done — deliberately. See §9: the paywall must ship in the first
+deploy so the app is never publicly reachable unmetered. Everything else is
+ready.
 
 ```bash
 set -a; . ./.env; set +a
