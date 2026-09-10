@@ -154,15 +154,20 @@ export function mountCatalog(app: App): void {
     const b = await c.req.json<Record<string, unknown>>();
     if (!b.study_id || !b.task_code || !b.name) throw badRequest("study_id, task_code and name are required");
     const id = uuid();
+    // Accept the same fields PATCH does, so a task can be created ready-to-schedule
+    // in one call rather than create-then-update.
     await c.env.DB.prepare(
-      `INSERT INTO tasks (id, study_id, task_group_id, task_code, name, "group", duration_type,
-                          reps_target, review_status, risk_level, variants, inventory_item_ids, instructions)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, study_id, task_group_id, task_code, name, "group", status,
+                          duration_type, reps_target, reps_actual, schedule_status,
+                          review_status, risk_level, legal_approval, instructions_complete,
+                          variants, inventory_item_ids, instructions)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).bind(
       id, b.study_id, b.task_group_id ?? null, b.task_code, b.name, b.group ?? null,
-      b.duration_type ?? "UNSPECIFIED", b.reps_target ?? 1, b.review_status ?? "DRAFT",
-      b.risk_level ?? "UNKNOWN", jsonCol(b.variants ?? []), jsonCol(b.inventory_item_ids ?? []),
-      jsonCol(b.instructions ?? []),
+      b.status ?? "NEW", b.duration_type ?? "UNSPECIFIED", b.reps_target ?? 1,
+      b.reps_actual ?? 0, b.schedule_status ?? "AVAILABLE", b.review_status ?? "DRAFT",
+      b.risk_level ?? "UNKNOWN", b.legal_approval ?? "NONE", fromBool(b.instructions_complete),
+      jsonCol(b.variants ?? []), jsonCol(b.inventory_item_ids ?? []), jsonCol(b.instructions ?? []),
     ).run();
     const row = await c.env.DB.prepare(`SELECT * FROM tasks WHERE id = ?`).bind(id).first<Row>();
     return c.json(S.task(row!), 201);
