@@ -21,9 +21,9 @@ The account is `Me@gretchenboria.com's Account`, id `6c415c903ba42618ddadb9175a6
 | D1 `charmquark` | **created, migrated, seeded** | `817b5862-28b3-489c-a57a-b010f1844e4b` |
 | KV `FLEET_STATUS` | **created** | `634e3230fd224dadbc7546b9535b8a80` |
 | R2 `charmquark-vault` | **created** (R2 enabled 2026-09-10) | Standard storage class |
-| Zone `charmquark.app` | active | `7b85c4188317eecf2885944390901599` |
-| Worker `charmquark-api` | **not deployed yet** | route `charmquark.app/api/*` configured |
-| Worker `charmquark-web` | **not deployed yet** | route `charmquark.app/*` configured |
+| Zone `charmquark.app` | active, **DNS created** | AAAA apex -> `100::` proxied, CNAME www |
+| Worker `charmquark-api` | **DEPLOYED**, `ENVIRONMENT=production` | route `charmquark.app/api/*` live |
+| Worker `charmquark-web` | **DEPLOYED** | route `charmquark.app/*` live |
 
 Remote D1 verified holding: 11 robots, 10 missions, 7 runs, 14 sensors, 3 labs.
 
@@ -65,11 +65,32 @@ while the binding is absent. With the bucket present it simply stops firing.
 Keep that guard — it is what makes a missing bucket a legible error rather than
 a `TypeError` on `undefined`.
 
-## 5. Deploying
+## 5. Deploying — DONE, and one trap to know
 
-Not yet done — deliberately. See §9: the paywall must ship in the first
-deploy so the app is never publicly reachable unmetered. Everything else is
-ready.
+**https://charmquark.app is live**, both Workers deployed, metered from the
+first deploy so it was never reachable unpaywalled.
+
+Two things bit during the first deploy, both now fixed but worth knowing:
+
+1. **A new zone has no DNS records**, so a Worker route never fires and
+   Cloudflare returns 522. An apex `AAAA -> 100::` (the reserved discard
+   prefix) with `proxied: true` is the fix — the origin is never contacted and
+   the Worker serves the route. Allow ~30s for route propagation; a fresh
+   deploy can 522 on some paths and 200 on others in the meantime.
+2. **`ENVIRONMENT` shipped as `development`**, which left `/api/dev/seed/*` —
+   the endpoints that wipe the database — returning 200 on the live site. The
+   committed default in `api/wrangler.jsonc` is now `production`, and local dev
+   opts *down* via the dev script's `--var ENVIRONMENT:development`. Never
+   invert that: the fail-safe direction is locked-down-by-default. Verify after
+   any deploy:
+   `curl -X POST https://charmquark.app/api/dev/seed/demo -H 'X-CharmQuark-Role: PM'`
+   must return **403**.
+
+If your machine cached an NXDOMAIN for charmquark.app before DNS existed,
+curl needs `--resolve charmquark.app:443:$(dig +short charmquark.app @1.1.1.1 | head -1)`
+and Chromium needs `--host-resolver-rules`.
+
+Redeploy:
 
 ```bash
 set -a; . ./.env; set +a

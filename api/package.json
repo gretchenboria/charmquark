@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --var ENVIRONMENT:development",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "db:migrate:local": "wrangler d1 migrations apply charmquark --local",

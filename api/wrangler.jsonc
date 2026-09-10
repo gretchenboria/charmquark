@@ -30,8 +30,11 @@
     { "binding": "FLEET_STATUS", "id": "634e3230fd224dadbc7546b9535b8a80" }
   ],
 
+  // Fail safe: the committed default is production, so a plain `wrangler deploy`
+  // can never silently re-expose /dev/seed/* (those endpoints wipe the database).
+  // Local development opts DOWN via the dev script's --var, never the reverse.
   "vars": {
-    "ENVIRONMENT": "development"
+    "ENVIRONMENT": "production"
     // Optional: pin where Stripe returns a buyer when the web app and the API
     // do not share an origin. Unset, the request's Origin header is used.
     // "APP_ORIGIN": "https://charmquark.app"
@@ -49,12 +52,5 @@
   // charmquark.app/api/... reaches this Worker directly, one hop, and never
   // transits the frontend. It is why web/next.config.mjs emits its /api rewrite
   // in development only.
-  "routes": [{ "pattern": "charmquark.app/api/*", "zone_name": "charmquark.app" }],
-
-  "env": {
-    "production": {
-      "vars": { "ENVIRONMENT": "production" }
-      // Production disables the /dev/seed/* endpoints (see routes/dev.ts).
-    }
-  }
+  "routes": [{ "pattern": "charmquark.app/api/*", "zone_name": "charmquark.app" }]
 }
