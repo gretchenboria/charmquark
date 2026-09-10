@@ -34,11 +34,12 @@
     "ENVIRONMENT": "development"
   },
 
-  // Bind the API to charmquark.app/api/* at the edge once the zone is on this
-  // account. This is what makes the web Worker's dev-only rewrite unnecessary in
-  // production: browser -> charmquark.app/api/* -> this Worker, one hop.
-  // Uncomment after `wrangler d1 create` and DNS are done:
-  // "routes": [{ "pattern": "charmquark.app/api/*", "zone_name": "charmquark.app" }]
+  // The API owns charmquark.app/api/* at the edge. This is the more specific
+  // pattern, so it wins over the web Worker's catch-all: a browser request to
+  // charmquark.app/api/... reaches this Worker directly, one hop, and never
+  // transits the frontend. It is why web/next.config.mjs emits its /api rewrite
+  // in development only.
+  "routes": [{ "pattern": "charmquark.app/api/*", "zone_name": "charmquark.app" }],
 
   "env": {
     "production": {

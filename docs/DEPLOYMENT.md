@@ -15,15 +15,41 @@ wrangler whoami   # confirms the token works
 > <https://dash.cloudflare.com/profile/api-tokens>, paste it into `.env`, and
 > revoke the old one.
 
-Token scopes needed:
+Token scopes needed. **Account** scopes are the ones that matter — a zone token,
+even with `#worker:edit`, can bind Worker *routes* but cannot upload a script or
+create storage:
 
-| Scope | Why |
-|---|---|
-| Account → Workers Scripts → Edit | deploy both Workers |
-| Account → D1 → Edit | create the database, run migrations |
-| Account → Workers R2 Storage → Edit | create and write the vault bucket |
-| Account → Workers KV Storage → Edit | fleet-status namespace |
-| Zone → DNS → Edit (on `charmquark.app`) | bind the hostname |
+| Scope | Level | Why |
+|---|---|---|
+| Workers Scripts → Edit | **Account** | upload both Workers |
+| D1 → Edit | **Account** | create the database, run migrations |
+| Workers KV Storage → Edit | **Account** | the fleet-status namespace |
+| Workers R2 Storage → Edit | **Account** | create and write the vault bucket |
+| Workers Routes → Edit | Zone (`charmquark.app`) | bind the hostname |
+| DNS → Edit | Zone (`charmquark.app`) | the record behind the route |
+
+To check what a token actually carries — `whoami` proves only that it
+authenticates, not what it may do:
+
+```bash
+# the zone payload embeds the token's own permission list
+curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  "https://api.cloudflare.com/client/v4/zones?per_page=1" |
+  python3 -c "import json,sys; [print(p) for p in sorted(json.load(sys.stdin)['result'][0]['permissions'])]"
+```
+
+Account permissions do not appear there. Test those directly — each should
+return `"success": true`:
+
+```bash
+A=$CLOUDFLARE_ACCOUNT_ID
+for r in d1/database storage/kv/namespaces r2/buckets workers/scripts; do
+  printf '%-24s ' "$r"
+  curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+    "https://api.cloudflare.com/client/v4/accounts/$A/$r" |
+    python3 -c "import json,sys; print(json.load(sys.stdin)['success'])"
+done
+```
 
 Never put the token in `wrangler.jsonc`, a `vars` block, or CI logs. For CI, use
 a repository secret and let `wrangler` read `CLOUDFLARE_API_TOKEN` from the env.
