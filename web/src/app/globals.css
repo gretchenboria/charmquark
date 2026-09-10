@@ -31,6 +31,8 @@
   --cq-sage: #4e9e71;
   --cq-apricot: #e0913a;
   --cq-rose: #d4536b;
+  /* idle / draft / unknown — the fourth status accent from docs/BRAND.md. */
+  --cq-slate: #7b7a96;
 
   --cq-gradient: linear-gradient(135deg, var(--cq-violet) 0%, var(--cq-iris) 52%, var(--cq-blue) 100%);
 

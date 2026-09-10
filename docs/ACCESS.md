@@ -1,17 +1,28 @@
 # Cloudflare Access
 
-The API's identity check is implemented and wired. It is **not enforcing yet**,
-because Access has not been enabled on the Cloudflare account — the API says so
-directly:
+**Enforcing as of 2026-09-10.** charmquark.app is behind Access; an unauthenticated
+request is redirected to the team login instead of being served.
 
-```
-access.api.error.not_enabled: Access is not enabled. Visit the Access dashboard
-at https://dash.cloudflare.com/ and click the 'Enable Access' button.
-```
+| | |
+|---|---|
+| Team domain | `blue-frost-0444.cloudflareaccess.com` |
+| App "CharmQuark" | `charmquark.app` — Allow policy on the team's emails |
+| App "CharmQuark — Stripe webhook (public)" | `charmquark.app/api/billing/webhook` — **Bypass** |
 
-Same class of blocker as R2 was: the token carries the right scopes
-(`Access: Apps and Policies Write`, `Access: Organizations, Identity Providers,
-and Groups Write`), the product itself just needs onboarding once.
+### Why the bypass exists, and why it is safe
+
+Stripe cannot authenticate through Access, so a webhook delivery to a protected
+path would be bounced to a login page and the payment would never grant credits.
+Access matches the most specific path first, so the bypass app carves that single
+endpoint out of the protected app.
+
+That endpoint is not unprotected — its credential is the Stripe signature. The
+Worker verifies the HMAC with `constructEventAsync` before trusting anything in
+the body, and rejects a bad or missing signature with 400. Verified live.
+
+If you add more machine-to-machine endpoints, they need the same treatment: a
+bypass app **and** their own cryptographic check. A bypass without one is just a
+hole.
 
 ## Two modes, chosen by configuration alone
 

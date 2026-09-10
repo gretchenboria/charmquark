@@ -18,6 +18,7 @@ import { mountAutoschedule } from "./routes/autoschedule";
 import { mountMisc } from "./routes/misc";
 import { mountDev } from "./routes/dev";
 import { mountBilling, mountBillingWebhook } from "./routes/billing";
+import { mountRoboflow } from "./routes/roboflow";
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -49,6 +50,7 @@ mountRuns(api);
 mountAutoschedule(api);
 mountMisc(api);
 mountBilling(api);
+mountRoboflow(api);
 mountDev(api);
 
 app.route("/api", api);

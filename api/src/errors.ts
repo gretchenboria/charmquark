@@ -45,3 +45,15 @@ export const billingUnavailable = (): HTTPException =>
       "Set them with `wrangler secret put STRIPE_SECRET_KEY` and " +
       "`wrangler secret put STRIPE_WEBHOOK_SECRET` (see docs/BILLING.md).",
   });
+
+/**
+ * Roboflow is not configured (no ROBOFLOW_API_KEY on the Worker). Same shape as
+ * `billingUnavailable`: an unconfigured integration is a 503 that names the
+ * missing credential, never a half-completed export.
+ */
+export const annotationUnavailable = (): HTTPException =>
+  new HTTPException(503, {
+    message:
+      "Annotation export is not configured: this Worker has no Roboflow API key. " +
+      "Set it with `wrangler secret put ROBOFLOW_API_KEY` (see docs/ROBOFLOW.md).",
+  });

@@ -252,18 +252,59 @@ export type RunAssign = Partial<{
 export interface QACheckItem {
   name: string;
   result: string;
+  /**
+   * Present only on autochecked runs. What the machine concluded, kept alongside
+   * `result` so a human override is visible as an override rather than erasing
+   * the original finding.
+   */
+  machine_result?: string;
+  level?: "pass" | "warn" | "fail" | "info";
+  /** The sensor / file the finding is about, e.g. "lidar_top/segment 2". */
+  subject?: string | null;
+  detail?: string;
 }
 export interface QAGate {
   level: string;
   name: string;
+  /** Protocol step 1–6 on an autochecked run; absent on the manual checklist. */
+  step?: number;
   status: string;
   check_items: QACheckItem[];
 }
+export type QAVerdict = "ACCEPT" | "ACCEPT_WITH_WARNINGS" | "REJECT";
 export interface QARun {
   id: string;
   run_id: string;
   overall_status: string;
   gates: QAGate[];
+  mode: "MANUAL" | "AUTOCHECK";
+  verdict: QAVerdict | null;
+  profile_name: string | null;
+  autochecked_at: string | null;
+}
+
+// ---- Roboflow annotation handoff ----
+export interface RoboflowExport {
+  id: string;
+  run_id: string;
+  workspace: string | null;
+  project: string;
+  batch: string | null;
+  split: string;
+  status: "PENDING" | "COMPLETE" | "PARTIAL" | "FAILED";
+  image_count: number;
+  duplicate_count: number;
+  failed_count: number;
+  dataset_version: string | null;
+  error: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+export interface RoboflowStatus {
+  annotation_configured: boolean;
+  workspace: string | null;
+  max_images_per_export: number;
+  exports: RoboflowExport[];
 }
 
 export interface User {

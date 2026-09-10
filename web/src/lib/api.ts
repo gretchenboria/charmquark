@@ -22,6 +22,8 @@ import type {
   Robot,
   RobotSwap,
   QARun,
+  RoboflowExport,
+  RoboflowStatus,
   Readiness,
   Run,
   RunAssign,
@@ -206,8 +208,19 @@ export const api = {
   // QA
   getQA: (runId: string) => req<QARun>(`/runs/${runId}/qa`),
   createQA: (runId: string) => post<QARun>(`/runs/${runId}/qa`, {}),
+  /** Re-run the autocheck by listing the run's vault prefix. */
+  recheckQA: (runId: string) => post<QARun>(`/runs/${runId}/qa`, { derive_from_r2: true }),
+  /** Autocheck an explicit manifest — what the extraction tooling saw. */
+  autocheckQA: (runId: string, manifest: unknown) => post<QARun>(`/runs/${runId}/qa`, { manifest }),
   updateQACheck: (runId: string, gate_index: number, check_index: number, result: string) =>
     patch<QARun>(`/runs/${runId}/qa/check`, { gate_index, check_index, result }),
+
+  // Roboflow annotation handoff
+  getRoboflow: (runId: string) => req<RoboflowStatus>(`/runs/${runId}/roboflow`),
+  exportToRoboflow: (runId: string, b: { project: string; workspace?: string; batch?: string; split?: string; force?: boolean }) =>
+    post<RoboflowExport>(`/runs/${runId}/roboflow/export`, b),
+  linkRoboflowVersion: (exportId: string, dataset_version: string) =>
+    patch<RoboflowExport>(`/roboflow/exports/${exportId}`, { dataset_version }),
 
   // autoschedule (automated run scheduling)
   createProposal: (b: { campaign_id: string; slot_date?: string | null; slot_time?: string | null; budget?: number }) =>

@@ -10,6 +10,7 @@
  * 5 operators, one active perception program with a mission catalog, and a handful
  * of runs spread across the pipeline states.
  */
+import { autocheck, parseManifest, parseProfile } from "./qaAutocheck.ts";
 
 // Stable ids so the seed is idempotent and re-runnable.
 const ID = {
@@ -31,6 +32,7 @@ const s = (n: number) => `99999999-9999-4999-8999-${String(n).padStart(12, "0")}
 const u = (n: number) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(n).padStart(12, "0")}`;
 const i = (n: number) => `bbbbbbbb-bbbb-4bbb-8bbb-${String(n).padStart(12, "0")}`;
 const bl = (n: number) => `dddddddd-dddd-4ddd-8ddd-${String(n).padStart(12, "0")}`;
+const qa = (n: number) => `eeeeeeee-eeee-4eee-8eee-${String(n).padStart(12, "0")}`;
 
 /** The billing account created by migration 0002; the seed tops it up. */
 const BILLING_ACCOUNT_ID = "cccccccc-cccc-4ccc-8ccc-000000000001";
@@ -109,6 +111,89 @@ const FLEETS: [string, string, string[]][] = [
   [ID.fleetManip,   "Manipulation Rig",        [d(2), d(5), d(6), d(9), d(12)]],
   [ID.fleetOutdoor, "Outdoor RTK Rig",         [d(2), d(5), d(9), d(10), d(11)]],
 ];
+
+// ---------------------------------------------------------------- QA expectation profile
+/**
+ * What the Manipulation Rig is expected to produce, per run. This is the input to
+ * the QA autocheck (`api/src/qaAutocheck.ts`); the manifest below is the other
+ * half. Numbers are fictional but plausible for a 32-beam LiDAR, a stereo pair,
+ * an IMU and a 6-axis force/torque sensor recording MCAP for ten minutes per
+ * segment.
+ *
+ * It sits on the *rig* rather than the campaign because the rig is what carries
+ * the sensors, and it is the rig run 3 actually uses — the seeded QA record and
+ * the profile it was checked against must name the same hardware. The other two
+ * rigs deliberately have none, so the built-in default is also exercised. See
+ * docs/QA_AUTOCHECK.md.
+ */
+const MANIP_RIG_QA_PROFILE = {
+  name: "Manipulation Rig — 5 × 10 min",
+  segment_count: 5,
+  segment_target_s: 600,
+  duration_test_max_s: 180,
+  duration_warn_min_s: 480,
+  size_fail_low: 0.3,
+  size_warn_low: 0.6,
+  size_warn_high: 1.6,
+  suppressed_warning_keywords: ["wifi", "ntp drift", "ft tare"],
+  sensors: [
+    { key: "lidar_top", role: "Roof LiDAR (32-beam)", extensions: [".mcap"], expected_mb_per_min: 120, requires_state_file: true },
+    { key: "stereo_front", role: "Front stereo pair", extensions: [".mcap"], expected_mb_per_min: 90, requires_state_file: true },
+    { key: "imu_9dof", role: "IMU 9-DOF", extensions: [".mcap"], expected_mb_per_min: 1.2, requires_state_file: true },
+    // The F/T controller writes its own log; there is no capture-stack sidecar.
+    { key: "ft_6axis", role: "6-axis force/torque", extensions: [".mcap"], expected_mb_per_min: 0.4, requires_state_file: false },
+  ],
+};
+
+const MB = 1024 * 1024;
+/** Bytes for a segment at `ratio` of what the profile expects. */
+const sized = (mbPerMin: number, durationS: number, ratio: number): number =>
+  Math.round(mbPerMin * (durationS / 60) * MB * ratio);
+
+/**
+ * The manifest for run 3 (MANUAL_QA), built to produce a deliberately *mixed*
+ * autocheck so the QA panel has something worth looking at out of the box:
+ *
+ *   pass  — most segments land in the tolerance band with their sidecars;
+ *   warn  — stereo segment 1 is 45 % of expected size (below, not fatally);
+ *   warn  — a real, non-suppressed capture warning on the LiDAR;
+ *   fail  — IMU segment 3 is a 96-second test take that must be pulled;
+ *   fail  — GNSS segment 4 was written as .csv instead of .ubx;
+ *   info  — routine WiFi-scanner noise, counted and suppressed.
+ *
+ * Verdict: REJECT, because the two failures are hard ones — which is the point.
+ * Fix them and re-check and the run moves to accept-with-warnings, then to
+ * accept once a human adjudicates the two flags.
+ */
+function seedManifest(): { source: string; root: string; files: unknown[] } {
+  const files: unknown[] = [];
+  const push = (
+    sensor: string, segment: number, filename: string, sizeBytes: number,
+    durationS: number | null, stateFile: boolean, warnings: string[] = [],
+  ) => files.push({ sensor, segment, filename, size_bytes: sizeBytes, duration_s: durationS, state_file: stateFile, capture_warnings: warnings });
+
+  for (let seg = 0; seg < 5; seg++) {
+    const pad = String(seg).padStart(2, "0");
+
+    // LiDAR: all five clean, except one genuine dropped-packet warning on seg 2.
+    push("lidar_top", seg, `lidar_top_${pad}.mcap`, sized(120, 600, 0.97), 600, true,
+      seg === 2 ? ["lidar: 412 dropped packets between 03:11 and 03:18"] : ["wifi scan failed (radio busy)"]);
+
+    // Stereo: seg 1 is noticeably short on bytes — a warn, not a failure.
+    push("stereo_front", seg, `stereo_front_${pad}.mcap`, sized(90, 600, seg === 1 ? 0.45 : 1.02), 600, true);
+
+    // IMU: seg 3 is a 96-second test take. Two failures follow from it (step 3
+    // calls it a test take, step 6 says remove it before upload).
+    const imuDuration = seg === 3 ? 96 : 600;
+    push("imu_9dof", seg, `imu_9dof_${pad}.mcap`, sized(1.2, imuDuration, 0.99), imuDuration, true);
+
+    // F/T: seg 4 came off the controller as CSV — the wrong type for this profile.
+    const ftName = seg === 4 ? `ft_6axis_${pad}.csv` : `ft_6axis_${pad}.mcap`;
+    push("ft_6axis", seg, ftName, sized(0.4, 600, 1.05), 600, false,
+      seg === 0 ? ["ft tare drift corrected at start"] : []);
+  }
+  return { source: "UPLOAD", root: `runs/${s(3)}/`, files };
+}
 
 const INVENTORY: [string, string, string, number, string, string][] = [
   [i(1), "Calibration target (checkerboard A3)", "TOOL",       4, "ea",   "AVAILABLE"],
@@ -226,7 +311,11 @@ export function seedStatements(): string[] {
     out.push(`INSERT INTO mission_groups (id, campaign_id, name, "order") VALUES (${q(id)}, ${q(ID.campaign)}, ${q(name)}, ${order})`);
   }
   for (const [id, name, sensorIds] of FLEETS) {
-    out.push(`INSERT INTO sensor_rigs (id, campaign_id, name, sensor_ids) VALUES (${q(id)}, ${q(ID.campaign)}, ${q(name)}, ${q(JSON.stringify(sensorIds))})`);
+    // Only the manipulation rig — the one the seeded QA record's run uses —
+    // carries a profile; the other two fall through to the built-in default,
+    // which is itself a thing worth seeing.
+    const profile = id === ID.fleetManip ? q(JSON.stringify(MANIP_RIG_QA_PROFILE)) : "NULL";
+    out.push(`INSERT INTO sensor_rigs (id, campaign_id, name, sensor_ids, qa_profile) VALUES (${q(id)}, ${q(ID.campaign)}, ${q(name)}, ${q(JSON.stringify(sensorIds))}, ${profile})`);
   }
   for (const [id, name, kind, qty, unit, status] of INVENTORY) {
     out.push(`INSERT INTO inventory_items (id, campaign_id, name, kind, quantity, unit, status) VALUES (${q(id)}, ${q(ID.campaign)}, ${q(name)}, ${q(kind)}, ${qty}, ${q(unit)}, ${q(status)})`);
@@ -242,6 +331,20 @@ export function seedStatements(): string[] {
     // One planned repetition per mission keeps the seed's rep plan explicit.
     const reps = Object.fromEntries(missionIds.map((tid) => [tid, 1]));
     out.push(`INSERT INTO runs (id, campaign_id, slot_date, slot_time, state, mission_scope, mission_ids, mission_reps, robot_id, operator_id, lab_id, sensor_rig_id, run_seq, provisional_code, encoded_code, payload, run_lab) VALUES (${q(id)}, ${q(ID.campaign)}, ${q(date)}, ${q(time)}, ${q(state)}, 'SINGLE', ${q(JSON.stringify(missionIds))}, ${q(JSON.stringify(reps))}, ${q(robot)}, ${q(operator)}, ${q(lab)}, ${q(fleet)}, ${seq}, ${q(prov)}, ${code ? q(code) : "NULL"}, ${q(rigName)}, ${q(labName)})`);
+  }
+
+  // The seeded QA record is produced by the *real* checker rather than by
+  // hand-written gate JSON, so the demo can never show a verdict the code would
+  // not actually reach — and a change to the thresholds shows up here on the
+  // next `db:seed:generate`.
+  const manifest = parseManifest(seedManifest());
+  if (manifest) {
+    const result = autocheck(parseProfile(MANIP_RIG_QA_PROFILE), manifest);
+    out.push(
+      `INSERT INTO qa_pipeline_runs (id, run_id, level, overall_status, gates, mode, verdict, manifest, profile_name, autochecked_at) ` +
+      `VALUES (${q(qa(1))}, ${q(s(3))}, 'FINAL', ${q(result.overall_status)}, ${q(JSON.stringify(result.gates))}, 'AUTOCHECK', ` +
+      `${q(result.verdict)}, ${q(JSON.stringify(manifest))}, ${q(result.profile_name)}, '2026-09-08 14:20:00')`,
+    );
   }
 
   return out;

@@ -182,6 +182,31 @@ export const qaRun = (r: Row) => ({
   level: str(r, "level"),
   overall_status: str(r, "overall_status"),
   gates: parseJson<unknown[]>(r["gates"], []),
+  // Autocheck fields. Null on a manual checklist, which is how the panel knows
+  // which of the two QA modes it is rendering.
+  mode: str(r, "mode") || "MANUAL",
+  verdict: strOrNull(r, "verdict"),
+  profile_name: strOrNull(r, "profile_name"),
+  autochecked_at: strOrNull(r, "autochecked_at"),
+  manifest: parseJson<unknown>(r["manifest"], null),
+});
+
+export const roboflowExport = (r: Row) => ({
+  id: str(r, "id"),
+  run_id: str(r, "run_id"),
+  workspace: strOrNull(r, "workspace"),
+  project: str(r, "project"),
+  batch: strOrNull(r, "batch"),
+  split: str(r, "split"),
+  status: str(r, "status"),
+  image_count: num(r, "image_count"),
+  duplicate_count: num(r, "duplicate_count"),
+  failed_count: num(r, "failed_count"),
+  results: parseJson<unknown[]>(r["results"], []),
+  dataset_version: strOrNull(r, "dataset_version"),
+  error: strOrNull(r, "error"),
+  created_by: strOrNull(r, "created_by"),
+  created_at: str(r, "created_at"),
 });
 
 export const doc = (r: Row) => ({

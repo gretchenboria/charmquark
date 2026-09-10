@@ -37,6 +37,18 @@ export interface Env {
    * name the app; otherwise the request's own Origin is used.
    */
   APP_ORIGIN?: string;
+  /**
+   * Roboflow annotation handoff. Optional for the same reason as the two above:
+   * a deployment without it still runs and says the integration is unconfigured
+   * rather than half-working. A Worker *secret* (`wrangler secret put`), never a
+   * var and never in a tracked file. See docs/ROBOFLOW.md.
+   */
+  ROBOFLOW_API_KEY?: string;
+  /**
+   * Roboflow workspace url slug. Only needed for the lineage record and the
+   * project link the UI shows — uploads address the project directly.
+   */
+  ROBOFLOW_WORKSPACE?: string;
 }
 
 /** The RBAC principal for a request, derived from the X-CharmQuark-* headers. */

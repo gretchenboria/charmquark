@@ -144,18 +144,18 @@ export function Sidebar() {
   })).filter((section) => section.items.length > 0);
 
   return (
-    <nav className="cq-rail flex w-56 shrink-0 flex-col">
+    <nav className="cq-rail flex w-64 shrink-0 flex-col">
       <div className="flex flex-col items-center gap-2.5 border-b border-white/10 px-4 pb-5 pt-6">
         <Image
           src="/charmquark-logo-light.svg"
           alt=""
-          width={76}
-          height={76}
+          width={148}
+          height={148}
           priority
-          className="drop-shadow-[0_4px_18px_rgba(155,111,212,0.45)]"
+          className="drop-shadow-[0_6px_26px_rgba(155,111,212,0.55)]"
         />
         <span
-          className="cq-display text-[15px] font-bold uppercase tracking-[0.2em] text-white/90"
+          className="cq-display text-[17px] font-bold uppercase tracking-[0.22em] text-white/90"
           style={{ textShadow: "0 1px 10px rgba(155,111,212,0.35)" }}
         >
           CharmQuark

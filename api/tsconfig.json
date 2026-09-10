@@ -10,6 +10,10 @@
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
+    // seedData.ts imports qaAutocheck with an explicit .ts extension so the seed
+    // generator (node --experimental-strip-types) can resolve it; esbuild and
+    // wrangler resolve it identically. noEmit is already on, which this requires.
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx"
