@@ -84,19 +84,37 @@ export function resetOnboarded(u: User): void {
 
 // Permission helpers — FULL CRUD for every signed-in role (no hard-coded read-only).
 // Legal review stays a Campaign-Lead approval verdict (a domain action, not a read-only gate).
-export const canCreate = (_r: Role | undefined) => true;
-export const canUpdate = (_r: Role | undefined) => true;
-export const canDelete = (_r: Role | undefined) => true;
-export const canDeleteCampaign = (_r: Role | undefined) => true;
+// Client-side mirrors of the server policy in api/src/auth.ts.
+//
+// These only decide what to SHOW — the server is the authority and re-checks
+// every call. Their job is to stop an operator being offered a button that
+// returns 403, which reads as a broken app rather than a permission boundary.
+// Keep them in step with POLICY; if the two drift, the server wins and the UI
+// looks buggy.
+const PM_UP = (r: Role | undefined) => r === "PM" || r === "FLEET_LEAD";
+
+/** Authoring the catalogue and the fleet is a planning act. */
+export const canCreate = PM_UP;
+export const canUpdate = PM_UP;
+/** Removing things from the fleet is narrower than editing them. */
+export const canDelete = (r: Role | undefined) => r === "FLEET_LEAD";
+export const canDeleteCampaign = (r: Role | undefined) => r === "FLEET_LEAD";
 export const isLegalReviewer = (r: Role | undefined) => r === "FLEET_LEAD";
+/** Administering users rewrites the authorization table itself. */
+export const canAdminUsers = (r: Role | undefined) => r === "FLEET_LEAD";
+/** Buying credits spends real money. */
+export const canBuyCredits = PM_UP;
 
-// Back-compat aliases used across existing components:
-export const canWriteCatalog = canCreate;          // creating catalog objects = PM
-export const canWriteRun = canUpdate;           // run operations = PM + Robot Operator
+/** Authoring catalogue objects — campaigns, missions, inventory. */
+export const canWriteCatalog = canCreate;
 
-// Planning ownership: confirming a run, advancing the post-collection pipeline, and
-// deleting a run belong to the PM / Fleet Lead. Robot operators run runs (execute); they
-// don't confirm or hand-crank the pipeline.
+/**
+ * Executing a run — logging, QA, coverage, upload — is open to every role.
+ * This is the operator's job and the reason the role exists; only the money
+ * and safety actions on a run are narrower.
+ */
+export const canWriteRun = (_r: Role | undefined) => true;
+
 export const canConfirmRun = (r: Role | undefined) => r === "PM" || r === "FLEET_LEAD";
 
 export const ROLE_LABEL: Record<Role, string> = {

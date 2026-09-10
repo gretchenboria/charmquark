@@ -22,6 +22,7 @@ import {
 } from "../domain";
 import { debitRunCredit } from "./billing";
 import * as S from "../serialize";
+import { requireRunConfirmer } from "../auth";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
@@ -280,7 +281,7 @@ export function mountRuns(app: App): void {
    * The debit comes *after* the readiness gate — an unready run costs nothing —
    * and before the state write, so a run can never reach CONFIRMED unpaid.
    */
-  app.post("/runs/:id/confirm", async (c) => {
+  app.post("/runs/:id/confirm", requireRunConfirmer, async (c) => {
     const id = c.req.param("id");
     const row = await getRun(c.env.DB, id);
     const s = S.run(row);

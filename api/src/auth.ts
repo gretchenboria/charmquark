@@ -110,27 +110,107 @@ export const principal: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = 
 };
 
 /**
- * CRUD-by-HTTP-method matrix. Every signed-in role currently gets full CRUD;
- * narrow a method's role set here to tighten policy app-wide.
+ * Authorization policy.
+ *
+ * This replaces the predecessor's matrix, which granted every signed-in role
+ * full CRUD on everything — so a Robot Operator and a Fleet Lead had identical
+ * power, and the role was decoration. Permissions are now per resource and per
+ * action, with three principles:
+ *
+ *   - **Reads are open.** Everyone on a fleet needs to see the fleet. Hiding
+ *     the roster from the people operating it creates workarounds, not security.
+ *   - **Writes follow the job.** A Robot Operator executes runs: they log
+ *     execution, tick QA, tag coverage. They do not author the catalogue or
+ *     change what the fleet is made of.
+ *   - **Money and safety are narrower still.** Confirming a run spends a credit;
+ *     legal review signs off a hazard; user admin rewrites the authorization
+ *     table itself. Each of those has its own explicit gate below.
+ *
+ * Deletes are separated from writes deliberately: editing a robot and removing
+ * it from the fleet are different-sized mistakes.
  */
-const CRUD_ROLES: Record<string, readonly Role[]> = {
-  GET: ROLES,
-  HEAD: ROLES,
-  OPTIONS: ROLES,
-  POST: ROLES,
-  PUT: ROLES,
-  PATCH: ROLES,
-  DELETE: ROLES,
+type Action = "read" | "write" | "delete";
+
+const PM_UP: readonly Role[] = ["PM", "FLEET_LEAD"];
+const LEAD: readonly Role[] = ["FLEET_LEAD"];
+
+/**
+ * Resource -> action -> roles. The key is the first path segment after /api.
+ * A resource absent from this table falls back to DEFAULT_POLICY, so a new
+ * endpoint is governed rather than silently open.
+ */
+const POLICY: Record<string, Partial<Record<Action, readonly Role[]>>> = {
+  // --- catalogue: planners author it, operators read it ---
+  campaigns:        { read: ROLES, write: PM_UP, delete: LEAD },
+  "mission-groups": { read: ROLES, write: PM_UP, delete: PM_UP },
+  missions:         { read: ROLES, write: PM_UP, delete: PM_UP },
+  "inventory-items":{ read: ROLES, write: PM_UP, delete: PM_UP },
+
+  // --- the fleet itself: changing what exists is a planning act ---
+  robots:           { read: ROLES, write: PM_UP, delete: LEAD },
+  sensors:          { read: ROLES, write: PM_UP, delete: LEAD },
+  "sensor-rigs":    { read: ROLES, write: PM_UP, delete: LEAD },
+  labs:             { read: ROLES, write: PM_UP, delete: LEAD },
+  operators:        { read: ROLES, write: PM_UP, delete: LEAD },
+
+  // --- execution: operators write here, and this is the point of the role ---
+  runs:             { read: ROLES, write: ROLES, delete: PM_UP },
+  "run-proposals":  { read: ROLES, write: PM_UP, delete: PM_UP },
+
+  // --- everything else ---
+  documents:        { read: ROLES, write: ROLES, delete: PM_UP },
+  workflows:        { read: ROLES, write: PM_UP, delete: PM_UP },
+  users:            { read: ROLES, write: LEAD,  delete: LEAD },
+  billing:          { read: ROLES, write: PM_UP, delete: LEAD },
+  roboflow:         { read: ROLES, write: PM_UP, delete: PM_UP },
+  cloud:            { read: ROLES, write: LEAD,  delete: LEAD },
+  dev:              { read: LEAD,  write: LEAD,  delete: LEAD },
 };
 
-/** Router-level guard. New endpoints inherit the policy automatically. */
+/** Unknown resources: readable by all, mutable only by planners. */
+const DEFAULT_POLICY: Required<Record<Action, readonly Role[]>> = {
+  read: ROLES,
+  write: PM_UP,
+  delete: LEAD,
+};
+
+const actionFor = (method: string): Action =>
+  method === "DELETE" ? "delete" : method === "GET" || method === "HEAD" || method === "OPTIONS" ? "read" : "write";
+
+/** First path segment after /api — the resource being addressed. */
+export function resourceOf(path: string): string {
+  const parts = path.split("?")[0]!.split("/").filter(Boolean);
+  const i = parts.indexOf("api");
+  return (i >= 0 ? parts[i + 1] : parts[0]) ?? "";
+}
+
+/**
+ * Router-level guard. New endpoints inherit the policy automatically, and an
+ * unrecognised resource is governed by DEFAULT_POLICY rather than left open.
+ */
 export const crudGuard: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = async (c, next) => {
   const p = c.get("principal");
-  const allowed = CRUD_ROLES[c.req.method] ?? ROLES;
+  const action = actionFor(c.req.method);
+  const resource = resourceOf(c.req.path);
+  const allowed = POLICY[resource]?.[action] ?? DEFAULT_POLICY[action];
   if (!allowed.includes(p.role)) {
     throw forbidden(
-      `role ${p.role} may not ${c.req.method} this resource (allowed: ${[...allowed].sort().join(", ")})`,
+      `role ${p.role} may not ${action} ${resource || "this resource"} ` +
+      `(allowed: ${[...allowed].sort().join(", ")})`,
     );
+  }
+  await next();
+};
+
+/**
+ * Confirming a run spends a credit and books a lab slot against everyone else's
+ * capacity. That is a planning commitment, not a field action, so it is gated
+ * above the open write policy on `runs` that lets operators log execution.
+ */
+export const requireRunConfirmer: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = async (c, next) => {
+  const p = c.get("principal");
+  if (!PM_UP.includes(p.role)) {
+    throw forbidden(`role ${p.role} may not confirm a run — confirming spends a credit (requires: FLEET_LEAD, PM)`);
   }
   await next();
 };
