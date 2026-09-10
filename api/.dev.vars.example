@@ -8,3 +8,11 @@ STRIPE_SECRET_KEY=sk_test_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 # Where Stripe returns the buyer. Defaults to the request's Origin.
 APP_ORIGIN=http://127.0.0.1:3000
+
+# Roboflow annotation handoff. In production this is a Worker secret:
+#   wrangler secret put ROBOFLOW_API_KEY
+# Get a key from https://app.roboflow.com/account/api — see docs/ROBOFLOW.md.
+ROBOFLOW_API_KEY=rf_xxx
+# Optional: your workspace url slug, used for the lineage record and the
+# project proxy (GET /api/roboflow/projects/:project).
+ROBOFLOW_WORKSPACE=my-workspace

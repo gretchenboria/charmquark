@@ -172,10 +172,31 @@ than to a browser. Stripe Checkout tops it up; the Worker needs
 file). Pricing, schema, setup steps and an explicit "what is not secured yet" are
 in [docs/BILLING.md](docs/BILLING.md).
 
+## QA autocheck
+
+QA on a collected run is **machine-evaluated**, not a checklist someone ticks. An
+*expectation profile* on the sensor rig says what should have been captured — per
+sensor: file types, size per minute of recording, whether a sidecar state file is
+required — and a *manifest* says what actually was, either posted to the endpoint
+or derived by listing the run's R2 prefix. Six protocol steps become six gates,
+ending in an accept / reject verdict; a warning is `RED_FLAG`, which is neither
+pass nor fail, so it cannot roll up to a pass without a human deciding. The
+checker is pure and separately tested (`npm --prefix api test`). See
+[docs/QA_AUTOCHECK.md](docs/QA_AUTOCHECK.md).
+
+## Annotation handoff
+
+A QA-passed run's imagery can be pushed to a **Roboflow** project for annotation,
+with the run → project/batch → dataset-version lineage recorded in D1. The Worker
+needs `ROBOFLOW_API_KEY` as a secret; without it the endpoints return a 503 that
+says so rather than half-working. Which Roboflow endpoints were verified — and
+which capability was left out because their docs describe no REST route for it —
+are written down in [docs/ROBOFLOW.md](docs/ROBOFLOW.md).
+
 ## Testing
 
 ```bash
-cd api && npm run typecheck
+cd api && npm run typecheck && npm test
 cd web && npm run typecheck && npm run build
 cd web && npx playwright test          # boots both Workers, drives the UI
 ```
