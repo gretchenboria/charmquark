@@ -1,7 +1,15 @@
 /** Worker bindings. Mirrors wrangler.jsonc. */
 export interface Env {
   DB: D1Database;
-  VAULT: R2Bucket;
+  /**
+   * Object storage for recordings, run sheets and instruction files.
+   *
+   * Optional because R2 must be switched on for a Cloudflare account before a
+   * bucket can exist; until then the binding is absent and the vault-backed
+   * routes report that clearly rather than throwing on `undefined`. Everything
+   * that only needs D1 works normally. See `requireVault`.
+   */
+  VAULT?: R2Bucket;
   FLEET_STATUS: KVNamespace;
   ENVIRONMENT: string;
 }

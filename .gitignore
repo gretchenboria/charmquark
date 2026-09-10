@@ -43,3 +43,7 @@ Thumbs.db
 # --- logs ---
 *.log
 npm-debug.log*
+
+# Cloudflare token policy dumps — account metadata, not project files
+JSON encoding
+*.token.json

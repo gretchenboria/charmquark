@@ -8,7 +8,7 @@
  */
 import { Hono } from "hono";
 import type { Env, Vars } from "../types";
-import { jsonCol, num, parseJson, str, uuid, type Row } from "../db";
+import { jsonCol, num, parseJson, str, uuid, requireVault, type Row } from "../db";
 import { badRequest, conflict, notFound } from "../errors";
 import {
   DEFAULT_SLOTS,
@@ -267,7 +267,7 @@ export function mountAutoschedule(app: App): void {
     });
 
     const key = `run-sheets/${s.provisional_code ?? id}_${id.slice(0, 8)}.csv`;
-    await c.env.VAULT.put(key, csv, { httpMetadata: { contentType: "text/csv" } });
+    await requireVault(c.env).put(key, csv, { httpMetadata: { contentType: "text/csv" } });
 
     const stmts: D1PreparedStatement[] = [
       c.env.DB.prepare(

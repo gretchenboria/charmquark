@@ -4,7 +4,7 @@
  */
 import { Hono } from "hono";
 import type { Env, Vars } from "../types";
-import { buildUpdate, fromBool, jsonCol, num, parseJson, str, uuid, type Row } from "../db";
+import { buildUpdate, fromBool, jsonCol, num, parseJson, str, uuid, requireVault, type Row } from "../db";
 import { badRequest, notFound } from "../errors";
 import { requireLegalReviewer } from "../auth";
 import { assessRisk, taskChecklist } from "../domain";
@@ -266,7 +266,7 @@ export function mountCatalog(app: App): void {
     const versionId = uuid();
     const key = `instructions/${missionId}/v${nextVersion}.json`;
 
-    await c.env.VAULT.put(key, JSON.stringify(steps, null, 2), {
+    await requireVault(c.env).put(key, JSON.stringify(steps, null, 2), {
       httpMetadata: { contentType: "application/json" },
     });
     await c.env.DB.batch([
@@ -302,7 +302,7 @@ export function mountCatalog(app: App): void {
       .prepare(`SELECT * FROM mission_instruction_versions WHERE id = ? AND mission_id = ?`)
       .bind(c.req.param("versionId"), c.req.param("id")).first<Row>();
     if (!row) throw notFound("instruction version");
-    const obj = await c.env.VAULT.get(str(row, "file_path"));
+    const obj = await requireVault(c.env).get(str(row, "file_path"));
     return c.json({
       version_id: str(row, "id"),
       version_number: num(row, "version_number"),
@@ -315,7 +315,7 @@ export function mountCatalog(app: App): void {
       .prepare(`SELECT * FROM mission_instruction_versions WHERE id = ? AND mission_id = ?`)
       .bind(c.req.param("versionId"), c.req.param("id")).first<Row>();
     if (!row) throw notFound("instruction version");
-    await c.env.VAULT.delete(str(row, "file_path"));
+    await requireVault(c.env).delete(str(row, "file_path"));
     await c.env.DB.prepare(`DELETE FROM mission_instruction_versions WHERE id = ?`).bind(str(row, "id")).run();
     return c.body(null, 204);
   });

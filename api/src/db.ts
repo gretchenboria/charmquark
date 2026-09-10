@@ -1,4 +1,5 @@
 /** D1 helpers: id generation, JSON column (de)serialization, row shaping. */
+import { storageUnavailable } from "./errors";
 
 export const uuid = (): string => crypto.randomUUID();
 
@@ -57,4 +58,13 @@ export function buildUpdate(
   sets.push(`updated_at = datetime('now')`);
   params.push(id);
   return { sql: `UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`, params };
+}
+
+/** Narrow the optional VAULT binding, or fail with a 503 that says why. */
+export function requireVault(env: { VAULT?: R2Bucket }): R2Bucket {
+  if (!env.VAULT) {
+    // Imported lazily to keep this module free of route-layer deps.
+    throw storageUnavailable();
+  }
+  return env.VAULT;
 }

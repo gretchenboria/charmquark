@@ -4,9 +4,7 @@
 -- Regenerate with:  npm run --prefix api db:seed:generate
 --
 -- Every value here is fictional. Loading this replaces all existing rows.
-
-PRAGMA foreign_keys = ON;
-BEGIN TRANSACTION;
+-- No explicit transaction: D1 supplies one and rejects BEGIN/COMMIT.
 
 DELETE FROM qa_pipeline_runs;
 DELETE FROM mission_executions;
@@ -93,5 +91,3 @@ INSERT INTO runs (id, campaign_id, slot_date, slot_time, state, mission_scope, m
 INSERT INTO runs (id, campaign_id, slot_date, slot_time, state, mission_scope, mission_ids, mission_reps, robot_id, operator_id, lab_id, sensor_rig_id, run_seq, provisional_code, encoded_code, payload, run_lab) VALUES ('99999999-9999-4999-8999-000000000005', '11111111-1111-4111-8111-000000000001', '2026-09-11', '09:00', 'CONFIRMED', 'SINGLE', '["44444444-4444-4444-8444-000000000006"]', '{"44444444-4444-4444-8444-000000000006":1}', '55555555-5555-4555-8555-000000000006', '66666666-6666-4666-8666-000000000001', '77777777-7777-4777-8777-000000000002', '33333333-3333-4333-8333-000000000002', 3, 'S-20260911', '26W37m1L2S3', 'Manipulation Rig', 'Mock Warehouse');
 INSERT INTO runs (id, campaign_id, slot_date, slot_time, state, mission_scope, mission_ids, mission_reps, robot_id, operator_id, lab_id, sensor_rig_id, run_seq, provisional_code, encoded_code, payload, run_lab) VALUES ('99999999-9999-4999-8999-000000000006', '11111111-1111-4111-8111-000000000001', '2026-09-14', '11:00', 'READY', 'SINGLE', '["44444444-4444-4444-8444-000000000001","44444444-4444-4444-8444-000000000003"]', '{"44444444-4444-4444-8444-000000000001":1,"44444444-4444-4444-8444-000000000003":1}', '55555555-5555-4555-8555-000000000001', '66666666-6666-4666-8666-000000000002', '77777777-7777-4777-8777-000000000001', '33333333-3333-4333-8333-000000000001', 3, 'S-20260914', NULL, 'Standard Perception Rig', 'Highbay 1');
 INSERT INTO runs (id, campaign_id, slot_date, slot_time, state, mission_scope, mission_ids, mission_reps, robot_id, operator_id, lab_id, sensor_rig_id, run_seq, provisional_code, encoded_code, payload, run_lab) VALUES ('99999999-9999-4999-8999-000000000007', '11111111-1111-4111-8111-000000000001', '2026-09-15', '09:00', 'ASSEMBLING', 'SINGLE', '["44444444-4444-4444-8444-000000000009"]', '{"44444444-4444-4444-8444-000000000009":1}', '55555555-5555-4555-8555-000000000009', '66666666-6666-4666-8666-000000000001', '77777777-7777-4777-8777-000000000002', '33333333-3333-4333-8333-000000000001', 4, 'S-20260915', NULL, 'Standard Perception Rig', 'Mock Warehouse');
-
-COMMIT;

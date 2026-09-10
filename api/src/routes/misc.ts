@@ -1,7 +1,7 @@
 /** QA runs, the document vault, BPMN workflows, cloud status, and dev seeding. */
 import { Hono } from "hono";
 import type { Env, Vars } from "../types";
-import { jsonCol, num, parseJson, str, uuid, type Row } from "../db";
+import { jsonCol, num, parseJson, str, uuid, requireVault, type Row } from "../db";
 import { badRequest, notFound } from "../errors";
 import * as S from "../serialize";
 
@@ -131,7 +131,7 @@ export function mountMisc(app: App): void {
     const bytes = Uint8Array.from(atob(b.content_b64 ?? ""), (ch) => ch.charCodeAt(0));
     const id = uuid();
     const key = `vault/${id}/${b.filename}`;
-    await c.env.VAULT.put(key, bytes, {
+    await requireVault(c.env).put(key, bytes, {
       httpMetadata: { contentType: b.mime_type ?? "application/octet-stream" },
     });
 
@@ -152,7 +152,7 @@ export function mountMisc(app: App): void {
     const row = await c.env.DB.prepare(`SELECT * FROM documents WHERE id = ?`)
       .bind(c.req.param("id")).first<Row>();
     if (!row) throw notFound("document");
-    const obj = await c.env.VAULT.get(str(row, "file_path"));
+    const obj = await requireVault(c.env).get(str(row, "file_path"));
     if (!obj) throw notFound("document content");
     return new Response(obj.body, {
       headers: {
@@ -166,7 +166,7 @@ export function mountMisc(app: App): void {
     const row = await c.env.DB.prepare(`SELECT * FROM documents WHERE id = ?`)
       .bind(c.req.param("id")).first<Row>();
     if (!row) throw notFound("document");
-    await c.env.VAULT.delete(str(row, "file_path"));
+    await requireVault(c.env).delete(str(row, "file_path"));
     await c.env.DB.prepare(`DELETE FROM documents WHERE id = ?`).bind(str(row, "id")).run();
     return c.body(null, 204);
   });

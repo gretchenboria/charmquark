@@ -158,6 +158,10 @@ It goes well beyond what is implemented here — treat it as the roadmap. See
 [docs/ROADMAP.md](docs/ROADMAP.md) for what is built versus what is specified, and
 [docs/BRAND.md](docs/BRAND.md) for the design system.
 
+Picking this up cold? Start with **[docs/HANDOFF.md](docs/HANDOFF.md)** — live
+Cloudflare state, what is deployed, the one blocking item, and the traps that
+already bit.
+
 ## Testing
 
 ```bash
