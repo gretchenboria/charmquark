@@ -20,6 +20,7 @@ import {
   type InventoryLike,
   type ReadinessIssue,
 } from "../domain";
+import { debitRunCredit } from "./billing";
 import * as S from "../serialize";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
@@ -268,6 +269,16 @@ export function mountRuns(app: App): void {
   /**
    * Confirmation is the hard gate: zero readiness issues, or 409. On success the
    * run gets its day sequence number and its encoded code (phase B).
+   *
+   * It is also the billable moment — one run credit, debited here and nowhere
+   * else. Confirmation is the only irreversible commitment in the lifecycle: it
+   * books the lab slot, locks the operator's time and mints the code the
+   * collected data is filed under. Assembling, proposing and auto-filling are
+   * all free, so a team can plan a whole month before spending anything, and a
+   * re-confirm of an already-CONFIRMED run returns above without charging.
+   *
+   * The debit comes *after* the readiness gate — an unready run costs nothing —
+   * and before the state write, so a run can never reach CONFIRMED unpaid.
    */
   app.post("/runs/:id/confirm", async (c) => {
     const id = c.req.param("id");
@@ -280,6 +291,14 @@ export function mountRuns(app: App): void {
       throw conflict(`run is not ready: ${issues.map((i) => i.reason).join("; ")}`);
     }
     if (!s.slot_date) throw conflict("run has no date");
+
+    // Throws 402 when the account is out of credits; the web client opens the
+    // purchase modal on that status rather than toasting the message raw.
+    await debitRunCredit(c.env.DB, {
+      runId: id,
+      actor: c.get("principal").name,
+      note: `confirmed run ${s.provisional_code ?? id} on ${s.slot_date}`,
+    });
 
     // Day sequence: the next S# for this lab-day.
     const seqRow = await c.env.DB.prepare(

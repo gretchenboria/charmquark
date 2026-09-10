@@ -12,6 +12,20 @@ export interface Env {
   VAULT?: R2Bucket;
   FLEET_STATUS: KVNamespace;
   ENVIRONMENT: string;
+  /**
+   * Stripe credentials for metered run credits. Optional for the same reason
+   * VAULT is: a deployment without them still runs — it just reports that
+   * payments are unconfigured instead of throwing. Both are Worker *secrets*
+   * (`wrangler secret put`), never `vars`, and never in a tracked file.
+   */
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  /**
+   * Where Stripe sends the buyer back. Set it when the API and the web app do
+   * not share an origin and the browser's Origin header cannot be trusted to
+   * name the app; otherwise the request's own Origin is used.
+   */
+  APP_ORIGIN?: string;
 }
 
 /** The RBAC principal for a request, derived from the X-CharmQuark-* headers. */

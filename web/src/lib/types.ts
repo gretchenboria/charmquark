@@ -363,3 +363,57 @@ export interface CatalogApplyResult {
   updated: number;
   unchanged: number;
 }
+
+// ---- Billing: metered run credits (one credit = one confirmed run) ----
+export interface CreditPack {
+  id: string;
+  name: string;
+  description: string;
+  credits: number;
+  amount_cents: number;
+  currency: string;
+  cents_per_credit: number;
+  tag: string | null;
+}
+
+export interface BillingAccount {
+  account_id: string;
+  name: string;
+  balance: number;
+  unlimited: boolean;
+  lifetime_granted: number;
+  lifetime_spent: number;
+  credit_cost_per_run: number;
+  /** False when the Worker has no Stripe secret — the modal says so rather than failing at checkout. */
+  payments_configured: boolean;
+  packs: CreditPack[];
+}
+
+export type LedgerReason = "PURCHASE" | "GRANT" | "DEBIT" | "REFUND" | "ADJUSTMENT";
+
+export interface LedgerEntry {
+  id: string;
+  delta: number;
+  reason: LedgerReason;
+  balance_after: number;
+  run_id: string | null;
+  checkout_session_id: string | null;
+  actor: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+/** PENDING while the Stripe webhook is still in flight; the browser retries. */
+export interface CheckoutClaim {
+  status: "PENDING" | "COMPLETED" | "UNKNOWN";
+  pack_id?: string;
+  credits: number;
+  balance: number;
+  unlimited?: boolean;
+}
+
+export interface CheckoutStart {
+  success: boolean;
+  url: string;
+  session_id: string;
+}

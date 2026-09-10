@@ -25,3 +25,23 @@ export const storageUnavailable = (): HTTPException =>
       "Enable R2 in the dashboard, create the bucket, restore the VAULT binding in " +
       "api/wrangler.jsonc, and redeploy.",
   });
+
+/**
+ * 402 — the request is valid but the account has no run credits left. The web
+ * client keys off this status to open the purchase modal instead of toasting a
+ * raw error, so the status matters as much as the message.
+ */
+export const paymentRequired = (msg: string): HTTPException =>
+  new HTTPException(402, { message: msg });
+
+/**
+ * Stripe is not configured (no STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET on the
+ * Worker). Mirrors `storageUnavailable`: say what is missing rather than 500.
+ */
+export const billingUnavailable = (): HTTPException =>
+  new HTTPException(503, {
+    message:
+      "Payments are not configured: this Worker has no Stripe credentials. " +
+      "Set them with `wrangler secret put STRIPE_SECRET_KEY` and " +
+      "`wrangler secret put STRIPE_WEBHOOK_SECRET` (see docs/BILLING.md).",
+  });

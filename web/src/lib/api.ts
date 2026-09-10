@@ -4,6 +4,10 @@
 import { getUser } from "./session";
 import type {
   AcceptProposalResult,
+  BillingAccount,
+  CheckoutClaim,
+  CheckoutStart,
+  LedgerEntry,
   AutoFillResult,
   CatalogApplyResult,
   CatalogDiff,
@@ -55,6 +59,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Fired when any API call comes back 402; BillingProvider listens for it. */
+export const OUT_OF_CREDITS_EVENT = "charmquark-out-of-credits";
+
 function authHeaders(): Record<string, string> {
   const u = getUser();
   return u ? { "X-CharmQuark-Role": u.role, "X-CharmQuark-User": u.name } : {};
@@ -73,7 +80,15 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       detail = await res.text();
     }
-    throw new ApiError(res.status, detail);
+    const err = new ApiError(res.status, detail);
+    // Out of run credits. Announced app-wide so the purchase modal opens from
+    // wherever the metered action was attempted, rather than every call site
+    // having to know about billing. The error still throws: the caller decides
+    // what else to do (and suppresses its own toast on 402).
+    if (res.status === 402 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(OUT_OF_CREDITS_EVENT, { detail: err.friendly }));
+    }
+    throw err;
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -241,6 +256,14 @@ export const api = {
   getWorkflow: (id: string) => req<WorkflowContent>(`/workflows/${id}`),
   saveWorkflow: (id: string, xml: string) => put<WorkflowContent>(`/workflows/${id}`, { xml }),
   createWorkflow: (name: string) => post<WorkflowContent>("/workflows", { name }),
+
+  // billing — metered run credits. One credit is spent when a run is confirmed.
+  getBillingAccount: () => req<BillingAccount>("/billing/account"),
+  listLedger: (limit = 50) => req<LedgerEntry[]>(`/billing/ledger?limit=${limit}`),
+  startCheckout: (packId: string, returnPath: string) =>
+    post<CheckoutStart>("/billing/checkout", { pack_id: packId, return_path: returnPath }),
+  claimCheckout: (sessionId: string) =>
+    req<CheckoutClaim>(`/billing/claim?session_id=${encodeURIComponent(sessionId)}`),
 
   // users (RBAC admin)
   listUsers: () => req<User[]>("/users"),

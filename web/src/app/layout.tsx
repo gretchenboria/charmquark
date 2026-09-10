@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
+import { BillingProvider } from "@/components/Billing";
 import { ToastProvider } from "@/components/Toast";
 
 export const metadata: Metadata = {
@@ -14,7 +15,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <ToastProvider>
-          <AppShell>{children}</AppShell>
+          {/* Inside ToastProvider: the credit meter and the post-Stripe claim both toast. */}
+          <BillingProvider>
+            <AppShell>{children}</AppShell>
+          </BillingProvider>
         </ToastProvider>
       </body>
     </html>

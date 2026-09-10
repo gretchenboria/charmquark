@@ -162,6 +162,16 @@ Picking this up cold? Start with **[docs/HANDOFF.md](docs/HANDOFF.md)** — live
 Cloudflare state, what is deployed, the one blocking item, and the traps that
 already bit.
 
+## Billing
+
+CharmQuark is metered on **confirmed runs**: one credit is spent the moment a run
+passes readiness and books its lab slot. Drafting, proposing and auto-filling are
+free, the ledger is auditable, and the balance belongs to the organisation rather
+than to a browser. Stripe Checkout tops it up; the Worker needs
+`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` as secrets (never in a tracked
+file). Pricing, schema, setup steps and an explicit "what is not secured yet" are
+in [docs/BILLING.md](docs/BILLING.md).
+
 ## Testing
 
 ```bash

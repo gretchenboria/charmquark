@@ -32,7 +32,17 @@
 
   "vars": {
     "ENVIRONMENT": "development"
+    // Optional: pin where Stripe returns a buyer when the web app and the API
+    // do not share an origin. Unset, the request's Origin header is used.
+    // "APP_ORIGIN": "https://charmquark.app"
   },
+
+  // Stripe credentials are SECRETS, never vars — they are deliberately absent
+  // from this file and set out of band:
+  //   wrangler secret put STRIPE_SECRET_KEY
+  //   wrangler secret put STRIPE_WEBHOOK_SECRET
+  // Locally, put them in api/.dev.vars (gitignored). See docs/BILLING.md.
+
 
   // The API owns charmquark.app/api/* at the edge. This is the more specific
   // pattern, so it wins over the web Worker's catch-all: a browser request to

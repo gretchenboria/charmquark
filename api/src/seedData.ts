@@ -30,6 +30,12 @@ const d = (n: number) => `88888888-8888-4888-8888-${String(n).padStart(12, "0")}
 const s = (n: number) => `99999999-9999-4999-8999-${String(n).padStart(12, "0")}`;
 const u = (n: number) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(n).padStart(12, "0")}`;
 const i = (n: number) => `bbbbbbbb-bbbb-4bbb-8bbb-${String(n).padStart(12, "0")}`;
+const bl = (n: number) => `dddddddd-dddd-4ddd-8ddd-${String(n).padStart(12, "0")}`;
+
+/** The billing account created by migration 0002; the seed tops it up. */
+const BILLING_ACCOUNT_ID = "cccccccc-cccc-4ccc-8ccc-000000000001";
+/** Enough confirmed runs to work through the sample program several times over. */
+const SEED_CREDITS = 40;
 
 const q = (v: string | number | null): string =>
   v === null ? "NULL" : typeof v === "number" ? String(v) : `'${v.replaceAll("'", "''")}'`;
@@ -180,9 +186,17 @@ export function seedStatements(): string[] {
     "qa_pipeline_runs", "mission_executions", "runs", "mission_instruction_versions",
     "missions", "mission_groups", "sensor_rigs", "inventory_items", "lab_blackouts",
     "documents", "workflows", "campaigns", "robots", "operators", "labs", "sensors", "users",
+    "credit_ledger", "billing_checkout_sessions", "billing_accounts",
   ]) {
     out.push(`DELETE FROM ${table}`);
   }
+
+  // The demo organisation starts with a stocked wallet so a freshly seeded app
+  // can confirm runs immediately — the paywall is a thing to demonstrate, not a
+  // wall the sample program hits on its first click. The matching opening
+  // GRANT keeps the ledger honest: every credit in the balance has a row.
+  out.push(`INSERT INTO billing_accounts (id, name, balance, lifetime_granted, contact_email) VALUES (${q(BILLING_ACCOUNT_ID)}, 'CharmQuark Fleet Ops', ${SEED_CREDITS}, ${SEED_CREDITS}, 'ops@example.invalid')`);
+  out.push(`INSERT INTO credit_ledger (id, account_id, delta, reason, balance_after, actor, note) VALUES (${q(bl(1))}, ${q(BILLING_ACCOUNT_ID)}, ${SEED_CREDITS}, 'GRANT', ${SEED_CREDITS}, 'seed', 'Demo dataset opening balance')`);
 
   for (const [id, subject, name, email, role] of USERS) {
     out.push(`INSERT INTO users (id, subject, name, email, role) VALUES (${q(id)}, ${q(subject)}, ${q(name)}, ${q(email)}, ${q(role)})`);
@@ -234,6 +248,7 @@ export function seedStatements(): string[] {
 }
 
 export const SEED_SUMMARY = {
+  credits: SEED_CREDITS,
   labs: LABS.length,
   robots: ROBOTS.length,
   standby: ROBOTS.filter((x) => x[9] === 1).length,

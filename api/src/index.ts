@@ -17,6 +17,7 @@ import { mountRuns } from "./routes/runs";
 import { mountAutoschedule } from "./routes/autoschedule";
 import { mountMisc } from "./routes/misc";
 import { mountDev } from "./routes/dev";
+import { mountBilling, mountBillingWebhook } from "./routes/billing";
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -30,6 +31,13 @@ app.use(
   }),
 );
 
+/**
+ * The Stripe webhook is registered before the guarded router so it matches
+ * first. It carries no X-CharmQuark-* headers — its credential is the
+ * `stripe-signature` it is verified against, so the header shim must not see it.
+ */
+mountBillingWebhook(app);
+
 /** Everything under /api is authenticated and policy-guarded. */
 const api = new Hono<{ Bindings: Env; Variables: Vars }>();
 api.use("*", principal);
@@ -40,6 +48,7 @@ mountResources(api);
 mountRuns(api);
 mountAutoschedule(api);
 mountMisc(api);
+mountBilling(api);
 mountDev(api);
 
 app.route("/api", api);

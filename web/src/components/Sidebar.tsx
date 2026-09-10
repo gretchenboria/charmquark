@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 
 import { api } from "@/lib/api";
+import { CreditMeter } from "./Billing";
 import { canSeeNavItem } from "@/lib/roleViews";
 import { ROLE_LABEL, clearUser, resetOnboarded } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
@@ -161,6 +162,7 @@ export function Sidebar() {
       {/* connectivity + logged-in user + logout */}
       <div className="border-t border-white/10 p-3">
         <CloudIndicator />
+        <CreditMeter />
         {user && (
           <>
             <div className="mb-2 flex items-center gap-2">

@@ -14,7 +14,8 @@
     "db:seed:generate": "node --experimental-strip-types --no-warnings scripts/gen-seed.mjs"
   },
   "dependencies": {
-    "hono": "^4.6.14"
+    "hono": "^4.6.14",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241224.0",

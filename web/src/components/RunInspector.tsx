@@ -19,6 +19,7 @@ import { RoleRow } from "./RoleRow";
 import { Stepper } from "./Stepper";
 import { QAPanel } from "./QAPanel";
 import { useToast } from "./Toast";
+import { useBilling } from "./Billing";
 import { DATA_PIPELINE, STAGE_LABEL } from "@/lib/metrics";
 import { EligiblePicker, type Candidate } from "./EligiblePicker";
 import { MissionScopePicker } from "./MissionScopePicker";
@@ -67,6 +68,7 @@ export function RunInspector({
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
+  const billing = useBilling();
 
   const load = useCallback(async () => {
     const [s, r, p, o, l, tg, tk, f] = await Promise.all([
@@ -113,10 +115,20 @@ export function RunInspector({
     setError(null);
     try {
       await api.confirmRun(runId);
-      toast("success", "Run confirmed");
+      toast("success", "Run confirmed — 1 run credit spent");
+      // The rail meter is the balance an operator plans against; keep it true.
+      await billing.refresh();
       await load();
       onChanged();
     } catch (e) {
+      // 402 means out of credits. The purchase modal is already opening (the API
+      // client announces the status app-wide), so a toast on top would just be
+      // the same sentence twice — leave the inline note and let the modal talk.
+      if (e instanceof ApiError && e.status === 402) {
+        setError(e.friendly);
+        await billing.refresh();
+        return;
+      }
       const msg = e instanceof ApiError ? e.friendly : "Confirm failed";
       setError(msg);
       toast("error", msg);
