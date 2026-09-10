@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { canDelete, canUpdate, canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
-import type { Robot, Session } from "@/lib/types";
+import type { Robot, Run } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { DeleteButton } from "@/components/DeleteButton";
 import { ReadinessChecklist } from "@/components/ReadinessChecklist";
@@ -23,7 +23,7 @@ export default function RobotDetail() {
   const toast = useToast();
   const canEdit = canWriteCatalog(user?.role);
   const [p, setP] = useState<Robot | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [runs, setRuns] = useState<Run[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const [editing, setEditing] = useState(false);
@@ -40,7 +40,7 @@ export default function RobotDetail() {
 
   const load = useCallback(() => {
     if (!id) return;
-    Promise.all([api.getRobot(id), api.listSessionsBy({ robot_id: id })])
+    Promise.all([api.getRobot(id), api.listRunsBy({ robot_id: id })])
       .then(([pp, ss]) => {
         setP(pp);
         setForm({
@@ -52,7 +52,7 @@ export default function RobotDetail() {
           commissioned: pp.commissioned,
           is_standby: pp.is_standby,
         });
-        setSessions(ss);
+        setRuns(ss);
       })
       .catch(() => setErr("Failed to load robot."));
   }, [id]);
@@ -166,7 +166,7 @@ export default function RobotDetail() {
           </div>
           <div className="mt-3 flex gap-2">
             <button onClick={save} disabled={saving}
-              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              className="rounded-md bg-[color:var(--cq-iris)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
             <button onClick={() => { setEditing(false); load(); }}
@@ -181,19 +181,19 @@ export default function RobotDetail() {
         <p className="mb-2 text-xs text-neutral-400">
           These come from external apps (consent, Ask survey, Bookable) that aren’t integrated,
           so a PM or Robot Operator marks each done here. All must be checked before this robot
-          can be added to a session.
+          can be added to a run.
         </p>
         <ReadinessChecklist items={p.checklist ?? []} canEdit={canUpdate(user?.role)} onToggle={toggle} />
       </Section>
 
-      <Section title={`Sessions (${sessions.length})`}>
+      <Section title={`Runs (${runs.length})`}>
         <LinkList
-          items={sessions.map((s) => ({
-            href: `/sessions/${s.id}`,
+          items={runs.map((s) => ({
+            href: `/runs/${s.id}`,
             label: s.encoded_code ?? s.provisional_code ?? s.id,
             note: `${s.slot_date ?? ""} ${s.state}`,
           }))}
-          empty="Not assigned to any session."
+          empty="Not assigned to any run."
         />
       </Section>
     </DetailPage>

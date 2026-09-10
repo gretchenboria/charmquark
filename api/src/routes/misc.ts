@@ -27,7 +27,7 @@ const DEFAULT_GATES = [
     name: "Scene and safety",
     status: "NOT_STARTED",
     check_items: [
-      { name: "Lab bay matched the task instructions", result: "PENDING" },
+      { name: "Lab bay matched the mission instructions", result: "PENDING" },
       { name: "No safety stop triggered", result: "PENDING" },
     ],
   },
@@ -45,37 +45,37 @@ const DEFAULT_GATES = [
 
 export function mountMisc(app: App): void {
   // ------------------------------------------------------------ QA
-  app.get("/sessions/:id/qa", async (c) => {
-    const row = await c.env.DB.prepare(`SELECT * FROM qa_pipeline_runs WHERE session_id = ?`)
+  app.get("/runs/:id/qa", async (c) => {
+    const row = await c.env.DB.prepare(`SELECT * FROM qa_pipeline_runs WHERE run_id = ?`)
       .bind(c.req.param("id")).first<Row>();
     if (!row) throw notFound("QA run");
     return c.json(S.qaRun(row));
   });
 
-  app.post("/sessions/:id/qa", async (c) => {
-    const sessionId = c.req.param("id");
-    const existing = await c.env.DB.prepare(`SELECT * FROM qa_pipeline_runs WHERE session_id = ?`)
-      .bind(sessionId).first<Row>();
+  app.post("/runs/:id/qa", async (c) => {
+    const runId = c.req.param("id");
+    const existing = await c.env.DB.prepare(`SELECT * FROM qa_pipeline_runs WHERE run_id = ?`)
+      .bind(runId).first<Row>();
     if (existing) return c.json(S.qaRun(existing));
 
-    const session = await c.env.DB.prepare(`SELECT id FROM sessions WHERE id = ?`).bind(sessionId).first<Row>();
-    if (!session) throw notFound("session");
+    const run = await c.env.DB.prepare(`SELECT id FROM runs WHERE id = ?`).bind(runId).first<Row>();
+    if (!run) throw notFound("run");
 
     const id = uuid();
     await c.env.DB.prepare(
-      `INSERT INTO qa_pipeline_runs (id, session_id, level, overall_status, gates)
+      `INSERT INTO qa_pipeline_runs (id, run_id, level, overall_status, gates)
        VALUES (?, ?, 'FIELD', 'IN_PROGRESS', ?)`,
-    ).bind(id, sessionId, jsonCol(DEFAULT_GATES)).run();
+    ).bind(id, runId, jsonCol(DEFAULT_GATES)).run();
     const row = await c.env.DB.prepare(`SELECT * FROM qa_pipeline_runs WHERE id = ?`).bind(id).first<Row>();
     return c.json(S.qaRun(row!), 201);
   });
 
   /** Tick one check item; the gate and overall status roll up from the items. */
-  app.patch("/sessions/:id/qa/check", async (c) => {
-    const sessionId = c.req.param("id");
+  app.patch("/runs/:id/qa/check", async (c) => {
+    const runId = c.req.param("id");
     const b = await c.req.json<{ gate_index: number; check_index: number; result: string }>();
-    const row = await c.env.DB.prepare(`SELECT * FROM qa_pipeline_runs WHERE session_id = ?`)
-      .bind(sessionId).first<Row>();
+    const row = await c.env.DB.prepare(`SELECT * FROM qa_pipeline_runs WHERE run_id = ?`)
+      .bind(runId).first<Row>();
     if (!row) throw notFound("QA run");
 
     type Gate = { level: string; name: string; status: string; check_items: { name: string; result: string }[] };
@@ -209,7 +209,7 @@ export function mountMisc(app: App): void {
   /** Backing-store health, surfaced as a connectivity chip in the sidebar. */
   app.get("/cloud/status", async (c) => {
     try {
-      const r = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM studies`).first<Row>();
+      const r = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM campaigns`).first<Row>();
       return c.json({
         database: "sqlite",
         provider: "Cloudflare D1",

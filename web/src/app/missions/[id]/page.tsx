@@ -6,27 +6,27 @@ import { useParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { canDelete, canUpdate, canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
-import type { ChecklistItem, InventoryItem, Study, TaskDetail, TaskGroup } from "@/lib/types";
+import type { ChecklistItem, InventoryItem, Campaign, MissionDetail, MissionGroup } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { DeleteButton } from "@/components/DeleteButton";
 import { ReadinessChecklist } from "@/components/ReadinessChecklist";
 import { RiskLegalPanel } from "@/components/RiskLegalPanel";
-import { TaskInstructionsPanel } from "@/components/TaskInstructionsPanel";
+import { MissionInstructionsPanel } from "@/components/MissionInstructionsPanel";
 import { VariantsEditor } from "@/components/VariantsEditor";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
 
 const DURATIONS = ["SHORT", "MEDIUM", "LONG", "UNSPECIFIED"] as const;
 
-export default function TaskDetailPage() {
+export default function MissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const user = useUser();
   const toast = useToast();
   const canEdit = canWriteCatalog(user?.role);
   const canEditInstructions = canUpdate(user?.role);
-  const [task, setTask] = useState<TaskDetail | null>(null);
-  const [study, setStudy] = useState<Study | null>(null);
-  const [group, setGroup] = useState<TaskGroup | null>(null);
+  const [mission, setMission] = useState<MissionDetail | null>(null);
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [group, setGroup] = useState<MissionGroup | null>(null);
   const [inv, setInv] = useState<InventoryItem[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
@@ -41,23 +41,23 @@ export default function TaskDetailPage() {
   const load = useCallback(() => {
     if (!id) return;
     api
-      .getTask(id)
+      .getMission(id)
       .then(async (t) => {
-        setTask(t);
+        setMission(t);
         setForm({
           name: t.name,
           duration_type: t.duration_type,
           reps_target: t.reps_target,
         });
         const [s, invAll] = await Promise.all([
-          api.getStudy(t.study_id),
-          api.listInventoryItems(t.study_id),
+          api.getCampaign(t.campaign_id),
+          api.listInventoryItems(t.campaign_id),
         ]);
-        setStudy(s);
+        setCampaign(s);
         setInv(invAll.filter((i) => t.inventory_item_ids.includes(i.id)));
-        if (t.task_group_id) setGroup(await api.getTaskGroup(t.task_group_id));
+        if (t.mission_group_id) setGroup(await api.getMissionGroup(t.mission_group_id));
       })
-      .catch(() => setErr("Failed to load task."));
+      .catch(() => setErr("Failed to load mission."));
   }, [id]);
   useEffect(load, [load]);
 
@@ -66,16 +66,16 @@ export default function TaskDetailPage() {
     validateField(form.reps_target, { numeric: true, required: true, min: 0, label: "Repetitions target" });
 
   const save = async () => {
-    if (!task) return;
+    if (!mission) return;
     if (formError) return;
     setSaving(true);
     try {
-      await api.updateTask(task.id, {
+      await api.updateMission(mission.id, {
         name: form.name.trim(),
         duration_type: form.duration_type,
         reps_target: Number(form.reps_target),
       });
-      toast("success", "Task saved");
+      toast("success", "Mission saved");
       setEditing(false);
       load();
     } catch (e) {
@@ -86,15 +86,15 @@ export default function TaskDetailPage() {
   };
 
   if (err) return <div className="p-6 text-sm text-red-600">{err}</div>;
-  if (!task) return <div className="p-6 text-sm text-neutral-400">Loading…</div>;
+  if (!mission) return <div className="p-6 text-sm text-neutral-400">Loading…</div>;
 
   const invReady = inv.length === 0 || inv.every((i) => i.status === "AVAILABLE" || i.status === "PROCURED");
   const checklist: ChecklistItem[] = [
-    { key: "instructions_complete", label: "Instructions complete", done: task.instructions_complete, source: "manual" },
-    { key: "variants", label: "Variants defined", done: task.variants.length > 0, source: "auto" },
-    { key: "risk_cleared", label: "Risk cleared (low or legal-approved)", done: task.risk_level === "LOW" || task.legal_approval === "APPROVED", source: "auto" },
+    { key: "instructions_complete", label: "Instructions complete", done: mission.instructions_complete, source: "manual" },
+    { key: "variants", label: "Variants defined", done: mission.variants.length > 0, source: "auto" },
+    { key: "risk_cleared", label: "Risk cleared (low or legal-approved)", done: mission.risk_level === "LOW" || mission.legal_approval === "APPROVED", source: "auto" },
     { key: "inventory_ready", label: "All tools/parts/consumables ready", done: invReady, source: "auto" },
-    { key: "ready", label: "Ready to schedule", done: task.is_ready, source: "auto" },
+    { key: "ready", label: "Ready to schedule", done: mission.is_ready, source: "auto" },
   ];
 
   const labelCls = "mb-1 block text-xs font-medium text-neutral-500";
@@ -102,10 +102,10 @@ export default function TaskDetailPage() {
 
   return (
     <DetailPage
-      title={`${task.task_code} · ${task.name}`}
-      subtitle={task.is_ready ? "Ready to schedule" : "Not ready"}
-      backHref="/tasks"
-      backLabel="Tasks"
+      title={`${mission.mission_code} · ${mission.name}`}
+      subtitle={mission.is_ready ? "Ready to schedule" : "Not ready"}
+      backHref="/missions"
+      backLabel="Missions"
       actions={
         <div className="flex items-center gap-2">
           {canEdit && !editing && (
@@ -113,44 +113,44 @@ export default function TaskDetailPage() {
               onClick={() => setEditing(true)}
               className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
             >
-              Edit task
+              Edit mission
             </button>
           )}
           <DeleteButton
             hidden={!canDelete(user?.role)}
-            label="Delete task"
-            confirm={`Delete task ${task.task_code}?`}
-            onDelete={() => api.deleteTask(task.id)}
-            backHref="/tasks"
+            label="Delete mission"
+            confirm={`Delete mission ${mission.mission_code}?`}
+            onDelete={() => api.deleteMission(mission.id)}
+            backHref="/missions"
           />
         </div>
       }
       fields={[
         {
-          label: "Study",
-          value: study ? (
-            <a href={`/studies/${study.id}`} className="text-blue-700 hover:underline">
-              {study.name}
+          label: "Campaign",
+          value: campaign ? (
+            <a href={`/campaigns/${campaign.id}`} className="font-medium text-[color:var(--cq-iris)] hover:underline">
+              {campaign.name}
             </a>
           ) : (
             "—"
           ),
         },
-        { label: "Task Group", value: group?.name ?? "—" },
-        { label: "Risk", value: task.risk_level },
-        { label: "Legal", value: task.legal_approval },
-        { label: "Size", value: task.duration_type },
-        { label: "Reps", value: `${task.reps_actual}/${task.reps_target}` },
-        { label: "Instructions", value: task.instructions_complete ? "Complete" : "Incomplete" },
-        { label: "Ready", value: task.is_ready ? "Yes" : "No" },
+        { label: "Mission Group", value: group?.name ?? "—" },
+        { label: "Risk", value: mission.risk_level },
+        { label: "Legal", value: mission.legal_approval },
+        { label: "Size", value: mission.duration_type },
+        { label: "Reps", value: `${mission.reps_actual}/${mission.reps_target}` },
+        { label: "Instructions", value: mission.instructions_complete ? "Complete" : "Incomplete" },
+        { label: "Ready", value: mission.is_ready ? "Yes" : "No" },
       ]}
     >
       {editing && (
-        <Section title="Edit task">
+        <Section title="Edit mission">
           <div className="grid grid-cols-2 gap-3">
             <label>
               <span className={labelCls}>Code</span>
-              <div className={`${inputCls} bg-neutral-50 text-neutral-500`}>{task.task_code}</div>
+              <div className={`${inputCls} bg-neutral-50 text-neutral-500`}>{mission.mission_code}</div>
             </label>
             <label>
               <span className={labelCls}>Name</span>
@@ -175,7 +175,7 @@ export default function TaskDetailPage() {
           </p>
           <div className="mt-3 flex items-center gap-2">
             <button onClick={save} disabled={saving || !!formError}
-              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              className="rounded-md bg-[color:var(--cq-iris)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
             <button onClick={() => { setEditing(false); load(); }}
@@ -190,13 +190,13 @@ export default function TaskDetailPage() {
         <ReadinessChecklist items={checklist} canEdit={false} />
       </Section>
       <Section title="Risk & Legal">
-        <RiskLegalPanel task={task} role={user?.role} onChanged={load} />
+        <RiskLegalPanel mission={mission} role={user?.role} onChanged={load} />
       </Section>
       <Section title="Instructions">
-        <TaskInstructionsPanel taskId={task.id} canEdit={canEditInstructions} />
+        <MissionInstructionsPanel missionId={mission.id} canEdit={canEditInstructions} />
       </Section>
-      <Section title={`Variants & errors (${task.variants.length})`}>
-        <VariantsEditor task={task} canEdit={canEdit} onSaved={load} />
+      <Section title={`Variants & errors (${mission.variants.length})`}>
+        <VariantsEditor mission={mission} canEdit={canEdit} onSaved={load} />
       </Section>
       <Section title={`Required Inventory (${inv.length})`}>
         <LinkList

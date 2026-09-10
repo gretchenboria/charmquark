@@ -1,15 +1,15 @@
-// Derived study metrics for the dashboard + reports. Computed from the API — single
-// source of truth, mirroring the desktop DashboardViewModel (sessions, pipeline, clearance).
+// Derived campaign metrics for the dashboard + reports. Computed from the API — single
+// source of truth, mirroring the desktop DashboardViewModel (runs, pipeline, clearance).
 import { api } from "./api";
-import type { Device, Lab, Operator, Robot, Session, Study } from "./types";
+import type { Sensor, Lab, Operator, Robot, Run, Campaign } from "./types";
 
-export interface StudyMetrics {
-  study: Study;
-  sessions: Session[];
+export interface CampaignMetrics {
+  campaign: Campaign;
+  runs: Run[];
   robots: Robot[];
   operators: Operator[];
   labs: Lab[];
-  devices: Device[];
+  sensors: Sensor[];
   byState: Record<string, number>;
   confirmedPlus: number; // scheduled and beyond
   collectedPlus: number; // data collected and beyond
@@ -19,44 +19,44 @@ export interface StudyMetrics {
   targetN: number;
   progressPct: number; // collectedPlus / targetN
   clearedRobots: number;
-  operationalDevices: number;
+  operationalSensors: number;
 }
 
 const CONFIRMED_PLUS = ["CONFIRMED", "IN_EXECUTION", "COLLECTED", "EXTRACTED", "MANUAL_QA", "VALIDATED", "UPLOADED", "DONE"];
 const COLLECTED_PLUS = ["COLLECTED", "EXTRACTED", "MANUAL_QA", "VALIDATED", "UPLOADED", "DONE"];
 
-export async function loadStudyMetrics(
-  studyId: string,
+export async function loadCampaignMetrics(
+  campaignId: string,
   range?: { start: string; end: string },
-): Promise<StudyMetrics> {
-  const sessionParams: Record<string, string> = { study_id: studyId };
+): Promise<CampaignMetrics> {
+  const sessionParams: Record<string, string> = { campaign_id: campaignId };
   if (range) {
     sessionParams.start = range.start;
     sessionParams.end = range.end;
   }
-  const [study, sessions, robots, operators, labs, devices] = await Promise.all([
-    api.getStudy(studyId),
-    api.listSessionsBy(sessionParams),
+  const [campaign, runs, robots, operators, labs, sensors] = await Promise.all([
+    api.getCampaign(campaignId),
+    api.listRunsBy(sessionParams),
     api.listRobots(),
     api.listOperators(),
     api.listLabs(),
-    api.listDevices(),
+    api.listSensors(),
   ]);
 
   const byState: Record<string, number> = {};
-  for (const s of sessions) byState[s.state] = (byState[s.state] ?? 0) + 1;
+  for (const s of runs) byState[s.state] = (byState[s.state] ?? 0) + 1;
 
-  const count = (states: string[]) => sessions.filter((s) => states.includes(s.state)).length;
+  const count = (states: string[]) => runs.filter((s) => states.includes(s.state)).length;
   const collectedPlus = count(COLLECTED_PLUS);
-  const targetN = study.target_n || 0;
+  const targetN = campaign.target_n || 0;
 
   return {
-    study,
-    sessions,
+    campaign,
+    runs,
     robots,
     operators,
     labs,
-    devices,
+    sensors,
     byState,
     confirmedPlus: count(CONFIRMED_PLUS),
     collectedPlus,
@@ -66,7 +66,7 @@ export async function loadStudyMetrics(
     targetN,
     progressPct: targetN > 0 ? Math.round((collectedPlus / targetN) * 100) : 0,
     clearedRobots: robots.filter((p) => p.is_cleared).length,
-    operationalDevices: devices.filter((d) => d.status === "OPERATIONAL").length,
+    operationalSensors: sensors.filter((d) => d.status === "OPERATIONAL").length,
   };
 }
 
@@ -90,9 +90,9 @@ export const STAGE_LABEL: Record<string, string> = {
 // Data-pipeline stages only (post-execution), for the Daily Execution stepper.
 export const DATA_PIPELINE = ["COLLECTED", "EXTRACTED", "MANUAL_QA", "VALIDATED", "UPLOADED", "DONE"] as const;
 
-/** Daily Execution buckets — auto-derived from session state (system-tracked). */
-export function dailyExecution(sessions: Session[]) {
-  const inState = (s: string) => sessions.filter((x) => x.state === s).length;
+/** Daily Execution buckets — auto-derived from run state (system-tracked). */
+export function dailyExecution(runs: Run[]) {
+  const inState = (s: string) => runs.filter((x) => x.state === s).length;
   const uploaded = inState("UPLOADED") + inState("DONE");
   const extractedQAd = inState("EXTRACTED") + inState("MANUAL_QA") + inState("VALIDATED");
   const pending = inState("COLLECTED"); // collected but not yet extracted/QA'd

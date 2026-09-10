@@ -5,11 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "@/lib/api";
 import { formatDay, isoDate, isoWeek, startOfWeekMonday, weekDays } from "@/lib/dates";
-import { loadStudyMetrics, PIPELINE_STAGES, STAGE_LABEL, type StudyMetrics } from "@/lib/metrics";
+import { loadCampaignMetrics, PIPELINE_STAGES, STAGE_LABEL, type CampaignMetrics } from "@/lib/metrics";
 import { CQ, STATUS_COLOR } from "@/lib/palette";
 import { canSeeAnalytics } from "@/lib/roleViews";
 import { useUser } from "@/lib/useUser";
-import type { CloudStatus, Session, Study, Task } from "@/lib/types";
+import type { CloudStatus, Run, Campaign, Mission } from "@/lib/types";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { BarChart, Burndown, Donut } from "@/components/Charts";
 import { Funnel, Panel, Progress } from "@/components/Cards";
@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { Grid, Section } from "@/components/ui/Grid";
 import { StatWidget } from "@/components/ui/StatWidget";
 import { StatusDot } from "@/components/StatusDot";
-import { StudyHeader } from "@/components/StudyHeader";
+import { CampaignHeader } from "@/components/CampaignHeader";
 
 // Fill colors per pipeline state, shared with the charts (mirrors /monitoring).
 const STATE_FILL: Record<string, string> = {
@@ -25,22 +25,22 @@ const STATE_FILL: Record<string, string> = {
   ASSEMBLING: STATUS_COLOR.assembling,
   READY: STATUS_COLOR.ready,
   CONFIRMED: STATUS_COLOR.confirmed,
-  IN_EXECUTION: CQ.teal,
+  IN_EXECUTION: CQ.iris,
   COLLECTED: CQ.blue,
   UPLOADED: CQ.violet,
-  DONE: CQ.magenta,
+  DONE: CQ.lilac,
   BLOCKED: STATUS_COLOR.blocked,
 };
 
 const QUICK_ACTIONS = [
   { href: "/auto-schedule", label: "Auto-Schedule" },
   { href: "/schedule", label: "Schedule" },
-  { href: "/tasks", label: "Tasks" },
+  { href: "/missions", label: "Missions" },
   { href: "/workflows", label: "Workflows" },
   { href: "/robots", label: "Robots" },
 ];
 
-// States that still need work before a session can run.
+// States that still need work before a run can run.
 const NOT_READY = new Set(["DRAFT", "ASSEMBLING"]);
 
 export default function HomePage() {
@@ -49,11 +49,11 @@ export default function HomePage() {
   // roles, as a safe fuller default) get the full analytics dashboard.
   const showAnalytics = canSeeAnalytics(user?.role);
 
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [studyId, setStudyId] = useState<string | null>(null);
-  const [metrics, setMetrics] = useState<StudyMetrics | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [weekSessions, setWeekSessions] = useState<Session[]>([]);
+  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<CampaignMetrics | null>(null);
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [weekRuns, setWeekRuns] = useState<Run[]>([]);
   const [cloud, setCloud] = useState<CloudStatus | null>(null);
   const [cloudFailed, setCloudFailed] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export default function HomePage() {
       .listStudies()
       .then((s) => {
         setStudies(s);
-        if (s.length > 0) setStudyId((cur) => cur ?? s[0].id);
+        if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
       .catch(() => setErr("Backend unreachable. Start it on :8000."));
   }, []);
@@ -82,35 +82,35 @@ export default function HomePage() {
   }, []);
 
   const load = useCallback(() => {
-    if (!studyId) return;
-    // Sessions for the current week only — needed by both views.
+    if (!campaignId) return;
+    // Runs for the current week only — needed by both views.
     const start = isoDate(days[0]);
     const end = isoDate(days[days.length - 1]);
     api
-      .listSessions(studyId, start, end)
-      .then(setWeekSessions)
-      .catch(() => setWeekSessions([]));
+      .listRuns(campaignId, start, end)
+      .then(setWeekRuns)
+      .catch(() => setWeekRuns([]));
 
     // Analytics-only data: skip entirely for the operational (robot operator) view.
     if (!showAnalytics) {
       setMetrics(null);
-      setTasks([]);
+      setMissions([]);
       return;
     }
-    // Full-study metrics (pipeline, readiness, blocked) — degrade gracefully on error.
-    loadStudyMetrics(studyId)
+    // Full-campaign metrics (pipeline, readiness, blocked) — degrade gracefully on error.
+    loadCampaignMetrics(campaignId)
       .then(setMetrics)
       .catch(() => setMetrics(null));
-    // Tasks catalog for the ready/total widget.
+    // Missions catalog for the ready/total widget.
     api
-      .listTasks(studyId)
-      .then(setTasks)
-      .catch(() => setTasks([]));
-  }, [studyId, days, showAnalytics]);
+      .listMissions(campaignId)
+      .then(setMissions)
+      .catch(() => setMissions([]));
+  }, [campaignId, days, showAnalytics]);
 
   useEffect(load, [load]);
 
-  const tasksReady = tasks.filter((t) => t.is_ready).length;
+  const tasksReady = missions.filter((t) => t.is_ready).length;
   const readyNow = metrics?.readyNow ?? 0;
   const blocked = metrics?.blocked ?? 0;
 
@@ -127,9 +127,9 @@ export default function HomePage() {
     : [];
   const donut = metrics
     ? [
-        { label: "Ready+", value: metrics.confirmedPlus + metrics.readyNow, color: CQ.green },
-        { label: "In progress", value: metrics.inProgress, color: CQ.amber },
-        { label: "Blocked", value: metrics.blocked, color: CQ.red },
+        { label: "Ready+", value: metrics.confirmedPlus + metrics.readyNow, color: CQ.sage },
+        { label: "In progress", value: metrics.inProgress, color: CQ.apricot },
+        { label: "Blocked", value: metrics.blocked, color: CQ.rose },
       ]
     : [];
   const target = metrics?.targetN ?? 0;
@@ -137,13 +137,13 @@ export default function HomePage() {
   const remainingN = Math.max(0, target - (metrics?.collectedPlus ?? 0));
   const actualLine = [target, target, Math.max(0, target - (metrics?.confirmedPlus ?? 0)), remainingN, remainingN];
 
-  // "Needs attention": blocked or not-ready sessions this week.
-  const attention = weekSessions
+  // "Needs attention": blocked or not-ready runs this week.
+  const attention = weekRuns
     .filter((s) => s.state === "BLOCKED" || NOT_READY.has(s.state))
     .slice(0, 6);
 
-  // "This week": sessions ordered by slot date, with the day shown.
-  const upcoming = [...weekSessions]
+  // "This week": runs ordered by slot date, with the day shown.
+  const upcoming = [...weekRuns]
     .sort((a, b) => (a.slot_date ?? "").localeCompare(b.slot_date ?? ""))
     .slice(0, 8);
 
@@ -162,21 +162,21 @@ export default function HomePage() {
 
   return (
     <div className="flex h-full flex-col bg-neutral-50">
-      <StudyHeader title="Home" studies={studies} studyId={studyId} onChange={setStudyId} />
+      <CampaignHeader title="Home" campaigns={campaigns} campaignId={campaignId} onChange={setCampaignId} />
       {err && <div className="bg-red-50 px-6 py-2 text-sm text-red-700">{err}</div>}
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-6xl">
           <Section>
             {/* Global fuzzy search — prominent entry to jump to any object. */}
-            <GlobalSearch studyId={studyId} />
+            <GlobalSearch campaignId={campaignId} />
 
             {/* Top metric row — analytics dashboard only (hidden for robot operators). */}
             {showAnalytics && (
               <Grid cols={4}>
                 <StatWidget
-                  label="Sessions this week"
-                  value={weekSessions.length}
+                  label="Runs this week"
+                  value={weekRuns.length}
                   sub={`Week ${isoWeek(monday)} · ${formatDay(days[0])} – ${formatDay(days[days.length - 1])}`}
                   accent={CQ.blue}
                   href="/schedule"
@@ -185,23 +185,23 @@ export default function HomePage() {
                   label="Ready to confirm"
                   value={readyNow}
                   among={blocked ? `· ${blocked} blocked` : undefined}
-                  sub={blocked ? "blocked sessions need attention" : "no blockers"}
-                  accent={readyNow ? CQ.green : CQ.slate}
+                  sub={blocked ? "blocked runs need attention" : "no blockers"}
+                  accent={readyNow ? CQ.sage : CQ.slate}
                 />
                 <StatWidget
-                  label="Tasks ready"
+                  label="Missions ready"
                   value={tasksReady}
-                  among={`/ ${tasks.length}`}
-                  sub="schedulable in this study"
+                  among={`/ ${missions.length}`}
+                  sub="schedulable in this campaign"
                   accent={CQ.violet}
-                  href="/tasks"
+                  href="/missions"
                 />
                 <StatWidget
                   label="Collected"
                   value={metrics?.collectedPlus ?? 0}
                   among={metrics?.targetN ? `/ ${metrics.targetN}` : undefined}
                   sub={metrics ? `${metrics.progressPct}% of target N` : "no data yet"}
-                  accent={CQ.teal}
+                  accent={CQ.iris}
                   href="/monitoring"
                 />
               </Grid>
@@ -225,7 +225,7 @@ export default function HomePage() {
                   <Panel title="Readiness mix">
                     <Donut segments={donut.some((d) => d.value) ? donut : [{ label: "None", value: 1, color: CQ.slate }]} />
                   </Panel>
-                  <Panel title="Sessions by state">
+                  <Panel title="Runs by state">
                     <BarChart data={bars.length ? bars : [{ label: "—", value: 0 }]} />
                   </Panel>
                   <Panel title={`Burndown — target N ${metrics.targetN}`}>
@@ -244,8 +244,8 @@ export default function HomePage() {
             {!showAnalytics && (
               <Grid cols={2}>
                 <StatWidget
-                  label="Sessions this week"
-                  value={weekSessions.length}
+                  label="Runs this week"
+                  value={weekRuns.length}
                   sub={`Week ${isoWeek(monday)} · ${formatDay(days[0])} – ${formatDay(days[days.length - 1])}`}
                   accent={CQ.blue}
                   href="/schedule"
@@ -254,7 +254,7 @@ export default function HomePage() {
                   label="Needs attention"
                   value={attention.length}
                   sub={attention.length ? "blocked or not-yet-ready" : "all clear this week"}
-                  accent={attention.length ? CQ.amber : CQ.green}
+                  accent={attention.length ? CQ.apricot : CQ.sage}
                 />
               </Grid>
             )}
@@ -293,7 +293,7 @@ export default function HomePage() {
               {/* This week */}
               <Card
                 title="This week"
-                subtitle="Sessions in the current week"
+                subtitle="Runs in the current week"
                 actions={
                   <Link href="/schedule" className="text-xs text-blue-700 hover:underline">
                     Open schedule
@@ -302,17 +302,17 @@ export default function HomePage() {
                 className="lg:col-span-2"
               >
                 {upcoming.length === 0 ? (
-                  <p className="py-2 text-sm text-neutral-400">No sessions scheduled this week.</p>
+                  <p className="py-2 text-sm text-neutral-400">No runs scheduled this week.</p>
                 ) : (
                   <ul className="divide-y divide-neutral-100">
                     {upcoming.map((s) => (
                       <li key={s.id} className="flex items-center gap-3 py-2 text-sm">
                         <span className="w-32 shrink-0 text-neutral-500">{dayLabel(s.slot_date)}</span>
                         <Link
-                          href={`/sessions/${s.id}`}
+                          href={`/runs/${s.id}`}
                           className="min-w-0 flex-1 truncate text-neutral-800 hover:underline"
                         >
-                          {s.provisional_code || s.encoded_code || `Session ${s.id.slice(0, 8)}`}
+                          {s.provisional_code || s.encoded_code || `Run ${s.id.slice(0, 8)}`}
                         </Link>
                         <StatusDot state={s.state} />
                       </li>
@@ -325,7 +325,7 @@ export default function HomePage() {
             {/* Needs attention */}
             <Card
               title="Needs attention"
-              subtitle="Blocked or not-yet-ready sessions this week"
+              subtitle="Blocked or not-yet-ready runs this week"
             >
               {attention.length === 0 ? (
                 <p className="py-2 text-sm text-neutral-400">Nothing needs attention this week.</p>
@@ -334,10 +334,10 @@ export default function HomePage() {
                   {attention.map((s) => (
                     <li key={s.id} className="flex items-center gap-3 py-2 text-sm">
                       <Link
-                        href={`/sessions/${s.id}`}
+                        href={`/runs/${s.id}`}
                         className="min-w-0 flex-1 truncate text-neutral-800 hover:underline"
                       >
-                        {s.provisional_code || s.encoded_code || `Session ${s.id.slice(0, 8)}`}
+                        {s.provisional_code || s.encoded_code || `Run ${s.id.slice(0, 8)}`}
                       </Link>
                       <span className="text-xs text-neutral-400">{dayLabel(s.slot_date)}</span>
                       <span className="w-28 shrink-0 text-right text-xs text-neutral-500">

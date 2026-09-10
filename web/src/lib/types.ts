@@ -1,6 +1,6 @@
 // Shared types mirroring the FastAPI backend schemas (app/schemas.py).
 
-export type SessionState =
+export type RunState =
   | "DRAFT"
   | "ASSEMBLING"
   | "READY"
@@ -15,41 +15,41 @@ export type SessionState =
   | "BLOCKED"
   | "CANCELLED";
 
-export type TaskScope = "GROUP" | "SINGLE";
+export type MissionScope = "GROUP" | "SINGLE";
 export type RiskLevel = "LOW" | "POTENTIAL" | "HIGH" | "UNKNOWN";
 export type LegalApproval = "NONE" | "PENDING" | "APPROVED";
-export type StudyType = "PERCEPTION" | "MANIPULATION" | "NAVIGATION";
-export type TaskDuration = "SHORT" | "MEDIUM" | "LONG" | "UNSPECIFIED";
-export type TaskScheduleStatus = "AVAILABLE" | "IN_PROGRESS" | "RECORDED";
+export type CampaignType = "PERCEPTION" | "MANIPULATION" | "NAVIGATION";
+export type MissionDuration = "SHORT" | "MEDIUM" | "LONG" | "UNSPECIFIED";
+export type MissionScheduleStatus = "AVAILABLE" | "IN_PROGRESS" | "RECORDED";
 
-export interface Study {
+export interface Campaign {
   id: string;
   name: string;
-  study_type: StudyType;
+  campaign_type: CampaignType;
   target_n: number;
   status: string;
 }
 
-export interface TaskGroup {
+export interface MissionGroup {
   id: string;
-  study_id: string;
+  campaign_id: string;
   name: string;
   order: number;
 }
 
-export interface Task {
+export interface Mission {
   id: string;
-  study_id: string;
-  task_group_id: string | null;
-  task_code: string;
+  campaign_id: string;
+  mission_group_id: string | null;
+  mission_code: string;
   name: string;
   risk_level: RiskLevel;
   legal_approval: LegalApproval;
-  duration_type: TaskDuration;
+  duration_type: MissionDuration;
   reps_target: number;
   reps_actual: number;
   reps_gap: number;
-  schedule_status: TaskScheduleStatus;
+  schedule_status: MissionScheduleStatus;
   instructions_complete: boolean;
   is_ready: boolean;
   is_schedulable: boolean;
@@ -90,7 +90,7 @@ export interface VariantOption {
   errors: VariantErrorOption[];
 }
 
-export interface TaskDetail extends Task {
+export interface MissionDetail extends Mission {
   variants: VariantLite[];
   variant_options?: VariantOption[]; // numbered V/E picker options with T#V#E# codes
   instructions?: unknown[];
@@ -107,8 +107,8 @@ export interface InstructionVersion {
   created_at: string;
 }
 
-export interface TaskInstructions {
-  task_id: string;
+export interface MissionInstructions {
+  mission_id: string;
   format: InstructionFormat;
   current_version: number | null;
   content: string;
@@ -135,7 +135,7 @@ export interface Robot {
 }
 
 export interface RobotSwap {
-  session: Session;
+  run: Run;
   swapped_in: string | null;
   previous: string | null;
   message: string;
@@ -158,23 +158,23 @@ export interface Lab {
   code_number: number | null;
 }
 
-export interface DeviceFleet {
+export interface SensorRig {
   id: string;
-  study_id: string;
+  campaign_id: string;
   name: string;
-  device_ids: string[];
+  sensor_ids: string[];
 }
 
-export interface Device {
+export interface Sensor {
   id: string;
   asset_name: string;
-  device_type: string;
+  sensor_type: string;
   status: string;
 }
 
 export interface InventoryItem {
   id: string;
-  study_id: string;
+  campaign_id: string;
   name: string;
   kind: string;
   status: string;
@@ -192,24 +192,24 @@ export interface ExecutionLogEntry {
 
 export type ExecutionLog = Record<string, ExecutionLogEntry>;
 
-export interface Session {
+export interface Run {
   id: string;
-  study_id: string;
+  campaign_id: string;
   slot_date: string | null;
   slot_time: string | null;
-  state: SessionState;
-  task_scope: TaskScope;
-  task_group_id: string | null;
-  task_ids: string[];
+  state: RunState;
+  mission_scope: MissionScope;
+  mission_group_id: string | null;
+  mission_ids: string[];
   robot_id: string | null;
   operator_id: string | null;
   lab_id: string | null;
-  device_fleet_id: string | null;
+  sensor_rig_id: string | null;
   provisional_code: string | null;
   encoded_code: string | null;
   payload: string | null;
-  session_lab: string | null;
-  task_reps: Record<string, number>;  // auto-schedule rep plan: task_id -> reps this session
+  run_lab: string | null;
+  mission_reps: Record<string, number>;  // auto-schedule rep plan: mission_id -> reps this run
   collected_rows: CollectedRow[];
   execution_log: ExecutionLog;
 }
@@ -238,14 +238,14 @@ export interface CharmQuarkDocument {
   doc_metadata: { size_bytes?: number; storage?: string }[];
 }
 
-export type SessionAssign = Partial<{
-  task_scope: TaskScope;
-  task_group_id: string | null;
-  task_ids: string[];
+export type RunAssign = Partial<{
+  mission_scope: MissionScope;
+  mission_group_id: string | null;
+  mission_ids: string[];
   robot_id: string | null;
   operator_id: string | null;
   lab_id: string | null;
-  device_fleet_id: string | null;
+  sensor_rig_id: string | null;
   slot_date: string | null;
 }>;
 
@@ -261,7 +261,7 @@ export interface QAGate {
 }
 export interface QARun {
   id: string;
-  session_id: string;
+  run_id: string;
   overall_status: string;
   gates: QAGate[];
 }
@@ -284,33 +284,33 @@ export interface WorkflowContent extends WorkflowSummary {
   xml: string;
 }
 
-// ---- auto-scheduling (automated session scheduling) — mirrors app/schemas.py ----
-export interface ProposalTask {
+// ---- auto-scheduling (automated run scheduling) — mirrors app/schemas.py ----
+export interface ProposalMission {
   id: string;
-  task_code: string;
+  mission_code: string;
   name: string;
   group: string | null;
-  duration_type: TaskDuration;
+  duration_type: MissionDuration;
   effort_units: number;
   reps_gap: number;
-  reps: number;        // reps of this task/variant/error scheduled in this session
+  reps: number;        // reps of this mission/variant/error scheduled in this run
   row_units: number;   // effort_units * reps
 }
 
-export interface SessionProposal {
-  session_id: string;
-  tasks: ProposalTask[];
+export interface RunProposal {
+  run_id: string;
+  missions: ProposalMission[];
   total_units: number;
-  total_reps: number;     // total recordings across all tasks (== session CSV rows)
+  total_reps: number;     // total recordings across all missions (== run CSV rows)
   budget: number;
-  meets_floor: boolean;   // >= 2 effort units (a valid session)
+  meets_floor: boolean;   // >= 2 effort units (a valid run)
   fully_packed: boolean;  // total_units == budget
 }
 
 export interface AcceptProposalResult {
-  session: Session;
+  run: Run;
   task_count: number;
-  session_csv: string;
+  run_csv: string;
   saved_path: string | null;
 }
 
@@ -318,20 +318,20 @@ export interface AutoFillResult {
   created: number;
   slots_used: number;
   reps_remaining: number;
-  session_ids: string[];
+  run_ids: string[];
 }
 
-export interface TaskStatusChange {
-  task_id: string;
-  schedule_status: TaskScheduleStatus;
+export interface MissionStatusChange {
+  mission_id: string;
+  schedule_status: MissionScheduleStatus;
   reps_actual: number;
   reps_gap: number;
 }
 
 export interface UploadResult {
-  recorded: string[];   // tasks completed this session
-  reverted: string[];   // tasks the user dropped -> back to AVAILABLE
-  tasks: TaskStatusChange[];
+  recorded: string[];   // missions completed this run
+  reverted: string[];   // missions the user dropped -> back to AVAILABLE
+  missions: MissionStatusChange[];
 }
 
 // ---- Catalog Sync (CSV round-trip) — mirrors app/schemas.py ----
@@ -341,13 +341,13 @@ export interface CatalogFieldChange {
 }
 
 export interface CatalogCreate {
-  task_code: string;   // the code as given, or "(auto)" for a blank-code new row
+  mission_code: string;   // the code as given, or "(auto)" for a blank-code new row
   name: string;
   group: string;
 }
 
 export interface CatalogUpdate {
-  task_code: string;
+  mission_code: string;
   changes: Record<string, CatalogFieldChange>;
 }
 

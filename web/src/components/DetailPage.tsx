@@ -77,7 +77,7 @@ export function LinkList({
       {items.map((it, i) => (
         <li key={i} className="flex items-center justify-between px-3 py-2 text-sm">
           {it.href ? (
-            <Link href={it.href} className="text-blue-700 hover:underline">
+            <Link href={it.href} className="font-medium text-[color:var(--cq-iris)] hover:underline">
               {it.label}
             </Link>
           ) : (

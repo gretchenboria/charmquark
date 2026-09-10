@@ -7,7 +7,7 @@ import { ActivityLog } from "./ActivityLog";
 import { StepList } from "./StepList";
 import { useActivityLog } from "./useActivityLog";
 import type { WorkflowDef } from "./types";
-import { W1TaskReady } from "./W1TaskReady";
+import { W1MissionReady } from "./W1MissionReady";
 import { W2ComposeConfirm } from "./W2ComposeConfirm";
 import { W3DataPipeline } from "./W3DataPipeline";
 import { W4Blocker } from "./W4Blocker";
@@ -27,13 +27,13 @@ export function WorkflowRunner({ def, onExit }: { def: WorkflowDef; onExit: () =
     setDoneIndex(di);
   }, []);
 
-  // Permission per workflow: composing sessions needs create (PM); the rest need update.
+  // Permission per workflow: composing runs needs create (PM); the rest need update.
   const canWrite = def.id === "w2_compose_confirm_session" ? canCreate(user?.role) : canUpdate(user?.role);
 
   const body = () => {
     switch (def.id) {
       case "w1_task_ready":
-        return <W1TaskReady role={user?.role} canWrite={canUpdate(user?.role)} log={log} onProgress={onProgress} />;
+        return <W1MissionReady role={user?.role} canWrite={canUpdate(user?.role)} log={log} onProgress={onProgress} />;
       case "w2_compose_confirm_session":
         return <W2ComposeConfirm canWrite={canWrite} log={log} onProgress={onProgress} />;
       case "w3_data_pipeline":

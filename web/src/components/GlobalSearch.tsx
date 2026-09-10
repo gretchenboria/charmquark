@@ -7,26 +7,26 @@ import { api } from "@/lib/api";
 import { isoDate, startOfWeekMonday, weekDays } from "@/lib/dates";
 import { fuzzyFilter } from "@/lib/fuzzy";
 import type {
-  Device,
+  Sensor,
   InventoryItem,
   Lab,
   Operator,
   Robot,
-  Session,
-  Study,
-  Task,
+  Run,
+  Campaign,
+  Mission,
 } from "@/lib/types";
 
 // One searchable object, flattened to what the palette needs to render + link.
 type Kind =
-  | "Study"
-  | "Task"
+  | "Campaign"
+  | "Mission"
   | "Robot"
   | "Operator"
   | "Lab"
-  | "Device"
+  | "Sensor"
   | "Inventory"
-  | "Session";
+  | "Run";
 
 interface Hit {
   kind: Kind;
@@ -39,32 +39,32 @@ interface Hit {
 
 // Render order for grouped results.
 const GROUP_ORDER: Kind[] = [
-  "Study",
-  "Task",
+  "Campaign",
+  "Mission",
   "Robot",
   "Operator",
   "Lab",
-  "Device",
+  "Sensor",
   "Inventory",
-  "Session",
+  "Run",
 ];
 
-const sessionTitle = (s: Session) =>
-  s.provisional_code || s.encoded_code || `Session ${s.id.slice(0, 8)}`;
+const sessionTitle = (s: Run) =>
+  s.provisional_code || s.encoded_code || `Run ${s.id.slice(0, 8)}`;
 
 /**
  * Command-palette-style global search for the dashboard. Loads the main object
- * lists once (studies + resources, plus tasks/inventory/this-week sessions for the
- * selected study), then fuzzy-filters entirely in memory so typing stays snappy.
+ * lists once (campaigns + resources, plus missions/inventory/this-week runs for the
+ * selected campaign), then fuzzy-filters entirely in memory so typing stays snappy.
  * All API failures are swallowed — search degrades to whatever loaded.
  */
-export function GlobalSearch({ studyId }: { studyId: string | null }) {
+export function GlobalSearch({ campaignId }: { campaignId: string | null }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Hit[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load the searchable corpus once per study selection. Each call fails silently
+  // Load the searchable corpus once per campaign selection. Each call fails silently
   // and contributes nothing rather than breaking the whole search.
   useEffect(() => {
     let alive = true;
@@ -80,15 +80,15 @@ export function GlobalSearch({ studyId }: { studyId: string | null }) {
 
     api
       .listStudies()
-      .then((rows: Study[]) =>
+      .then((rows: Campaign[]) =>
         add(
           rows.map((s) => ({
-            kind: "Study" as const,
+            kind: "Campaign" as const,
             id: s.id,
             title: s.name,
-            subtitle: s.study_type,
-            href: `/studies/${s.id}`,
-            text: `${s.name} ${s.study_type} ${s.status}`,
+            subtitle: s.campaign_type,
+            href: `/campaigns/${s.id}`,
+            text: `${s.name} ${s.campaign_type} ${s.status}`,
           })),
         ),
       )
@@ -143,41 +143,41 @@ export function GlobalSearch({ studyId }: { studyId: string | null }) {
       .catch(() => {});
 
     api
-      .listDevices()
-      .then((rows: Device[]) =>
+      .listSensors()
+      .then((rows: Sensor[]) =>
         add(
           rows.map((d) => ({
-            kind: "Device" as const,
+            kind: "Sensor" as const,
             id: d.id,
             title: d.asset_name,
-            subtitle: d.device_type,
-            href: `/devices/${d.id}`,
-            text: `${d.asset_name} ${d.device_type} ${d.status}`,
+            subtitle: d.sensor_type,
+            href: `/sensors/${d.id}`,
+            text: `${d.asset_name} ${d.sensor_type} ${d.status}`,
           })),
         ),
       )
       .catch(() => {});
 
-    // Per-study collections.
-    if (studyId) {
+    // Per-campaign collections.
+    if (campaignId) {
       api
-        .listTasks(studyId)
-        .then((rows: Task[]) =>
+        .listMissions(campaignId)
+        .then((rows: Mission[]) =>
           add(
             rows.map((t) => ({
-              kind: "Task" as const,
+              kind: "Mission" as const,
               id: t.id,
               title: t.name,
-              subtitle: t.task_code,
-              href: `/tasks/${t.id}`,
-              text: `${t.name} ${t.task_code}`,
+              subtitle: t.mission_code,
+              href: `/missions/${t.id}`,
+              text: `${t.name} ${t.mission_code}`,
             })),
           ),
         )
         .catch(() => {});
 
       api
-        .listInventoryItems(studyId)
+        .listInventoryItems(campaignId)
         .then((rows: InventoryItem[]) =>
           add(
             rows.map((it) => ({
@@ -193,15 +193,15 @@ export function GlobalSearch({ studyId }: { studyId: string | null }) {
         .catch(() => {});
 
       api
-        .listSessions(studyId, isoDate(days[0]), isoDate(days[days.length - 1]))
-        .then((rows: Session[]) =>
+        .listRuns(campaignId, isoDate(days[0]), isoDate(days[days.length - 1]))
+        .then((rows: Run[]) =>
           add(
             rows.map((s) => ({
-              kind: "Session" as const,
+              kind: "Run" as const,
               id: s.id,
               title: sessionTitle(s),
               subtitle: s.slot_date ?? "Unscheduled",
-              href: `/sessions/${s.id}`,
+              href: `/runs/${s.id}`,
               text: `${sessionTitle(s)} ${s.state} ${s.slot_date ?? ""}`,
             })),
           ),
@@ -212,7 +212,7 @@ export function GlobalSearch({ studyId }: { studyId: string | null }) {
     return () => {
       alive = false;
     };
-  }, [studyId]);
+  }, [campaignId]);
 
   // Global shortcut: Cmd/Ctrl+K opens the palette.
   useEffect(() => {
@@ -262,7 +262,7 @@ export function GlobalSearch({ studyId }: { studyId: string | null }) {
           <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
           <path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
-        <span className="flex-1">Search studies, tasks, robots…</span>
+        <span className="flex-1">Search campaigns, missions, robots…</span>
         <kbd className="rounded border border-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400">
           ⌘K
         </kbd>
@@ -286,7 +286,7 @@ export function GlobalSearch({ studyId }: { studyId: string | null }) {
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search studies, tasks, robots, sessions…"
+                placeholder="Search campaigns, missions, robots, runs…"
                 className="flex-1 bg-transparent text-sm text-neutral-800 outline-none placeholder:text-neutral-400"
               />
             </div>
@@ -294,7 +294,7 @@ export function GlobalSearch({ studyId }: { studyId: string | null }) {
             <div className="max-h-96 overflow-y-auto py-1">
               {!hasQuery && (
                 <p className="px-4 py-6 text-center text-sm text-neutral-400">
-                  Type to search across the study.
+                  Type to search across the campaign.
                 </p>
               )}
               {hasQuery && !hasResults && (

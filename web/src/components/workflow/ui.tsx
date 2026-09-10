@@ -40,7 +40,7 @@ export function PrimaryButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-md bg-teal-600 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
+      className="w-full rounded-md bg-[color:var(--cq-iris)] py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
     >
       {children}
     </button>

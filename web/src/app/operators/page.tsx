@@ -87,7 +87,7 @@ export default function OperatorsPage() {
       sort={[{ id: "code", label: "Code", compare: (a, b) => a.operator_code.localeCompare(b.operator_code) }]}
       toRow={(o) => ({
         code: (
-          <Link href={`/operators/${o.id}`} className="text-blue-700 hover:underline">
+          <Link href={`/operators/${o.id}`} className="font-medium text-[color:var(--cq-iris)] hover:underline">
             {o.operator_code}
           </Link>
         ),

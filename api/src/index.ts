@@ -13,7 +13,7 @@ import type { Env, Vars } from "./types";
 import { crudGuard, principal } from "./auth";
 import { mountResources } from "./routes/resources";
 import { mountCatalog } from "./routes/catalog";
-import { mountSessions } from "./routes/sessions";
+import { mountRuns } from "./routes/runs";
 import { mountAutoschedule } from "./routes/autoschedule";
 import { mountMisc } from "./routes/misc";
 import { mountDev } from "./routes/dev";
@@ -37,7 +37,7 @@ api.use("*", crudGuard);
 
 mountCatalog(api);
 mountResources(api);
-mountSessions(api);
+mountRuns(api);
 mountAutoschedule(api);
 mountMisc(api);
 mountDev(api);

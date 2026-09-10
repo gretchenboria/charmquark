@@ -8,8 +8,8 @@ import type {
   CatalogApplyResult,
   CatalogDiff,
   CloudStatus,
-  Device,
-  DeviceFleet,
+  Sensor,
+  SensorRig,
   CharmQuarkDocument,
   InstructionVersion,
   InventoryItem,
@@ -19,14 +19,14 @@ import type {
   RobotSwap,
   QARun,
   Readiness,
-  Session,
-  SessionAssign,
-  SessionProposal,
-  Study,
-  Task,
-  TaskDetail,
-  TaskGroup,
-  TaskInstructions,
+  Run,
+  RunAssign,
+  RunProposal,
+  Campaign,
+  Mission,
+  MissionDetail,
+  MissionGroup,
+  MissionInstructions,
   UploadResult,
   User,
   WorkflowContent,
@@ -85,42 +85,42 @@ const put = <T>(p: string, body: unknown) => req<T>(p, { method: "PUT", body: JS
 const del = (p: string) => req<void>(p, { method: "DELETE" });
 
 export const api = {
-  // studies
-  listStudies: () => req<Study[]>("/studies"),
-  getStudy: (id: string) => req<Study>(`/studies/${id}`),
-  createStudy: (b: { name: string; study_type: string; target_n?: number }) => post<Study>("/studies", b),
-  updateStudy: (id: string, b: Partial<{ name: string; status: string; target_n: number }>) =>
-    patch<Study>(`/studies/${id}`, b),
-  deleteStudy: (id: string) => del(`/studies/${id}`),
+  // campaigns
+  listStudies: () => req<Campaign[]>("/campaigns"),
+  getCampaign: (id: string) => req<Campaign>(`/campaigns/${id}`),
+  createCampaign: (b: { name: string; campaign_type: string; target_n?: number }) => post<Campaign>("/campaigns", b),
+  updateCampaign: (id: string, b: Partial<{ name: string; status: string; target_n: number }>) =>
+    patch<Campaign>(`/campaigns/${id}`, b),
+  deleteCampaign: (id: string) => del(`/campaigns/${id}`),
 
   // catalog
-  listTaskGroups: (studyId: string) => req<TaskGroup[]>(`/studies/${studyId}/task-groups`),
-  getTaskGroup: (id: string) => req<TaskGroup>(`/task-groups/${id}`),
-  createTaskGroup: (b: { study_id: string; name: string }) => post<TaskGroup>("/task-groups", b),
-  listTasks: (studyId: string) => req<Task[]>(`/studies/${studyId}/tasks`),
-  getTask: (id: string) => req<TaskDetail>(`/tasks/${id}`),
-  createTask: (b: Record<string, unknown>) => post<Task>("/tasks", b),
-  updateTask: (id: string, b: Record<string, unknown>) => patch<Task>(`/tasks/${id}`, b),
-  deleteTask: (id: string) => del(`/tasks/${id}`),
+  listMissionGroups: (campaignId: string) => req<MissionGroup[]>(`/campaigns/${campaignId}/mission-groups`),
+  getMissionGroup: (id: string) => req<MissionGroup>(`/mission-groups/${id}`),
+  createMissionGroup: (b: { campaign_id: string; name: string }) => post<MissionGroup>("/mission-groups", b),
+  listMissions: (campaignId: string) => req<Mission[]>(`/campaigns/${campaignId}/missions`),
+  getMission: (id: string) => req<MissionDetail>(`/missions/${id}`),
+  createMission: (b: Record<string, unknown>) => post<Mission>("/missions", b),
+  updateMission: (id: string, b: Record<string, unknown>) => patch<Mission>(`/missions/${id}`, b),
+  deleteMission: (id: string) => del(`/missions/${id}`),
   assessRisk: (id: string) =>
     post<{ risk_level: string; rationale: string; matched_terms: string[]; needs_legal_review: boolean }>(
-      `/tasks/${id}/assess-risk`, {},
+      `/missions/${id}/assess-risk`, {},
     ),
   legalReview: (id: string, approved: boolean, note?: string) =>
-    post<Task>(`/tasks/${id}/legal-review`, { approved, note }),
+    post<Mission>(`/missions/${id}/legal-review`, { approved, note }),
 
-  // task instructions (robot operator-facing .txt/JSON template + version history)
-  getInstructions: (taskId: string) => req<TaskInstructions>(`/tasks/${taskId}/instructions`),
+  // mission instructions (robot operator-facing .txt/JSON template + version history)
+  getInstructions: (missionId: string) => req<MissionInstructions>(`/missions/${missionId}/instructions`),
   saveInstructions: (
-    taskId: string,
+    missionId: string,
     b: { content: string; format: "txt" | "json"; uploaded_by?: string; notes?: string },
-  ) => req<TaskInstructions>(`/tasks/${taskId}/instructions`, { method: "PUT", body: JSON.stringify(b) }),
-  getInstructionVersion: (taskId: string, versionId: string) =>
+  ) => req<MissionInstructions>(`/missions/${missionId}/instructions`, { method: "PUT", body: JSON.stringify(b) }),
+  getInstructionVersion: (missionId: string, versionId: string) =>
     req<Pick<InstructionVersion, "version_id" | "version_number"> & { content: string }>(
-      `/tasks/${taskId}/instructions/versions/${versionId}`,
+      `/missions/${missionId}/instructions/versions/${versionId}`,
     ),
-  deleteInstructionVersion: (taskId: string, versionId: string) =>
-    del(`/tasks/${taskId}/instructions/versions/${versionId}`),
+  deleteInstructionVersion: (missionId: string, versionId: string) =>
+    del(`/missions/${missionId}/instructions/versions/${versionId}`),
 
   // vault (documents / recordings)
   listDocuments: (params?: { linked_entity_type?: string; linked_entity_id?: string; vault_category?: string }) => {
@@ -150,66 +150,66 @@ export const api = {
   createLab: (b: Record<string, unknown>) => post<Lab>("/labs", b),
   updateLab: (id: string, b: Record<string, unknown>) => patch<Lab>(`/labs/${id}`, b),
   deleteLab: (id: string) => del(`/labs/${id}`),
-  listDevices: () => req<Device[]>("/devices"),
-  getDevice: (id: string) => req<Device>(`/devices/${id}`),
-  createDevice: (b: Record<string, unknown>) => post<Device>("/devices", b),
-  updateDevice: (id: string, b: Record<string, unknown>) => patch<Device>(`/devices/${id}`, b),
-  deleteDevice: (id: string) => del(`/devices/${id}`),
-  listAllDeviceFleets: () => req<DeviceFleet[]>("/device-fleets"),
-  listDeviceFleets: (studyId: string) => req<DeviceFleet[]>(`/studies/${studyId}/device-fleets`),
-  getDeviceFleet: (id: string) => req<DeviceFleet>(`/device-fleets/${id}`),
-  createDeviceFleet: (b: { study_id: string; name: string; device_ids: string[] }) =>
-    post<DeviceFleet>("/device-fleets", b),
-  listInventoryItems: (studyId: string) => req<InventoryItem[]>(`/studies/${studyId}/inventory-items`),
+  listSensors: () => req<Sensor[]>("/sensors"),
+  getSensor: (id: string) => req<Sensor>(`/sensors/${id}`),
+  createSensor: (b: Record<string, unknown>) => post<Sensor>("/sensors", b),
+  updateSensor: (id: string, b: Record<string, unknown>) => patch<Sensor>(`/sensors/${id}`, b),
+  deleteSensor: (id: string) => del(`/sensors/${id}`),
+  listAllSensorRigs: () => req<SensorRig[]>("/sensor-rigs"),
+  listSensorRigs: (campaignId: string) => req<SensorRig[]>(`/campaigns/${campaignId}/sensor-rigs`),
+  getSensorRig: (id: string) => req<SensorRig>(`/sensor-rigs/${id}`),
+  createSensorRig: (b: { campaign_id: string; name: string; sensor_ids: string[] }) =>
+    post<SensorRig>("/sensor-rigs", b),
+  listInventoryItems: (campaignId: string) => req<InventoryItem[]>(`/campaigns/${campaignId}/inventory-items`),
   getInventoryItem: (id: string) => req<InventoryItem>(`/inventory-items/${id}`),
   createInventoryItem: (b: Record<string, unknown>) => post<InventoryItem>("/inventory-items", b),
   deleteInventoryItem: (id: string) => del(`/inventory-items/${id}`),
 
-  // sessions / scheduling
-  listSessions: (studyId: string, start: string, end: string) =>
-    req<Session[]>(`/studies/${studyId}/sessions?start=${start}&end=${end}`),
-  listSessionsBy: (params: Record<string, string>) => {
+  // runs / scheduling
+  listRuns: (campaignId: string, start: string, end: string) =>
+    req<Run[]>(`/campaigns/${campaignId}/runs?start=${start}&end=${end}`),
+  listRunsBy: (params: Record<string, string>) => {
     const qs = new URLSearchParams(params).toString();
-    return req<Session[]>(`/sessions${qs ? `?${qs}` : ""}`);
+    return req<Run[]>(`/runs${qs ? `?${qs}` : ""}`);
   },
-  createSession: (b: { study_id: string; slot_date?: string; slot_time?: string }) => post<Session>("/sessions", b),
-  getSession: (id: string) => req<Session>(`/sessions/${id}`),
-  assignSession: (id: string, b: SessionAssign) => patch<Session>(`/sessions/${id}`, b),
-  getReadiness: (id: string) => req<Readiness>(`/sessions/${id}/readiness`),
-  confirmSession: (id: string) => post<Session>(`/sessions/${id}/confirm`, {}),
-  robotCancel: (id: string) => post<RobotSwap>(`/sessions/${id}/robot-cancel`, {}),
-  advanceSession: (id: string) => post<Session>(`/sessions/${id}/advance`, {}),
-  deleteSession: (id: string) => del(`/sessions/${id}`),
+  createRun: (b: { campaign_id: string; slot_date?: string; slot_time?: string }) => post<Run>("/runs", b),
+  getRun: (id: string) => req<Run>(`/runs/${id}`),
+  assignRun: (id: string, b: RunAssign) => patch<Run>(`/runs/${id}`, b),
+  getReadiness: (id: string) => req<Readiness>(`/runs/${id}/readiness`),
+  confirmRun: (id: string) => post<Run>(`/runs/${id}/confirm`, {}),
+  robotCancel: (id: string) => post<RobotSwap>(`/runs/${id}/robot-cancel`, {}),
+  advanceRun: (id: string) => post<Run>(`/runs/${id}/advance`, {}),
+  deleteRun: (id: string) => del(`/runs/${id}`),
 
-  // robot operator "execute session" field log (per task in the session)
-  setTaskExecution: (
-    sessionId: string,
-    taskId: string,
+  // robot operator "execute run" field log (per mission in the run)
+  setMissionExecution: (
+    runId: string,
+    missionId: string,
     b: { done?: boolean | null; note?: string | null; variant_code?: string | null },
-  ) => put<Session>(`/sessions/${sessionId}/execution/${taskId}`, b),
+  ) => put<Run>(`/runs/${runId}/execution/${missionId}`, b),
 
   // QA
-  getQA: (sessionId: string) => req<QARun>(`/sessions/${sessionId}/qa`),
-  createQA: (sessionId: string) => post<QARun>(`/sessions/${sessionId}/qa`, {}),
-  updateQACheck: (sessionId: string, gate_index: number, check_index: number, result: string) =>
-    patch<QARun>(`/sessions/${sessionId}/qa/check`, { gate_index, check_index, result }),
+  getQA: (runId: string) => req<QARun>(`/runs/${runId}/qa`),
+  createQA: (runId: string) => post<QARun>(`/runs/${runId}/qa`, {}),
+  updateQACheck: (runId: string, gate_index: number, check_index: number, result: string) =>
+    patch<QARun>(`/runs/${runId}/qa/check`, { gate_index, check_index, result }),
 
-  // autoschedule (automated session scheduling)
-  createProposal: (b: { study_id: string; slot_date?: string | null; slot_time?: string | null; budget?: number }) =>
-    post<SessionProposal>("/session-proposals", b),
-  rejectProposal: (sessionId: string) => post<SessionProposal>(`/sessions/${sessionId}/reject-proposal`, {}),
+  // autoschedule (automated run scheduling)
+  createProposal: (b: { campaign_id: string; slot_date?: string | null; slot_time?: string | null; budget?: number }) =>
+    post<RunProposal>("/run-proposals", b),
+  rejectProposal: (runId: string) => post<RunProposal>(`/runs/${runId}/reject-proposal`, {}),
   acceptProposal: (
-    sessionId: string,
-    b: { robot_id?: string | null; payload?: string | null; session_lab?: string | null },
-  ) => post<AcceptProposalResult>(`/sessions/${sessionId}/accept-proposal`, b),
-  uploadSessionCsv: (sessionId: string, b: { completed_task_ids?: string[]; csv_text?: string }) =>
-    post<UploadResult>(`/sessions/${sessionId}/upload-csv`, b),
-  autoFill: (studyId: string, b: { start: string; end: string; budget?: number }) =>
-    post<AutoFillResult>(`/studies/${studyId}/auto-fill`, b),
+    runId: string,
+    b: { robot_id?: string | null; payload?: string | null; run_lab?: string | null },
+  ) => post<AcceptProposalResult>(`/runs/${runId}/accept-proposal`, b),
+  uploadRunCsv: (runId: string, b: { completed_mission_ids?: string[]; csv_text?: string }) =>
+    post<UploadResult>(`/runs/${runId}/upload-csv`, b),
+  autoFill: (campaignId: string, b: { start: string; end: string; budget?: number }) =>
+    post<AutoFillResult>(`/campaigns/${campaignId}/auto-fill`, b),
 
   // catalog sync (CSV round-trip: export -> edit in a spreadsheet -> upsert)
-  exportCatalogCsv: async (studyId: string): Promise<string> => {
-    const res = await fetch(`${BASE}/studies/${studyId}/catalog.csv`, {
+  exportCatalogCsv: async (campaignId: string): Promise<string> => {
+    const res = await fetch(`${BASE}/campaigns/${campaignId}/catalog.csv`, {
       headers: { ...authHeaders() },
       cache: "no-store",
     });
@@ -224,14 +224,14 @@ export const api = {
     }
     return res.text();
   },
-  previewCatalog: (studyId: string, csvText: string) =>
-    post<CatalogDiff>(`/studies/${studyId}/catalog/preview`, { csv_text: csvText }),
-  applyCatalog: (studyId: string, csvText: string) =>
-    post<CatalogApplyResult>(`/studies/${studyId}/catalog/apply`, { csv_text: csvText }),
+  previewCatalog: (campaignId: string, csvText: string) =>
+    post<CatalogDiff>(`/campaigns/${campaignId}/catalog/preview`, { csv_text: csvText }),
+  applyCatalog: (campaignId: string, csvText: string) =>
+    post<CatalogApplyResult>(`/campaigns/${campaignId}/catalog/apply`, { csv_text: csvText }),
 
   // dev / sample data
-  seedSample: () => post<Session>("/dev/seed/sample", {}),
-  seedDemo: () => post<{ study_id: string; tasks: number; robots: number; standby: number; confirmed_sessions: number }>("/dev/seed/demo", {}),
+  seedSample: () => post<Run>("/dev/seed/sample", {}),
+  seedDemo: () => post<{ campaign_id: string; missions: number; robots: number; standby: number; confirmed_sessions: number }>("/dev/seed/demo", {}),
 
   // cloud connectivity (database backing + reachability)
   getCloudStatus: () => req<CloudStatus>("/cloud/status"),

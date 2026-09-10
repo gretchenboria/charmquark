@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { canDelete, canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
-import type { Operator, Session } from "@/lib/types";
+import type { Operator, Run } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { DeleteButton } from "@/components/DeleteButton";
 import { useToast } from "@/components/Toast";
@@ -20,7 +20,7 @@ export default function OperatorDetail() {
   const toast = useToast();
   const canEdit = canWriteCatalog(user?.role);
   const [o, setO] = useState<Operator | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [runs, setRuns] = useState<Run[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const [editing, setEditing] = useState(false);
@@ -34,7 +34,7 @@ export default function OperatorDetail() {
 
   const load = useCallback(() => {
     if (!id) return;
-    Promise.all([api.getOperator(id), api.listSessionsBy({ operator_id: id })])
+    Promise.all([api.getOperator(id), api.listRunsBy({ operator_id: id })])
       .then(([oo, ss]) => {
         setO(oo);
         setForm({
@@ -43,7 +43,7 @@ export default function OperatorDetail() {
           is_active: oo.is_active,
           code_number: oo.code_number ?? "",
         });
-        setSessions(ss);
+        setRuns(ss);
       })
       .catch(() => setErr("Failed to load operator."));
   }, [id]);
@@ -137,7 +137,7 @@ export default function OperatorDetail() {
           </div>
           <div className="mt-3 flex items-center gap-2">
             <button onClick={save} disabled={saving || !!formError}
-              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              className="rounded-md bg-[color:var(--cq-iris)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
             <button onClick={() => { setEditing(false); load(); }}
@@ -149,14 +149,14 @@ export default function OperatorDetail() {
         </Section>
       )}
 
-      <Section title={`Sessions (${sessions.length})`}>
+      <Section title={`Runs (${runs.length})`}>
         <LinkList
-          items={sessions.map((s) => ({
-            href: `/sessions/${s.id}`,
+          items={runs.map((s) => ({
+            href: `/runs/${s.id}`,
             label: s.encoded_code ?? s.provisional_code ?? s.id,
             note: `${s.slot_date ?? ""} ${s.state}`,
           }))}
-          empty="Not moderating any session."
+          empty="Not moderating any run."
         />
       </Section>
     </DetailPage>

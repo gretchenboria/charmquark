@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { api, ApiError } from "@/lib/api";
-import type { CatalogApplyResult, CatalogDiff, Study } from "@/lib/types";
+import type { CatalogApplyResult, CatalogDiff, Campaign } from "@/lib/types";
 import { useToast } from "@/components/Toast";
 
 function downloadCsv(filename: string, text: string) {
@@ -19,8 +19,8 @@ function downloadCsv(filename: string, text: string) {
 export default function CatalogSyncPage() {
   const toast = useToast();
 
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [studyId, setStudyId] = useState<string | null>(null);
+  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   const [csvText, setCsvText] = useState<string>("");
   const [diff, setDiff] = useState<CatalogDiff | null>(null);
   const [applied, setApplied] = useState<CatalogApplyResult | null>(null);
@@ -32,7 +32,7 @@ export default function CatalogSyncPage() {
       .listStudies()
       .then((s) => {
         setStudies(s);
-        if (s.length > 0) setStudyId((cur) => cur ?? s[0].id);
+        if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));
   }, []);
@@ -51,28 +51,28 @@ export default function CatalogSyncPage() {
     }
   };
 
-  const studyName = studies.find((s) => s.id === studyId)?.name ?? "";
+  const studyName = campaigns.find((s) => s.id === campaignId)?.name ?? "";
 
   const download = () =>
     guarded(async () => {
-      if (!studyId) return;
-      const text = await api.exportCatalogCsv(studyId);
-      downloadCsv(`${studyName || "study"}-catalog.csv`, text);
+      if (!campaignId) return;
+      const text = await api.exportCatalogCsv(campaignId);
+      downloadCsv(`${studyName || "campaign"}-catalog.csv`, text);
       toast("success", "Catalog CSV downloaded");
     });
 
   const preview = () =>
     guarded(async () => {
-      if (!studyId) return;
-      const d = await api.previewCatalog(studyId, csvText);
+      if (!campaignId) return;
+      const d = await api.previewCatalog(campaignId, csvText);
       setDiff(d);
       setApplied(null);
     });
 
   const apply = () =>
     guarded(async () => {
-      if (!studyId) return;
-      const r = await api.applyCatalog(studyId, csvText);
+      if (!campaignId) return;
+      const r = await api.applyCatalog(campaignId, csvText);
       setApplied(r);
       setDiff(null);
       toast("success", `Applied: ${r.created} created · ${r.updated} updated · ${r.unchanged} unchanged`);
@@ -95,7 +95,7 @@ export default function CatalogSyncPage() {
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-4 border-b border-neutral-200 bg-white px-5 py-3">
         <h1 className="text-lg font-semibold">Catalog Sync</h1>
-        <span className="text-sm text-neutral-500">One master spreadsheet for the whole task catalog</span>
+        <span className="text-sm text-neutral-500">One master spreadsheet for the whole mission catalog</span>
       </header>
 
       <div className="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-6">
@@ -103,38 +103,38 @@ export default function CatalogSyncPage() {
 
         {/* what this is */}
         <section className="mb-4 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
-          <p className="font-medium">The master task list for the whole team, in one spreadsheet.</p>
+          <p className="font-medium">The master mission list for the whole team, in one spreadsheet.</p>
           <p className="mt-1 text-blue-800">
-            Download it, edit tasks and rep targets in Excel or Numbers, then upload it back —
+            Download it, edit missions and rep targets in Excel or Numbers, then upload it back —
             CharmQuark shows you exactly what will change before anything is saved. Matching is by{" "}
-            <span className="font-mono">task_code</span>: existing rows update, blank codes create new tasks.
+            <span className="font-mono">mission_code</span>: existing rows update, blank codes create new missions.
           </p>
           <p className="mt-2 text-xs text-blue-700">
-            Not the same as the per-session CSV you get when you accept a scheduled session — that one is for
-            one collection session; this is the whole catalog.
+            Not the same as the per-run CSV you get when you accept a scheduled run — that one is for
+            one collection run; this is the whole catalog.
           </p>
         </section>
 
-        {/* study picker + export */}
+        {/* campaign picker + export */}
         <section className="rounded-xl border border-neutral-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-neutral-800">1 · Export current catalog</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Download every task as a CSV, edit it in a spreadsheet, then re-upload below to upsert.
+            Download every mission as a CSV, edit it in a spreadsheet, then re-upload below to upsert.
           </p>
           <div className="mt-4 flex items-end gap-4">
             <label className="block flex-1">
-              <span className="mb-1 block text-xs font-medium text-neutral-500">Study</span>
+              <span className="mb-1 block text-xs font-medium text-neutral-500">Campaign</span>
               <select
-                value={studyId ?? ""}
+                value={campaignId ?? ""}
                 onChange={(e) => {
-                  setStudyId(e.target.value || null);
+                  setCampaignId(e.target.value || null);
                   setDiff(null);
                   setApplied(null);
                 }}
-                className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                className="cq-select w-full"
               >
-                {studies.length === 0 && <option value="">No studies</option>}
-                {studies.map((s) => (
+                {campaigns.length === 0 && <option value="">No campaigns</option>}
+                {campaigns.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
@@ -143,7 +143,7 @@ export default function CatalogSyncPage() {
             </label>
             <button
               onClick={download}
-              disabled={!studyId || busy}
+              disabled={!campaignId || busy}
               className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
             >
               Download catalog CSV
@@ -155,8 +155,8 @@ export default function CatalogSyncPage() {
         <section className="mt-4 rounded-xl border border-neutral-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-neutral-800">2 · Upload &amp; preview, then apply</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Paste the edited CSV, or choose a file. Keep the <span className="font-mono">task_code</span>{" "}
-            column for existing rows; leave it blank for brand-new tasks. <b>Preview</b> shows the diff;
+            Paste the edited CSV, or choose a file. Keep the <span className="font-mono">mission_code</span>{" "}
+            column for existing rows; leave it blank for brand-new missions. <b>Preview</b> shows the diff;
             nothing is saved until you press <b>Apply</b>.
           </p>
           <div className="mt-3">
@@ -176,21 +176,21 @@ export default function CatalogSyncPage() {
             }}
             rows={8}
             spellCheck={false}
-            placeholder="task_code,group,name,reps_target,reps_actual,risk_level,legal_approval,duration_type,instructions_complete"
+            placeholder="mission_code,group,name,reps_target,reps_actual,risk_level,legal_approval,duration_type,instructions_complete"
             className="mt-3 w-full rounded border border-neutral-300 px-2 py-1.5 font-mono text-xs"
           />
           <div className="mt-3 flex gap-2">
             <button
               onClick={preview}
-              disabled={!studyId || !csvText.trim() || busy}
-              className="flex-1 rounded-md bg-teal-600 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
+              disabled={!campaignId || !csvText.trim() || busy}
+              className="flex-1 rounded-md bg-[color:var(--cq-iris)] py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
             >
               {busy ? "Working…" : "Preview changes"}
             </button>
             <button
               onClick={apply}
               disabled={!canApply || busy}
-              className="flex-1 rounded-md bg-neutral-900 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
+              className="flex-1 cq-btn-primary rounded-lg py-2 text-sm font-medium disabled:cursor-not-allowed"
             >
               Apply
             </button>
@@ -220,7 +220,7 @@ export default function CatalogSyncPage() {
 
             {diff.creates.length > 0 && (
               <div className="rounded-xl border border-neutral-200 bg-white p-4">
-                <h3 className="text-sm font-semibold text-neutral-800">New tasks</h3>
+                <h3 className="text-sm font-semibold text-neutral-800">New missions</h3>
                 <table className="mt-2 w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-neutral-400">
@@ -232,7 +232,7 @@ export default function CatalogSyncPage() {
                   <tbody className="divide-y divide-neutral-100">
                     {diff.creates.map((c, i) => (
                       <tr key={i}>
-                        <td className="py-1.5 font-mono text-neutral-500">{c.task_code}</td>
+                        <td className="py-1.5 font-mono text-neutral-500">{c.mission_code}</td>
                         <td className="py-1.5 text-neutral-800">{c.name}</td>
                         <td className="py-1.5 text-neutral-500">{c.group || "—"}</td>
                       </tr>
@@ -244,11 +244,11 @@ export default function CatalogSyncPage() {
 
             {diff.updates.length > 0 && (
               <div className="rounded-xl border border-neutral-200 bg-white p-4">
-                <h3 className="text-sm font-semibold text-neutral-800">Updated tasks</h3>
+                <h3 className="text-sm font-semibold text-neutral-800">Updated missions</h3>
                 <ul className="mt-2 divide-y divide-neutral-100">
                   {diff.updates.map((u) => (
-                    <li key={u.task_code} className="py-2">
-                      <span className="font-mono text-sm text-neutral-500">{u.task_code}</span>
+                    <li key={u.mission_code} className="py-2">
+                      <span className="font-mono text-sm text-neutral-500">{u.mission_code}</span>
                       <div className="mt-1 flex flex-wrap gap-2">
                         {Object.entries(u.changes).map(([field, ch]) => (
                           <span
@@ -291,7 +291,7 @@ function Stat({ label, n, tone }: { label: string; n: number; tone: "green" | "b
   }[tone];
   return (
     <div className={`flex-1 rounded-xl px-4 py-3 ${cls}`}>
-      <div className="text-2xl font-semibold">{n}</div>
+      <div className="cq-display text-2xl font-semibold">{n}</div>
       <div className="text-xs">{label}</div>
     </div>
   );

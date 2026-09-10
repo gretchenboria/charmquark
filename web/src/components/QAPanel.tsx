@@ -14,28 +14,28 @@ const verdictColor: Record<string, string> = {
   FLAGGED: "text-red-700 bg-red-100",
 };
 
-/** QA panel for a session: gates + check items with per-item result; verdicts roll up live. */
-export function QAPanel({ sessionId, canWrite }: { sessionId: string; canWrite: boolean }) {
+/** QA panel for a run: gates + check items with per-item result; verdicts roll up live. */
+export function QAPanel({ runId, canWrite }: { runId: string; canWrite: boolean }) {
   const toast = useToast();
   const [run, setRun] = useState<QARun | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      setRun(await api.getQA(sessionId));
+      setRun(await api.getQA(runId));
     } catch (e) {
       if (e instanceof ApiError && e.status === 404) setRun(null);
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [runId]);
   useEffect(() => {
     load();
   }, [load]);
 
   const start = async () => {
     try {
-      setRun(await api.createQA(sessionId));
+      setRun(await api.createQA(runId));
     } catch (e) {
       toast("error", e instanceof ApiError ? e.friendly : "Could not start QA");
     }
@@ -43,7 +43,7 @@ export function QAPanel({ sessionId, canWrite }: { sessionId: string; canWrite: 
 
   const setResult = async (gi: number, ci: number, result: string) => {
     try {
-      setRun(await api.updateQACheck(sessionId, gi, ci, result));
+      setRun(await api.updateQACheck(runId, gi, ci, result));
     } catch (e) {
       toast("error", e instanceof ApiError ? e.friendly : "Update failed");
     }

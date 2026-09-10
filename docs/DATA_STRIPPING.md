@@ -15,13 +15,13 @@ Hono/D1 in the process.
 
 | Removed | Replaced with |
 |---|---|
-| Real programme codenames (three internal project names used as `StudyType`) | `PERCEPTION` / `MANIPULATION` / `NAVIGATION` |
+| Real programme codenames (three internal project names used as the campaign type) | `PERCEPTION` / `MANIPULATION` / `NAVIGATION` |
 | Recorded session CSVs (`backend/CSV_SYNC/*`) — real participant codes, task names, locations, device names | Nothing; run sheets are generated on demand into R2 |
 | The predecessor's study data (task catalogue, sessions, participants) | A fictional seed: `db/seed/0001_dummy.sql` |
 | Human research subjects (`participants` — name, email, consent state, booking) | `robots` — a fleet asset, no personal data at all |
 | Apartment locations | `labs` |
-| Vendor design tokens (a named corporate brand palette, `Docs/Apple_Design_Tokens.md`) | `web/src/lib/palette.ts` — an original CharmQuark palette |
-| Vendor logo and wordmark assets | Original CharmQuark mark (`web/public/charmquark-*.svg`) |
+| Vendor design tokens (a named corporate brand palette, `Docs/Apple_Design_Tokens.md`) | A palette sampled from the CharmQuark mark — see [BRAND.md](BRAND.md) |
+| Vendor logo and wordmark assets | The CharmQuark mark, wordmark and favicon (`web/public/charmquark-*.svg`) |
 | Vendor SSO references (`AppleConnect`/DSID identity seam) | A neutral header shim in `api/src/auth.ts`, ready for Cloudflare Access |
 | Vendor-specific comments throughout the component library | Neutral descriptions |
 | A cooking-domain hazard lexicon in the risk calculator | A robot-operations hazard lexicon (voltage, pinch points, suspended loads, teleop…) |
@@ -50,3 +50,16 @@ grep -oE "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+" db/seed/*.sql | sort -u
 Both should return only `.invalid` addresses and no matches respectively.
 The end-to-end suite also asserts the rendered UI contains none of the legacy
 vocabulary.
+
+## Vocabulary
+
+The predecessor's research vocabulary is gone from the code as well as the data.
+`Study`/`Task`/`Session`/`Device`/`DeviceFleet` are now
+`Campaign`/`Mission`/`Run`/`Sensor`/`SensorRig` — see
+[ROADMAP.md](ROADMAP.md#the-naming-decision--made-and-applied) for the reasoning.
+
+```bash
+# no research-era object names should remain
+grep -rnE "\b(Study|Session|TaskGroup|DeviceFleet)\b" web/src api/src db \
+  --include="*.ts" --include="*.tsx" --include="*.sql"
+```

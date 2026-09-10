@@ -36,11 +36,11 @@ export function mountDev(app: App): void {
     assertSeedable(c.env);
     await reseed(c.env);
     const confirmed = await c.env.DB
-      .prepare(`SELECT COUNT(*) AS n FROM sessions WHERE state = 'CONFIRMED'`).first<Row>();
-    const study = await c.env.DB.prepare(`SELECT id FROM studies LIMIT 1`).first<Row>();
+      .prepare(`SELECT COUNT(*) AS n FROM runs WHERE state = 'CONFIRMED'`).first<Row>();
+    const campaign = await c.env.DB.prepare(`SELECT id FROM campaigns LIMIT 1`).first<Row>();
     return c.json({
-      study_id: study ? String(study["id"]) : null,
-      tasks: SEED_SUMMARY.tasks,
+      campaign_id: campaign ? String(campaign["id"]) : null,
+      missions: SEED_SUMMARY.missions,
       robots: SEED_SUMMARY.robots,
       standby: SEED_SUMMARY.standby,
       confirmed_sessions: Number(confirmed?.["n"] ?? 0),
@@ -48,15 +48,15 @@ export function mountDev(app: App): void {
   });
 
   /**
-   * The "load sample program" button. Same dataset; returns a session so the UI
+   * The "load sample program" button. Same dataset; returns a run so the UI
    * can jump straight into something worth looking at.
    */
   app.post("/dev/seed/sample", async (c) => {
     assertSeedable(c.env);
     await reseed(c.env);
     const row = await c.env.DB
-      .prepare(`SELECT * FROM sessions WHERE state = 'READY' ORDER BY slot_date LIMIT 1`).first<Row>();
-    const any = row ?? await c.env.DB.prepare(`SELECT * FROM sessions LIMIT 1`).first<Row>();
-    return c.json(any ? S.session(any) : null);
+      .prepare(`SELECT * FROM runs WHERE state = 'READY' ORDER BY slot_date LIMIT 1`).first<Row>();
+    const any = row ?? await c.env.DB.prepare(`SELECT * FROM runs LIMIT 1`).first<Row>();
+    return c.json(any ? S.run(any) : null);
   });
 }

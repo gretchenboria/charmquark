@@ -1,13 +1,13 @@
 "use client";
 
-// Variants & errors editor for a task. Each variant expands to execution codes T#V#E#
+// Variants & errors editor for a mission. Each variant expands to execution codes T#V#E#
 // (E0 = correct, E1.. = the planned errors). A rep target can be set per code (optional);
-// the task's overall reps_target still stands as the aggregate goal. Saving writes the whole
-// variants array back via updateTask; the same array feeds the Execute picker and auto-schedule.
+// the mission's overall reps_target still stands as the aggregate goal. Saving writes the whole
+// variants array back via updateMission; the same array feeds the Execute picker and auto-schedule.
 import { useState } from "react";
 
 import { api, ApiError } from "@/lib/api";
-import type { TaskDetail } from "@/lib/types";
+import type { MissionDetail } from "@/lib/types";
 import { useToast } from "@/components/Toast";
 
 interface EditError {
@@ -25,9 +25,9 @@ interface EditVariant {
 const newId = (): string =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `id-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
 
-// task.variants (persisted JSON) -> editable rows.
-function toEditable(task: TaskDetail): EditVariant[] {
-  return (task.variants ?? []).map((v, vi) => {
+// mission.variants (persisted JSON) -> editable rows.
+function toEditable(mission: MissionDetail): EditVariant[] {
+  return (mission.variants ?? []).map((v, vi) => {
     const raw = v as { id?: string; name?: string; correct?: { reps?: number }; errors?: { id?: string; label?: string; errorClass?: string | null; reps?: number }[] };
     return {
       id: raw.id ?? newId(),
@@ -53,14 +53,14 @@ function toVariants(rows: EditVariant[]) {
   }));
 }
 
-export function VariantsEditor({ task, canEdit, onSaved }: { task: TaskDetail; canEdit: boolean; onSaved: () => void }) {
+export function VariantsEditor({ mission, canEdit, onSaved }: { mission: MissionDetail; canEdit: boolean; onSaved: () => void }) {
   const toast = useToast();
   const [editing, setEditing] = useState(false);
-  const [rows, setRows] = useState<EditVariant[]>(() => toEditable(task));
+  const [rows, setRows] = useState<EditVariant[]>(() => toEditable(mission));
   const [saving, setSaving] = useState(false);
 
   const begin = () => {
-    setRows(toEditable(task));
+    setRows(toEditable(mission));
     setEditing(true);
   };
   const cancel = () => setEditing(false);
@@ -80,7 +80,7 @@ export function VariantsEditor({ task, canEdit, onSaved }: { task: TaskDetail; c
   const save = async () => {
     setSaving(true);
     try {
-      await api.updateTask(task.id, { variants: toVariants(rows) });
+      await api.updateMission(mission.id, { variants: toVariants(rows) });
       toast("success", "Variants saved");
       setEditing(false);
       onSaved();
@@ -95,7 +95,7 @@ export function VariantsEditor({ task, canEdit, onSaved }: { task: TaskDetail; c
 
   // ---- read-only view ----
   if (!editing) {
-    const opts = task.variant_options ?? [];
+    const opts = mission.variant_options ?? [];
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -154,7 +154,7 @@ export function VariantsEditor({ task, canEdit, onSaved }: { task: TaskDetail; c
           {/* E0 correct + its optional reps */}
           <div className="mt-2 flex items-center gap-2 text-sm">
             <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-700">
-              {task.task_code}V{vi + 1}E0
+              {mission.mission_code}V{vi + 1}E0
             </span>
             <span className="text-neutral-600">Correct (no error)</span>
             <input
@@ -172,7 +172,7 @@ export function VariantsEditor({ task, canEdit, onSaved }: { task: TaskDetail; c
             {v.errors.map((er, ei) => (
               <div key={er.id} className="flex items-center gap-2">
                 <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs text-neutral-700">
-                  {task.task_code}V{vi + 1}E{ei + 1}
+                  {mission.mission_code}V{vi + 1}E{ei + 1}
                 </span>
                 <input
                   className={`${inputCls} flex-1`}
@@ -205,13 +205,13 @@ export function VariantsEditor({ task, canEdit, onSaved }: { task: TaskDetail; c
       </button>
 
       <div className="flex items-center gap-2 border-t border-neutral-200 pt-3">
-        <button onClick={save} disabled={saving} className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+        <button onClick={save} disabled={saving} className="rounded-md bg-[color:var(--cq-iris)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
           {saving ? "Saving…" : "Save variants"}
         </button>
         <button onClick={cancel} className="rounded-md px-3 py-2 text-sm text-neutral-500 hover:bg-neutral-50">
           Cancel
         </button>
-        <span className="ml-auto text-xs text-neutral-400">Reps here are optional per-code targets; the task Reps target is the overall goal.</span>
+        <span className="ml-auto text-xs text-neutral-400">Reps here are optional per-code targets; the mission Reps target is the overall goal.</span>
       </div>
     </div>
   );

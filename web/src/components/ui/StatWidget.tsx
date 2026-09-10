@@ -21,15 +21,15 @@ export function StatWidget({
   href?: string;
 }) {
   const body = (
-    <div className="h-full rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-colors hover:border-neutral-300">
-      <div className="text-xs font-medium text-neutral-500">{label}</div>
+    <div className="cq-card h-full p-4 transition-shadow hover:shadow-[var(--cq-shadow-lift)]">
+      <div className="text-xs font-medium text-[color:var(--cq-ink-soft)]">{label}</div>
       <div className="mt-1.5 flex items-baseline gap-1.5">
-        <span className="text-3xl font-semibold leading-none tabular-nums" style={{ color: accent }}>
+        <span className="cq-display text-3xl font-semibold leading-none tabular-nums" style={{ color: accent }}>
           {value}
         </span>
-        {among && <span className="text-sm text-neutral-400 tabular-nums">{among}</span>}
+        {among && <span className="text-sm text-[color:var(--cq-ink-faint)] tabular-nums">{among}</span>}
       </div>
-      {sub && <div className="mt-1.5 text-xs text-neutral-400">{sub}</div>}
+      {sub && <div className="mt-1.5 text-xs text-[color:var(--cq-ink-faint)]">{sub}</div>}
     </div>
   );
   if (href) {

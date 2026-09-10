@@ -1,6 +1,6 @@
 "use client";
 
-// Vault files attached to a session (recordings, documents). Upload reads the file in the
+// Vault files attached to a run (recordings, documents). Upload reads the file in the
 // browser and sends it base64-encoded; storage is handled by the backend object store
 // (local filesystem until R2 object storage is wired up). List / download / delete included.
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -28,7 +28,7 @@ function humanSize(n?: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function SessionFiles({ sessionId, canEdit }: { sessionId: string; canEdit: boolean }) {
+export function RunFiles({ runId, canEdit }: { runId: string; canEdit: boolean }) {
   const toast = useToast();
   const [docs, setDocs] = useState<CharmQuarkDocument[]>([]);
   const [busy, setBusy] = useState(false);
@@ -36,10 +36,10 @@ export function SessionFiles({ sessionId, canEdit }: { sessionId: string; canEdi
 
   const load = useCallback(() => {
     api
-      .listDocuments({ linked_entity_type: "session", linked_entity_id: sessionId })
+      .listDocuments({ linked_entity_type: "run", linked_entity_id: runId })
       .then(setDocs)
       .catch(() => setDocs([]));
-  }, [sessionId]);
+  }, [runId]);
   useEffect(load, [load]);
 
   const onFile = async (file: File | null) => {
@@ -52,8 +52,8 @@ export function SessionFiles({ sessionId, canEdit }: { sessionId: string; canEdi
         content_b64,
         mime_type: file.type || "application/octet-stream",
         vault_category: file.type.startsWith("video") ? "MEDIA" : "OTHER",
-        linked_entity_type: "session",
-        linked_entity_id: sessionId,
+        linked_entity_type: "run",
+        linked_entity_id: runId,
       });
       toast("success", `Uploaded ${file.name}`);
       load();
@@ -90,7 +90,7 @@ export function SessionFiles({ sessionId, canEdit }: { sessionId: string; canEdi
         </div>
       )}
       {docs.length === 0 ? (
-        <p className="text-sm text-neutral-400">No files attached to this session yet.</p>
+        <p className="text-sm text-neutral-400">No files attached to this run yet.</p>
       ) : (
         <ul className="divide-y divide-neutral-100">
           {docs.map((d) => (

@@ -1,71 +1,71 @@
 "use client";
 
 import { useState } from "react";
-import type { Task, TaskGroup } from "@/lib/types";
+import type { Mission, MissionGroup } from "@/lib/types";
 
-/** Choose the session's task scope: a whole Task Group (default) OR individual task(s).
- *  Mirrors the design requirement — group preferred, single-task supported. */
-export function TaskScopePicker({
+/** Choose the run's mission scope: a whole Mission Group (default) OR individual mission(s).
+ *  Mirrors the design requirement — group preferred, single-mission supported. */
+export function MissionScopePicker({
   groups,
-  tasks,
+  missions,
   currentScope,
   currentGroupId,
-  currentTaskIds,
+  currentMissionIds,
   onApply,
   onClose,
 }: {
-  groups: TaskGroup[];
-  tasks: Task[];
+  groups: MissionGroup[];
+  missions: Mission[];
   currentScope: "GROUP" | "SINGLE";
   currentGroupId: string | null;
-  currentTaskIds: string[];
-  onApply: (patch: { task_scope: "GROUP"; task_group_id: string } | { task_scope: "SINGLE"; task_ids: string[] }) => void;
+  currentMissionIds: string[];
+  onApply: (patch: { mission_scope: "GROUP"; mission_group_id: string } | { mission_scope: "SINGLE"; mission_ids: string[] }) => void;
   onClose: () => void;
 }) {
   const [scope, setScope] = useState<"GROUP" | "SINGLE">(currentScope);
   const [groupId, setGroupId] = useState<string | null>(currentGroupId ?? groups[0]?.id ?? null);
-  const [taskIds, setTaskIds] = useState<string[]>(currentTaskIds ?? []);
+  const [missionIds, setMissionIds] = useState<string[]>(currentMissionIds ?? []);
 
-  const toggleTask = (id: string) =>
-    setTaskIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const toggleMission = (id: string) =>
+    setMissionIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
-  // Plain-language reason a task isn't schedulable yet (mirrors the backend is_ready rule:
+  // Plain-language reason a mission isn't schedulable yet (mirrors the backend is_ready rule:
   // instructions complete AND risk cleared AND variants defined).
-  const notReadyReason = (t: Task): string => {
+  const notReadyReason = (t: Mission): string => {
     if (!t.instructions_complete) return "instructions incomplete";
     if (t.risk_level !== "LOW" && t.legal_approval !== "APPROVED") return "needs legal clearance";
     return "no variants defined";
   };
-  // Ready tasks float to the top so eligibility reads at a glance.
-  const sortedTasks = [...tasks].sort((a, b) => Number(b.is_ready) - Number(a.is_ready));
+  // Ready missions float to the top so eligibility reads at a glance.
+  const sortedMissions = [...missions].sort((a, b) => Number(b.is_ready) - Number(a.is_ready));
 
-  const canApply = scope === "GROUP" ? !!groupId : taskIds.length > 0;
+  const canApply = scope === "GROUP" ? !!groupId : missionIds.length > 0;
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col rounded-lg border border-neutral-200 bg-white shadow-lg">
       <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
-        <span className="text-sm font-semibold">Set tasks</span>
+        <span className="text-sm font-semibold">Set missions</span>
         <button onClick={onClose} className="text-neutral-400 hover:text-neutral-700">✕</button>
       </div>
 
       <div className="border-b border-neutral-100 px-3 py-2">
         <label className="mr-4 text-sm">
           <input type="radio" checked={scope === "GROUP"} onChange={() => setScope("GROUP")} className="mr-1.5" />
-          Whole task group
+          Whole mission group
         </label>
         <label className="text-sm">
           <input type="radio" checked={scope === "SINGLE"} onChange={() => setScope("SINGLE")} className="mr-1.5" />
-          Individual task(s)
+          Individual mission(s)
         </label>
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
         {scope === "GROUP" ? (
           groups.length === 0 ? (
-            <p className="px-1 py-2 text-xs text-neutral-400">No task groups.</p>
+            <p className="px-1 py-2 text-xs text-neutral-400">No mission groups.</p>
           ) : (
             groups.map((g) => {
-              const inGroup = tasks.filter((t) => t.task_group_id === g.id);
+              const inGroup = missions.filter((t) => t.mission_group_id === g.id);
               const ready = inGroup.filter((t) => t.is_ready).length;
               const allReady = inGroup.length > 0 && ready === inGroup.length;
               return (
@@ -85,10 +85,10 @@ export function TaskScopePicker({
               );
             })
           )
-        ) : tasks.length === 0 ? (
-          <p className="px-1 py-2 text-xs text-neutral-400">No tasks.</p>
+        ) : missions.length === 0 ? (
+          <p className="px-1 py-2 text-xs text-neutral-400">No missions.</p>
         ) : (
-          sortedTasks.map((t) => (
+          sortedMissions.map((t) => (
             <label
               key={t.id}
               className={`flex items-center gap-2 rounded px-2 py-1.5 text-sm ${
@@ -96,9 +96,9 @@ export function TaskScopePicker({
               }`}
               title={t.is_ready ? "Ready to schedule" : notReadyReason(t)}
             >
-              <input type="checkbox" checked={taskIds.includes(t.id)} onChange={() => toggleTask(t.id)} className="h-4 w-4" />
+              <input type="checkbox" checked={missionIds.includes(t.id)} onChange={() => toggleMission(t.id)} className="h-4 w-4" />
               <span className={`flex-1 ${t.is_ready ? "text-green-700" : "text-neutral-400"}`}>
-                {t.task_code} · {t.name}
+                {t.mission_code} · {t.name}
               </span>
               <span className={`text-[11px] ${t.is_ready ? "text-green-600" : "text-red-500"}`}>
                 {t.is_ready ? "ready" : notReadyReason(t)}
@@ -114,10 +114,10 @@ export function TaskScopePicker({
           disabled={!canApply}
           onClick={() =>
             scope === "GROUP"
-              ? onApply({ task_scope: "GROUP", task_group_id: groupId as string })
-              : onApply({ task_scope: "SINGLE", task_ids: taskIds })
+              ? onApply({ mission_scope: "GROUP", mission_group_id: groupId as string })
+              : onApply({ mission_scope: "SINGLE", mission_ids: missionIds })
           }
-          className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-40"
+          className="cq-btn-primary rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-40"
         >
           Apply
         </button>

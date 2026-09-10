@@ -48,8 +48,8 @@ export default function LabsPage() {
           ],
           default: "LAB_BAY",
         },
-        { name: "capacity", label: "Capacity (sessions/day)", type: "number", default: 4 },
-        { name: "code_number", label: "Code # (for session code)", type: "number", default: 1 },
+        { name: "capacity", label: "Capacity (runs/day)", type: "number", default: 4 },
+        { name: "code_number", label: "Code # (for run code)", type: "number", default: 1 },
       ]}
       onCreate={(v) => api.createLab(v)}
       onDone={load}
@@ -92,7 +92,7 @@ export default function LabsPage() {
       ]}
       toRow={(l) => ({
         name: (
-          <Link href={`/labs/${l.id}`} className="text-blue-700 hover:underline">
+          <Link href={`/labs/${l.id}`} className="font-medium text-[color:var(--cq-iris)] hover:underline">
             {l.name}
           </Link>
         ),

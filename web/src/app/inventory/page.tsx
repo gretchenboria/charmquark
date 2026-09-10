@@ -6,7 +6,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
-import type { InventoryItem, Study } from "@/lib/types";
+import type { InventoryItem, Campaign } from "@/lib/types";
 import { ListPage, type Column } from "@/components/ListPage";
 import { NewButton } from "@/components/NewButton";
 
@@ -19,8 +19,8 @@ const columns: Column[] = [
 
 export default function InventoryPage() {
   const user = useUser();
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [studyId, setStudyId] = useState<string | null>(null);
+  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   const [rows, setRows] = useState<InventoryItem[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [kindFilter, setKindFilter] = useState("");
@@ -31,24 +31,24 @@ export default function InventoryPage() {
       .listStudies()
       .then((s) => {
         setStudies(s);
-        if (s.length > 0) setStudyId(s[0].id);
+        if (s.length > 0) setCampaignId(s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));
   }, []);
 
   const load = useCallback(() => {
-    if (studyId) api.listInventoryItems(studyId).then(setRows).catch(() => setErr("Failed to load inventory."));
-  }, [studyId]);
+    if (campaignId) api.listInventoryItems(campaignId).then(setRows).catch(() => setErr("Failed to load inventory."));
+  }, [campaignId]);
   useEffect(load, [load]);
 
   const studyPicker = (
     <select
-      value={studyId ?? ""}
-      onChange={(e) => setStudyId(e.target.value || null)}
-      className="rounded border border-neutral-300 px-2 py-1 text-sm"
+      value={campaignId ?? ""}
+      onChange={(e) => setCampaignId(e.target.value || null)}
+      className="cq-select"
     >
-      {studies.length === 0 && <option value="">No studies</option>}
-      {studies.map((s) => (
+      {campaigns.length === 0 && <option value="">No campaigns</option>}
+      {campaigns.map((s) => (
         <option key={s.id} value={s.id}>
           {s.name}
         </option>
@@ -60,7 +60,7 @@ export default function InventoryPage() {
     <>
       {studyPicker}
       <NewButton
-        hidden={!(canWriteCatalog(user?.role) && !!studyId)}
+        hidden={!(canWriteCatalog(user?.role) && !!campaignId)}
         label="New item"
         title="New inventory item"
         fields={[
@@ -90,7 +90,7 @@ export default function InventoryPage() {
             default: "NEEDED",
           },
         ]}
-        onCreate={(v) => api.createInventoryItem({ study_id: studyId, ...v })}
+        onCreate={(v) => api.createInventoryItem({ campaign_id: campaignId, ...v })}
         onDone={load}
       />
     </>
@@ -133,7 +133,7 @@ export default function InventoryPage() {
       ]}
       toRow={(i) => ({
         name: (
-          <Link href={`/inventory/${i.id}`} className="text-blue-700 hover:underline">
+          <Link href={`/inventory/${i.id}`} className="font-medium text-[color:var(--cq-iris)] hover:underline">
             {i.name}
           </Link>
         ),
@@ -141,7 +141,7 @@ export default function InventoryPage() {
         status: i.status,
         available: i.is_available ? "Available" : "Not available",
       })}
-      empty={err ?? "No inventory for this study."}
+      empty={err ?? "No inventory for this campaign."}
     />
   );
 }

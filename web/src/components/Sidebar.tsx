@@ -13,14 +13,14 @@ import type { CloudStatus } from "@/lib/types";
 import {
   IconCalendar,
   IconDashboard,
-  IconDevice,
+  IconSensor,
   IconInventory,
   IconLab,
   IconOperator,
   IconRobot,
   IconReport,
-  IconStudy,
-  IconTask,
+  IconCampaign,
+  IconMission,
   IconWorkflow,
 } from "./icons";
 
@@ -63,9 +63,11 @@ function CloudIndicator() {
       : "Local SQLite";
 
   return (
-    <div className="mb-2 flex items-center gap-2 text-[11px] text-neutral-500" title={status?.detail ?? ""}>
+    <div className="mb-2 flex items-center gap-2 text-[11px] text-white/45" title={status?.detail ?? ""}>
       <span
-        className={`h-2 w-2 shrink-0 rounded-full ${reachable ? "bg-green-500" : "bg-red-500"}`}
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ background: reachable ? "#4E9E71" : "#D4536B",
+                 boxShadow: reachable ? "0 0 7px 1px rgba(78,158,113,.6)" : "0 0 7px 1px rgba(212,83,107,.6)" }}
         aria-hidden
       />
       <span className="truncate">{label}</span>
@@ -93,8 +95,8 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
   {
     title: "Catalog",
     items: [
-      { href: "/studies", label: "Studies", icon: IconStudy },
-      { href: "/tasks", label: "Tasks", icon: IconTask },
+      { href: "/campaigns", label: "Campaigns", icon: IconCampaign },
+      { href: "/missions", label: "Missions", icon: IconMission },
       { href: "/catalog-sync", label: "Catalog Sync", icon: IconWorkflow },
       { href: "/inventory", label: "Inventory", icon: IconInventory },
     ],
@@ -105,7 +107,7 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
       { href: "/robots", label: "Robots", icon: IconRobot },
       { href: "/operators", label: "Operators", icon: IconOperator },
       { href: "/labs", label: "Labs", icon: IconLab },
-      { href: "/devices", label: "Devices", icon: IconDevice },
+      { href: "/sensors", label: "Sensors", icon: IconSensor },
     ],
   },
   {
@@ -128,18 +130,15 @@ export function Sidebar() {
   })).filter((section) => section.items.length > 0);
 
   return (
-    <nav className="flex w-56 shrink-0 flex-col border-r border-neutral-200 bg-white">
-      <div className="flex items-center gap-2 border-b border-neutral-100 px-4 py-3.5">
-        <Image src="/charmquark-wordmark.svg" alt="CharmQuark" width={82} height={30} priority />
-        <span className="ml-auto text-[10px] font-medium uppercase tracking-wide text-neutral-400">DataOps</span>
+    <nav className="cq-rail flex w-56 shrink-0 flex-col">
+      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-4">
+        <Image src="/charmquark-wordmark-light.svg" alt="CharmQuark" width={116} height={25} priority />
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">
         {sections.map((section) => (
           <div key={section.title} className="mb-3">
-            <div className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-              {section.title}
-            </div>
+            <div className="cq-eyebrow px-4 pb-1.5 text-white/35">{section.title}</div>
             {section.items.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;
@@ -147,13 +146,10 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2.5 px-4 py-1.5 text-sm ${
-                    active
-                      ? "border-l-2 border-neutral-900 bg-neutral-100 font-medium text-neutral-900"
-                      : "border-l-2 border-transparent text-neutral-600 hover:bg-neutral-50"
-                  }`}
+                  data-active={active}
+                  className="cq-rail-link relative mx-2 flex items-center gap-2.5 px-3 py-1.5 text-sm"
                 >
-                  <Icon className={active ? "text-neutral-900" : "text-neutral-400"} />
+                  <Icon className={active ? "text-white" : "text-white/45"} />
                   {item.label}
                 </Link>
               );
@@ -163,28 +159,29 @@ export function Sidebar() {
       </div>
 
       {/* connectivity + logged-in user + logout */}
-      <div className="border-t border-neutral-100 p-3">
+      <div className="border-t border-white/10 p-3">
         <CloudIndicator />
         {user && (
           <>
             <div className="mb-2 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-900 text-xs font-semibold text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white ring-1 ring-white/20"
+                   style={{ background: "linear-gradient(135deg,#6D28A8,#3576C2)" }}>
                 {user.name.split(" ").map((p) => p[0]).join("")}
               </div>
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-neutral-800">{user.name}</div>
-                <div className="text-[11px] text-neutral-500">{ROLE_LABEL[user.role]}</div>
+                <div className="truncate text-sm font-medium text-white/90">{user.name}</div>
+                <div className="text-[11px] text-white/45">{ROLE_LABEL[user.role]}</div>
               </div>
             </div>
             <button
               onClick={clearUser}
-              className="w-full rounded border border-neutral-200 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50"
+              className="w-full rounded-lg border border-white/15 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             >
               Log out
             </button>
             <button
               onClick={() => resetOnboarded(user)}
-              className="mt-1.5 w-full text-center text-[11px] text-neutral-400 hover:text-neutral-600"
+              className="mt-1.5 w-full text-center text-[11px] text-white/35 transition-colors hover:text-white/70"
             >
               Show intro
             </button>

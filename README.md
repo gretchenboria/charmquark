@@ -2,13 +2,13 @@
 
 Fleet orchestration and physical-AI resource management for robot operations.
 
-CharmQuark plans and runs **data-collection sessions** for a robot fleet: which
+CharmQuark plans and runs **data-collection runs** for a robot fleet: which
 robot, in which lab, with which sensor rig, driven by which operator, running
-which tasks — and whether every gate is green before anyone presses record.
+which missions — and whether every gate is green before anyone presses record.
 
 It merges two predecessor systems: a research data-collection orchestrator (the
 scheduling canvas, readiness engine, auto-scheduler and QA pipeline) and a lab
-operations toolkit (device fleet, operator roster, maintenance, inventory).
+operations toolkit (sensor inventory, operator roster, maintenance, stock).
 
 ---
 
@@ -72,23 +72,23 @@ cd web && npm run cf:preview   # builds with OpenNext, serves via wrangler dev
 
 | Entity | What it is |
 |---|---|
-| **Study** | A fleet program — a body of data to collect (e.g. *Warehouse Perception Baseline*). |
-| **Task group / Task** | One thing to capture, with variants and injected-error scenarios. |
-| **Robot** | The fleet asset a session collects data from. Carries the mission clearance gates. |
-| **Operator** | The human running the session. |
-| **Lab** | Where a session happens. Has a daily capacity and blackout days. |
-| **Device / Device fleet** | Sensor payloads (LiDAR, stereo, IMU, RTK, thermal, F/T…) and the rigs they form. |
-| **Session** | One lab slot: one robot + one operator + one rig running a set of tasks. |
-| **QA pipeline run** | The gated review of what a session captured. |
+| **Campaign** | A body of data to collect (e.g. *Warehouse Perception Baseline*). |
+| **Mission group / Mission** | One thing to capture, with variants and injected-error scenarios. |
+| **Run** | One lab slot: one robot + one operator + one sensor rig executing a set of missions. |
+| **Robot** | The fleet asset a run collects data from. Carries the mission clearance gates. |
+| **Operator** | The human running the run. |
+| **Lab** | Where a run happens. Has a daily capacity and blackout days. |
+| **Sensor / Sensor rig** | The payloads (LiDAR, stereo, IMU, RTK, thermal, F/T…) and the rigs they form. |
+| **QA pipeline run** | The gated review of what a run captured. |
 
 ### The two rules that drive everything
 
-**Effort budget.** A session holds **4 effort units**: `1 LONG = 2 MEDIUM = 4 SHORT`
-(about an hour). A valid session needs at least 2 units. The auto-scheduler packs
+**Effort budget.** A run holds **4 effort units**: `1 LONG = 2 MEDIUM = 4 SHORT`
+(about an hour). A valid run needs at least 2 units. The auto-scheduler packs
 against this; readiness enforces it.
 
-**Readiness.** A session may only be confirmed with **zero** readiness issues.
-Issues come from every member — tasks (instructions, risk clearance, variants,
+**Readiness.** A run may only be confirmed with **zero** readiness issues.
+Issues come from every member — missions (instructions, risk clearance, variants,
 inventory), robot (safety certification, calibration, commissioning), operator
 (active, not double-booked), lab (available, not blacked out, under capacity)
 and sensor fleet (all devices operational). The logic is pure and lives in
@@ -102,9 +102,9 @@ propose → accept → run sheet (CSV) → collect → upload → reps reconcile
    └──────────────── next proposal picks up the gap ──────────┘
 ```
 
-`POST /api/session-proposals` packs a session; accepting emits a CSV run sheet
+`POST /api/run-proposals` packs a run; accepting emits a CSV run sheet
 (one row per planned repetition) into R2; uploading the completed sheet advances
-each task's repetition count and returns anything the operator dropped back to
+each mission's repetition count and returns anything the operator dropped back to
 `AVAILABLE`.
 
 ---
@@ -139,12 +139,12 @@ The seed is a **fictional** dataset, safe to demo and safe to throw away.
 
 1. `POST /api/dev/seed/demo` (or the *Load sample program* button) resets to it.
 2. Replace it with real fleet data via the UI or the API: create labs, robots,
-   operators, devices and sensor fleets, then a study and its task catalog.
+   operators, devices and sensor fleets, then a campaign and its mission catalog.
 3. Set `ENVIRONMENT=production` — this disables the seed endpoints so nobody can
    wipe a live database.
 
 Real work starts at **Robots** and **Labs**; the scheduling board fills itself
-once tasks are approved and a robot is cleared.
+once missions are approved and a robot is cleared.
 
 ---
 
@@ -155,7 +155,8 @@ for full multisensor-fusion fleet orchestration: sensor rigs and extrinsics,
 calibration and time-sync as first-class gates, telemetry ingest, MCAP artifacts
 and dataset lineage, duty-cycle maintenance, and a per-robot Durable Object model.
 It goes well beyond what is implemented here — treat it as the roadmap. See
-[docs/ROADMAP.md](docs/ROADMAP.md) for what is built versus what is specified.
+[docs/ROADMAP.md](docs/ROADMAP.md) for what is built versus what is specified, and
+[docs/BRAND.md](docs/BRAND.md) for the design system.
 
 ## Testing
 

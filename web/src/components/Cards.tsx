@@ -38,7 +38,7 @@ export function Panel({ title, right, children }: { title: string; right?: React
 }
 
 /** Progress bar (rounded). */
-export function Progress({ pct, color = CQ.green }: { pct: number; color?: string }) {
+export function Progress({ pct, color = CQ.sage }: { pct: number; color?: string }) {
   const p = Math.max(0, Math.min(100, pct));
   return (
     <div className="h-2.5 w-full overflow-hidden rounded-full bg-neutral-100">

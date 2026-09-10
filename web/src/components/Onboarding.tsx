@@ -45,9 +45,9 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
     title: `Welcome to CharmQuark, ${user.name.split(" ")[0]}`,
     body: (
       <p className="text-sm text-neutral-600">
-        CharmQuark schedules ML data-collection sessions. Each session is an assembly —
-        robot, robot operator, lab, tasks and device fleet — and every part must be
-        <b> validated as ready</b> before a session can go on the calendar.
+        CharmQuark schedules ML data-collection runs. Each run is an assembly —
+        robot, robot operator, lab, missions and sensor rig — and every part must be
+        <b> validated as ready</b> before a run can go on the calendar.
       </p>
     ),
   };
@@ -58,10 +58,10 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
       title: "How scheduling works",
       body: (
         <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-600">
-          <li>Build a <b>study</b> → task groups → tasks (ready = instructions + low-risk/legal-approved).</li>
-          <li>Add resources: robots (consent · booking · survey), operators, labs, devices.</li>
-          <li>On the <b>Schedule</b>, add sessions to a day (4 slots/lab) and fill each role from eligible-only pickers.</li>
-          <li>Confirm → session gets an encoded code, then moves down the data pipeline with QA.</li>
+          <li>Build a <b>campaign</b> → mission groups → missions (ready = instructions + low-risk/legal-approved).</li>
+          <li>Add resources: robots (consent · booking · survey), operators, labs, sensors.</li>
+          <li>On the <b>Schedule</b>, add runs to a day (4 slots/lab) and fill each role from eligible-only pickers.</li>
+          <li>Confirm → run gets an encoded code, then moves down the data pipeline with QA.</li>
         </ul>
       ),
     },
@@ -71,16 +71,16 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
         <div className="text-sm text-neutral-600">
           <p className="mb-3">
             Load the <b>Manipulation</b> sample (Make Marinara Sauce) to explore a fully-assembled
-            study with sessions across the pipeline. You can delete it anytime.
+            campaign with runs across the pipeline. You can delete it anytime.
           </p>
           <button
             onClick={seedAndGo}
             disabled={seeding}
-            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+            className="cq-btn-primary rounded-lg px-4 py-2 text-sm font-medium"
           >
             {seeding ? "Loading…" : "Load Manipulation sample & go to Schedule"}
           </button>
-          <p className="mt-3 text-xs text-neutral-400">Or skip and build your own study from Studies.</p>
+          <p className="mt-3 text-xs text-neutral-400">Or skip and build your own campaign from Campaigns.</p>
         </div>
       ),
     },
@@ -93,9 +93,9 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
       body:
         user.role === "ROBOT_OPERATOR" ? (
           <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-600">
-            <li>You run sessions: create them on the <b>Schedule</b>, fill roles, confirm, and advance the pipeline.</li>
-            <li>You record <b>QA</b> results on collected sessions.</li>
-            <li>Catalog and resources (studies, tasks, robots…) are read-only for you.</li>
+            <li>You run runs: create them on the <b>Schedule</b>, fill roles, confirm, and advance the pipeline.</li>
+            <li>You record <b>QA</b> results on collected runs.</li>
+            <li>Catalog and resources (campaigns, missions, robots…) are read-only for you.</li>
           </ul>
         ) : (
           <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-600">
@@ -119,7 +119,7 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
           </span>
         </div>
 
-        <h2 className="mb-3 text-xl font-semibold">{steps[i].title}</h2>
+        <h2 className="cq-display mb-3 text-xl font-semibold">{steps[i].title}</h2>
         <div className="min-h-[140px]">{steps[i].body}</div>
 
         <div className="mt-6 flex items-center justify-between">
@@ -133,11 +133,11 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
               </button>
             )}
             {last ? (
-              <button onClick={finish} className="rounded-lg bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700">
+              <button onClick={finish} className="rounded-lg cq-btn-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700">
                 Get started
               </button>
             ) : (
-              <button onClick={() => setI(i + 1)} className="rounded-lg bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700">
+              <button onClick={() => setI(i + 1)} className="rounded-lg cq-btn-primary px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700">
                 Next
               </button>
             )}

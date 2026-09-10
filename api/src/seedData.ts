@@ -7,13 +7,13 @@
  * and regenerate rather than editing the two separately.
  *
  * Shape: 3 labs, 11 robots across 3 platform families, 14 sensors in 3 rigs,
- * 5 operators, one active perception program with a task catalog, and a handful
+ * 5 operators, one active perception program with a mission catalog, and a handful
  * of runs spread across the pipeline states.
  */
 
 // Stable ids so the seed is idempotent and re-runnable.
 const ID = {
-  study: "11111111-1111-4111-8111-000000000001",
+  campaign: "11111111-1111-4111-8111-000000000001",
   groupNav: "22222222-2222-4222-8222-000000000001",
   groupManip: "22222222-2222-4222-8222-000000000002",
   groupDock: "22222222-2222-4222-8222-000000000003",
@@ -80,7 +80,7 @@ const ROBOTS: [string, string, string, string, string, string, number, number, n
   [r(11), "RB-A-003", "Trundle 03", "Trundle AMR",       "TRD-3003", "RETIRED",     0, 0, 0, 0],
 ];
 
-/** [id, asset_name, device_type, status] — the sensor payloads mounted on robots. */
+/** [id, asset_name, sensor_type, status] — the sensor payloads mounted on robots. */
 const DEVICES: [string, string, string, string][] = [
   [d(1),  "LIDAR-32-A",    "LIDAR_3D",     "OPERATIONAL"],
   [d(2),  "LIDAR-32-B",    "LIDAR_3D",     "OPERATIONAL"],
@@ -153,12 +153,12 @@ const TASKS: [string, string, string, string, string, string, number, number, st
 ];
 
 /**
- * [id, slot_date, slot_time, state, task_ids, robot, operator, lab, fleet, seq, code]
+ * [id, slot_date, slot_time, state, mission_ids, robot, operator, lab, fleet, seq, code]
  *
- * Task sets are SINGLE-scope and deliberately sized to the 4-unit effort budget
+ * Mission sets are SINGLE-scope and deliberately sized to the 4-unit effort budget
  * (1 long = 2 medium = 4 short), so a row marked READY genuinely passes every
  * readiness gate. s7 keeps one real blocker (T9 has no instructions) so the
- * blocked-session path is visible out of the box.
+ * blocked-run path is visible out of the box.
  */
 const SESSIONS: [string, string, string, string, string[], string, string, string, string, number, string | null][] = [
   [s(1), "2026-09-07", "09:00", "DONE",       [t(1), t(2)],  r(1), o(1), l(1), ID.fleetStd,   1, "26W37m1L1S1"],
@@ -177,9 +177,9 @@ export function seedStatements(): string[] {
 
   // Wipe in FK-safe order.
   for (const table of [
-    "qa_pipeline_runs", "task_executions", "sessions", "task_instruction_versions",
-    "tasks", "task_groups", "device_fleets", "inventory_items", "lab_blackouts",
-    "documents", "workflows", "studies", "robots", "operators", "labs", "devices", "users",
+    "qa_pipeline_runs", "mission_executions", "runs", "mission_instruction_versions",
+    "missions", "mission_groups", "sensor_rigs", "inventory_items", "lab_blackouts",
+    "documents", "workflows", "campaigns", "robots", "operators", "labs", "sensors", "users",
   ]) {
     out.push(`DELETE FROM ${table}`);
   }
@@ -198,10 +198,10 @@ export function seedStatements(): string[] {
     out.push(`INSERT INTO robots (id, robot_code, name, platform, serial_number, status, safety_certified, calibration_valid, commissioned, commissioned_date, is_standby) VALUES (${q(id)}, ${q(code)}, ${q(name)}, ${q(platform)}, ${q(serial)}, ${q(status)}, ${safe}, ${cal}, ${comm}, ${commDate}, ${standby})`);
   }
   for (const [id, asset, type, status] of DEVICES) {
-    out.push(`INSERT INTO devices (id, asset_name, device_type, status) VALUES (${q(id)}, ${q(asset)}, ${q(type)}, ${q(status)})`);
+    out.push(`INSERT INTO sensors (id, asset_name, sensor_type, status) VALUES (${q(id)}, ${q(asset)}, ${q(type)}, ${q(status)})`);
   }
 
-  out.push(`INSERT INTO studies (id, name, study_type, target_n, status, default_device_fleet_id) VALUES (${q(ID.study)}, 'Warehouse Perception Baseline', 'PERCEPTION', 60, 'ACTIVE', ${q(ID.fleetStd)})`);
+  out.push(`INSERT INTO campaigns (id, name, campaign_type, target_n, status, default_sensor_rig_id) VALUES (${q(ID.campaign)}, 'Warehouse Perception Baseline', 'PERCEPTION', 60, 'ACTIVE', ${q(ID.fleetStd)})`);
 
   const groups: [string, string, number][] = [
     [ID.groupNav, "Navigation", 1],
@@ -209,25 +209,25 @@ export function seedStatements(): string[] {
     [ID.groupDock, "Docking", 3],
   ];
   for (const [id, name, order] of groups) {
-    out.push(`INSERT INTO task_groups (id, study_id, name, "order") VALUES (${q(id)}, ${q(ID.study)}, ${q(name)}, ${order})`);
+    out.push(`INSERT INTO mission_groups (id, campaign_id, name, "order") VALUES (${q(id)}, ${q(ID.campaign)}, ${q(name)}, ${order})`);
   }
-  for (const [id, name, deviceIds] of FLEETS) {
-    out.push(`INSERT INTO device_fleets (id, study_id, name, device_ids) VALUES (${q(id)}, ${q(ID.study)}, ${q(name)}, ${q(JSON.stringify(deviceIds))})`);
+  for (const [id, name, sensorIds] of FLEETS) {
+    out.push(`INSERT INTO sensor_rigs (id, campaign_id, name, sensor_ids) VALUES (${q(id)}, ${q(ID.campaign)}, ${q(name)}, ${q(JSON.stringify(sensorIds))})`);
   }
   for (const [id, name, kind, qty, unit, status] of INVENTORY) {
-    out.push(`INSERT INTO inventory_items (id, study_id, name, kind, quantity, unit, status) VALUES (${q(id)}, ${q(ID.study)}, ${q(name)}, ${q(kind)}, ${qty}, ${q(unit)}, ${q(status)})`);
+    out.push(`INSERT INTO inventory_items (id, campaign_id, name, kind, quantity, unit, status) VALUES (${q(id)}, ${q(ID.campaign)}, ${q(name)}, ${q(kind)}, ${qty}, ${q(unit)}, ${q(status)})`);
   }
   for (const [id, code, name, groupId, groupLabel, dur, target, actual, review, risk, legal, done, vars, ins, inv] of TASKS) {
     const sched = actual >= target ? "RECORDED" : "AVAILABLE";
-    out.push(`INSERT INTO tasks (id, study_id, task_group_id, task_code, name, "group", status, review_status, duration_type, reps_target, reps_actual, schedule_status, instructions_complete, risk_level, legal_approval, variants, inventory_item_ids, instructions) VALUES (${q(id)}, ${q(ID.study)}, ${q(groupId)}, ${q(code)}, ${q(name)}, ${q(groupLabel)}, 'COLLECTABLE', ${q(review)}, ${q(dur)}, ${target}, ${actual}, ${q(sched)}, ${done}, ${q(risk)}, ${q(legal)}, ${q(vars)}, ${q(JSON.stringify(inv))}, ${q(ins)})`);
+    out.push(`INSERT INTO missions (id, campaign_id, mission_group_id, mission_code, name, "group", status, review_status, duration_type, reps_target, reps_actual, schedule_status, instructions_complete, risk_level, legal_approval, variants, inventory_item_ids, instructions) VALUES (${q(id)}, ${q(ID.campaign)}, ${q(groupId)}, ${q(code)}, ${q(name)}, ${q(groupLabel)}, 'COLLECTABLE', ${q(review)}, ${q(dur)}, ${target}, ${actual}, ${q(sched)}, ${done}, ${q(risk)}, ${q(legal)}, ${q(vars)}, ${q(JSON.stringify(inv))}, ${q(ins)})`);
   }
-  for (const [id, date, time, state, taskIds, robot, operator, lab, fleet, seq, code] of SESSIONS) {
+  for (const [id, date, time, state, missionIds, robot, operator, lab, fleet, seq, code] of SESSIONS) {
     const prov = `S-${date.replaceAll("-", "")}`;
     const labName = LABS.find((x) => x[0] === lab)?.[1] ?? "";
     const rigName = FLEETS.find((x) => x[0] === fleet)?.[1] ?? "";
-    // One planned repetition per task keeps the seed's rep plan explicit.
-    const reps = Object.fromEntries(taskIds.map((tid) => [tid, 1]));
-    out.push(`INSERT INTO sessions (id, study_id, slot_date, slot_time, state, task_scope, task_ids, task_reps, robot_id, operator_id, lab_id, device_fleet_id, session_seq, provisional_code, encoded_code, payload, session_lab) VALUES (${q(id)}, ${q(ID.study)}, ${q(date)}, ${q(time)}, ${q(state)}, 'SINGLE', ${q(JSON.stringify(taskIds))}, ${q(JSON.stringify(reps))}, ${q(robot)}, ${q(operator)}, ${q(lab)}, ${q(fleet)}, ${seq}, ${q(prov)}, ${code ? q(code) : "NULL"}, ${q(rigName)}, ${q(labName)})`);
+    // One planned repetition per mission keeps the seed's rep plan explicit.
+    const reps = Object.fromEntries(missionIds.map((tid) => [tid, 1]));
+    out.push(`INSERT INTO runs (id, campaign_id, slot_date, slot_time, state, mission_scope, mission_ids, mission_reps, robot_id, operator_id, lab_id, sensor_rig_id, run_seq, provisional_code, encoded_code, payload, run_lab) VALUES (${q(id)}, ${q(ID.campaign)}, ${q(date)}, ${q(time)}, ${q(state)}, 'SINGLE', ${q(JSON.stringify(missionIds))}, ${q(JSON.stringify(reps))}, ${q(robot)}, ${q(operator)}, ${q(lab)}, ${q(fleet)}, ${seq}, ${q(prov)}, ${code ? q(code) : "NULL"}, ${q(rigName)}, ${q(labName)})`);
   }
 
   return out;
@@ -238,7 +238,7 @@ export const SEED_SUMMARY = {
   robots: ROBOTS.length,
   standby: ROBOTS.filter((x) => x[9] === 1).length,
   operators: OPERATORS.length,
-  devices: DEVICES.length,
-  tasks: TASKS.length,
-  sessions: SESSIONS.length,
+  sensors: DEVICES.length,
+  missions: TASKS.length,
+  runs: SESSIONS.length,
 };

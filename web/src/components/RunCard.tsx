@@ -1,4 +1,4 @@
-import type { Session } from "@/lib/types";
+import type { Run } from "@/lib/types";
 import { StatusDot } from "./StatusDot";
 
 function line(label: string, value: string | null) {
@@ -10,29 +10,29 @@ function line(label: string, value: string | null) {
   );
 }
 
-export function SessionCard({
-  session,
+export function RunCard({
+  run,
   labels,
   onClick,
 }: {
-  session: Session;
-  labels: { robot?: string; operator?: string; lab?: string; taskGroup?: string };
+  run: Run;
+  labels: { robot?: string; operator?: string; lab?: string; missionGroup?: string };
   onClick: () => void;
 }) {
-  const code = session.encoded_code ?? session.provisional_code ?? "—";
+  const code = run.encoded_code ?? run.provisional_code ?? "—";
   return (
     <button
       onClick={onClick}
       className="w-full rounded-lg border border-neutral-200 bg-white p-2.5 text-left shadow-sm transition hover:border-neutral-300 hover:shadow"
     >
       <div className="mb-1.5 flex items-center justify-between">
-        <StatusDot state={session.state} />
+        <StatusDot state={run.state} />
       </div>
       <div className="mb-1 truncate font-mono text-[11px] text-neutral-500">{code}</div>
       {line("P", labels.robot ?? null)}
       {line("M", labels.operator ?? null)}
       {line("L", labels.lab ?? null)}
-      {line("T", labels.taskGroup ?? null)}
+      {line("T", labels.missionGroup ?? null)}
     </button>
   );
 }

@@ -4,28 +4,28 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 import { CQ, STATUS_COLOR } from "@/lib/palette";
-import { loadStudyMetrics, PIPELINE_STAGES, STAGE_LABEL, type StudyMetrics } from "@/lib/metrics";
-import type { Study } from "@/lib/types";
+import { loadCampaignMetrics, PIPELINE_STAGES, STAGE_LABEL, type CampaignMetrics } from "@/lib/metrics";
+import type { Campaign } from "@/lib/types";
 import { BarChart, Burndown, Donut } from "@/components/Charts";
 import { Funnel, Panel, Progress, StatCard } from "@/components/Cards";
-import { StudyHeader } from "@/components/StudyHeader";
+import { CampaignHeader } from "@/components/CampaignHeader";
 
 const STATE_FILL: Record<string, string> = {
   DRAFT: STATUS_COLOR.draft,
   ASSEMBLING: STATUS_COLOR.assembling,
   READY: STATUS_COLOR.ready,
   CONFIRMED: STATUS_COLOR.confirmed,
-  IN_EXECUTION: CQ.teal,
+  IN_EXECUTION: CQ.iris,
   COLLECTED: CQ.blue,
   UPLOADED: CQ.violet,
-  DONE: CQ.magenta,
+  DONE: CQ.lilac,
   BLOCKED: STATUS_COLOR.blocked,
 };
 
 export default function MonitoringPage() {
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [studyId, setStudyId] = useState<string | null>(null);
-  const [m, setM] = useState<StudyMetrics | null>(null);
+  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [m, setM] = useState<CampaignMetrics | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,14 +33,14 @@ export default function MonitoringPage() {
       .listStudies()
       .then((s) => {
         setStudies(s);
-        if (s.length > 0) setStudyId(s[0].id);
+        if (s.length > 0) setCampaignId(s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));
   }, []);
 
   const load = useCallback(() => {
-    if (studyId) loadStudyMetrics(studyId).then(setM).catch(() => setErr("Failed to load metrics."));
-  }, [studyId]);
+    if (campaignId) loadCampaignMetrics(campaignId).then(setM).catch(() => setErr("Failed to load metrics."));
+  }, [campaignId]);
   useEffect(load, [load]);
   // live refresh for simultaneous users
   useEffect(() => {
@@ -62,9 +62,9 @@ export default function MonitoringPage() {
 
   const donut = m
     ? [
-        { label: "Ready+", value: m.confirmedPlus + m.readyNow, color: CQ.green },
-        { label: "In progress", value: m.inProgress, color: CQ.amber },
-        { label: "Blocked", value: m.blocked, color: CQ.red },
+        { label: "Ready+", value: m.confirmedPlus + m.readyNow, color: CQ.sage },
+        { label: "In progress", value: m.inProgress, color: CQ.apricot },
+        { label: "Blocked", value: m.blocked, color: CQ.rose },
       ]
     : [];
 
@@ -76,7 +76,7 @@ export default function MonitoringPage() {
 
   return (
     <div className="flex h-full flex-col bg-neutral-50">
-      <StudyHeader title="Dashboard" studies={studies} studyId={studyId} onChange={setStudyId} />
+      <CampaignHeader title="Dashboard" campaigns={campaigns} campaignId={campaignId} onChange={setCampaignId} />
       {err && <div className="bg-red-50 px-6 py-2 text-sm text-red-700">{err}</div>}
 
       <div className="flex-1 overflow-auto p-6">
@@ -86,10 +86,10 @@ export default function MonitoringPage() {
           <div className="mx-auto max-w-6xl">
             {/* KPI row */}
             <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-              <StatCard label="Sessions" value={m.sessions.length} sub={`${m.study.study_type} study`} accent={CQ.blue} />
-              <StatCard label="Confirmed" value={m.confirmedPlus} sub="scheduled + locked" accent={CQ.teal} />
-              <StatCard label="Collected" value={m.collectedPlus} sub={`of target N ${m.targetN}`} accent={CQ.green} />
-              <StatCard label="Blocked" value={m.blocked} sub="need attention" accent={m.blocked ? CQ.red : CQ.slate} />
+              <StatCard label="Runs" value={m.runs.length} sub={`${m.campaign.campaign_type} campaign`} accent={CQ.blue} />
+              <StatCard label="Confirmed" value={m.confirmedPlus} sub="scheduled + locked" accent={CQ.iris} />
+              <StatCard label="Collected" value={m.collectedPlus} sub={`of target N ${m.targetN}`} accent={CQ.sage} />
+              <StatCard label="Blocked" value={m.blocked} sub="need attention" accent={m.blocked ? CQ.rose : CQ.slate} />
             </div>
 
             {/* progress to target */}
@@ -111,7 +111,7 @@ export default function MonitoringPage() {
               <Panel title="Readiness mix">
                 <Donut segments={donut.length ? donut : [{ label: "None", value: 1, color: CQ.slate }]} />
               </Panel>
-              <Panel title="Sessions by state">
+              <Panel title="Runs by state">
                 <BarChart data={bars.length ? bars : [{ label: "—", value: 0 }]} />
               </Panel>
               <Panel title={`Burndown — target N ${m.targetN}`}>
@@ -125,8 +125,8 @@ export default function MonitoringPage() {
 
             {/* readiness health row */}
             <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <StatCard label="Cleared robots" value={m.clearedRobots} sub={`of ${m.robots.length} total`} accent={CQ.green} />
-              <StatCard label="Operational devices" value={m.operationalDevices} sub={`of ${m.devices.length} total`} accent={CQ.blue} />
+              <StatCard label="Cleared robots" value={m.clearedRobots} sub={`of ${m.robots.length} total`} accent={CQ.sage} />
+              <StatCard label="Operational sensors" value={m.operationalSensors} sub={`of ${m.sensors.length} total`} accent={CQ.blue} />
               <StatCard label="Labs" value={m.labs.length} sub="collection sites" accent={CQ.violet} />
             </div>
           </div>

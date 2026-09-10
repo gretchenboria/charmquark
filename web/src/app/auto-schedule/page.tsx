@@ -9,9 +9,9 @@ import { useUser } from "@/lib/useUser";
 import type {
   AcceptProposalResult,
   Robot,
-  SessionProposal,
-  Study,
-  TaskDuration,
+  RunProposal,
+  Campaign,
+  MissionDuration,
   UploadResult,
 } from "@/lib/types";
 import { Stepper } from "@/components/Stepper";
@@ -23,7 +23,7 @@ const STEPS = [
   { key: "collect", label: "Collect & Record" },
 ];
 
-const DURATION_STYLE: Record<TaskDuration, { dot: string; label: string }> = {
+const DURATION_STYLE: Record<MissionDuration, { dot: string; label: string }> = {
   LONG: { dot: "bg-red-500", label: "Long" },
   MEDIUM: { dot: "bg-amber-500", label: "Medium" },
   SHORT: { dot: "bg-green-500", label: "Short" },
@@ -43,15 +43,15 @@ function downloadCsv(filename: string, text: string) {
 export default function AutoSchedulePage() {
   const user = useUser();
   const toast = useToast();
-  const canBuild = canCreate(user?.role); // generating a proposal creates a session (PM)
+  const canBuild = canCreate(user?.role); // generating a proposal creates a run (PM)
   const canDrive = canUpdate(user?.role); // accept/reject/upload (PM + Robot Operator)
 
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [studyId, setStudyId] = useState<string | null>(null);
+  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   const [slotDate, setSlotDate] = useState<string>("");
   const [robots, setRobots] = useState<Robot[]>([]);
 
-  const [proposal, setProposal] = useState<SessionProposal | null>(null);
+  const [proposal, setProposal] = useState<RunProposal | null>(null);
   const [accepted, setAccepted] = useState<AcceptProposalResult | null>(null);
   const [uploaded, setUploaded] = useState<UploadResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,7 +61,7 @@ export default function AutoSchedulePage() {
   const [robotId, setRobotId] = useState<string>("");
   const [payload, setPayload] = useState<string>("");
   const [lab, setLab] = useState<string>("");
-  // collect step: which proposed tasks were completed (checked = kept in CSV)
+  // collect step: which proposed missions were completed (checked = kept in CSV)
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
 
   const step = accepted ? "collect" : proposal ? "review" : "propose";
@@ -71,7 +71,7 @@ export default function AutoSchedulePage() {
       .listStudies()
       .then((s) => {
         setStudies(s);
-        if (s.length > 0) setStudyId((cur) => cur ?? s[0].id);
+        if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));
     api.listRobots().then(setRobots).catch(() => undefined);
@@ -104,8 +104,8 @@ export default function AutoSchedulePage() {
 
   const build = () =>
     guarded(async () => {
-      if (!studyId) return;
-      const p = await api.createProposal({ study_id: studyId, slot_date: slotDate || null });
+      if (!campaignId) return;
+      const p = await api.createProposal({ campaign_id: campaignId, slot_date: slotDate || null });
       setProposal(p);
       setAccepted(null);
       setUploaded(null);
@@ -114,39 +114,39 @@ export default function AutoSchedulePage() {
   const reroll = () =>
     guarded(async () => {
       if (!proposal) return;
-      const p = await api.rejectProposal(proposal.session_id);
+      const p = await api.rejectProposal(proposal.run_id);
       setProposal(p);
     });
 
   const accept = () =>
     guarded(async () => {
       if (!proposal) return;
-      const res = await api.acceptProposal(proposal.session_id, {
+      const res = await api.acceptProposal(proposal.run_id, {
         robot_id: robotId || null,
         payload: payload || null,
-        session_lab: lab || null,
+        run_lab: lab || null,
       });
       setAccepted(res);
-      // default every proposed task to "completed" — the user unchecks any they dropped
-      setCompleted(Object.fromEntries(proposal.tasks.map((t) => [t.id, true])));
-      toast("success", "Session accepted — CSV ready");
+      // default every proposed mission to "completed" — the user unchecks any they dropped
+      setCompleted(Object.fromEntries(proposal.missions.map((t) => [t.id, true])));
+      toast("success", "Run accepted — CSV ready");
     });
 
   const record = () =>
     guarded(async () => {
       if (!accepted || !proposal) return;
-      // send each completed task once per scheduled rep, so a task recorded N times counts N reps
-      const completed_task_ids = proposal.tasks
+      // send each completed mission once per scheduled rep, so a mission recorded N times counts N reps
+      const completed_mission_ids = proposal.missions
         .filter((t) => completed[t.id])
         .flatMap((t) => Array<string>(Math.max(1, t.reps)).fill(t.id));
-      const res = await api.uploadSessionCsv(accepted.session.id, { completed_task_ids });
+      const res = await api.uploadRunCsv(accepted.run.id, { completed_mission_ids });
       setUploaded(res);
       toast("success", "Results recorded");
     });
 
-  const studyName = studies.find((s) => s.id === studyId)?.name ?? "";
+  const studyName = campaigns.find((s) => s.id === campaignId)?.name ?? "";
   const proposedById = useMemo(
-    () => Object.fromEntries((proposal?.tasks ?? []).map((t) => [t.id, t])),
+    () => Object.fromEntries((proposal?.missions ?? []).map((t) => [t.id, t])),
     [proposal],
   );
 
@@ -154,7 +154,7 @@ export default function AutoSchedulePage() {
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-4 border-b border-neutral-200 bg-white px-5 py-3">
         <h1 className="text-lg font-semibold">Auto-Schedule</h1>
-        <span className="text-sm text-neutral-500">Build a ~1-hour session automatically</span>
+        <span className="text-sm text-neutral-500">Build a ~1-hour run automatically</span>
         {!canDrive && (
           <span className="ml-auto rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-500">
             Read-only (your role can’t run scheduling)
@@ -172,22 +172,22 @@ export default function AutoSchedulePage() {
         {/* ---------------------------------------------------------- Step 1: Build */}
         {step === "propose" && (
           <section className="rounded-xl border border-neutral-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-neutral-800">Build a session</h2>
+            <h2 className="text-sm font-semibold text-neutral-800">Build a run</h2>
             <p className="mt-1 text-sm text-neutral-500">
-              We’ll pick ready-to-collect tasks that still need repetitions and pack them to fill a
-              session (1 long, or 2 medium, or 4 short tasks).
+              We’ll pick ready-to-collect missions that still need repetitions and pack them to fill a
+              run (1 long, or 2 medium, or 4 short missions).
             </p>
 
             <div className="mt-4 grid grid-cols-2 gap-4">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-neutral-500">Study</span>
+                <span className="mb-1 block text-xs font-medium text-neutral-500">Campaign</span>
                 <select
-                  value={studyId ?? ""}
-                  onChange={(e) => setStudyId(e.target.value || null)}
-                  className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                  value={campaignId ?? ""}
+                  onChange={(e) => setCampaignId(e.target.value || null)}
+                  className="cq-select w-full"
                 >
-                  {studies.length === 0 && <option value="">No studies</option>}
-                  {studies.map((s) => (
+                  {campaigns.length === 0 && <option value="">No campaigns</option>}
+                  {campaigns.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
@@ -195,20 +195,20 @@ export default function AutoSchedulePage() {
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-neutral-500">Session date (optional)</span>
+                <span className="mb-1 block text-xs font-medium text-neutral-500">Run date (optional)</span>
                 <input
                   type="date"
                   value={slotDate}
                   onChange={(e) => setSlotDate(e.target.value)}
-                  className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                  className="cq-select w-full"
                 />
               </label>
             </div>
 
             <button
               onClick={build}
-              disabled={!canBuild || !studyId || busy}
-              className="mt-5 w-full rounded-md bg-teal-600 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
+              disabled={!canBuild || !campaignId || busy}
+              className="mt-5 w-full rounded-md bg-[color:var(--cq-iris)] py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
             >
               {busy ? "Building…" : "Generate proposal"}
             </button>
@@ -223,23 +223,23 @@ export default function AutoSchedulePage() {
           <section className="space-y-4">
             <div className="rounded-xl border border-neutral-200 bg-white p-5">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-neutral-800">Proposed session · {studyName}</h2>
+                <h2 className="text-sm font-semibold text-neutral-800">Proposed run · {studyName}</h2>
                 <FitBadge total={proposal.total_units} budget={proposal.budget} packed={proposal.fully_packed} />
               </div>
               <p className="mt-1 text-xs text-neutral-400">
                 {proposal.total_reps} recording{proposal.total_reps === 1 ? "" : "s"} across{" "}
-                {proposal.tasks.length} task{proposal.tasks.length === 1 ? "" : "s"} · one CSV row per recording
+                {proposal.missions.length} mission{proposal.missions.length === 1 ? "" : "s"} · one CSV row per recording
               </p>
 
               {!proposal.meets_floor && (
                 <div className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
                   Under-filled: fewer than 2 effort units available. You can still accept it, or add
-                  more ready tasks and re-roll.
+                  more ready missions and re-roll.
                 </div>
               )}
 
               <ul className="mt-3 divide-y divide-neutral-100">
-                {proposal.tasks.map((t) => {
+                {proposal.missions.map((t) => {
                   const d = DURATION_STYLE[t.duration_type];
                   return (
                     <li key={t.id} className="flex items-center gap-3 py-2">
@@ -247,7 +247,7 @@ export default function AutoSchedulePage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 truncate text-sm text-neutral-800">
                           <span>
-                            <span className="font-mono text-neutral-500">{t.task_code}</span> · {t.name}
+                            <span className="font-mono text-neutral-500">{t.mission_code}</span> · {t.name}
                           </span>
                           {t.reps > 1 && (
                             <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
@@ -282,7 +282,7 @@ export default function AutoSchedulePage() {
               <div className="rounded-xl border border-neutral-200 bg-white p-5">
                 <h2 className="text-sm font-semibold text-neutral-800">Accept & generate CSV</h2>
                 <p className="mt-1 text-sm text-neutral-500">
-                  Enter the session details. Accepting marks these tasks <b>in&nbsp;progress</b> and
+                  Enter the run details. Accepting marks these missions <b>in&nbsp;progress</b> and
                   produces the ready-to-use collection CSV.
                 </p>
                 <div className="mt-4 space-y-3">
@@ -291,7 +291,7 @@ export default function AutoSchedulePage() {
                     <select
                       value={robotId}
                       onChange={(e) => setRobotId(e.target.value)}
-                      className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                      className="cq-select w-full"
                     >
                       <option value="">— none —</option>
                       {robots.map((p) => (
@@ -308,16 +308,16 @@ export default function AutoSchedulePage() {
                         value={payload}
                         onChange={(e) => setPayload(e.target.value)}
                         placeholder="e.g. Blender-3"
-                        className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                        className="cq-select w-full"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-xs font-medium text-neutral-500">Session lab</span>
+                      <span className="mb-1 block text-xs font-medium text-neutral-500">Run lab</span>
                       <input
                         value={lab}
                         onChange={(e) => setLab(e.target.value)}
                         placeholder="e.g. Apt A"
-                        className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                        className="cq-select w-full"
                       />
                     </label>
                   </div>
@@ -332,15 +332,15 @@ export default function AutoSchedulePage() {
                   <button
                     onClick={accept}
                     disabled={busy}
-                    className="flex-1 rounded-md bg-teal-600 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    className="flex-1 rounded-md bg-[color:var(--cq-iris)] py-2 text-sm font-medium text-white disabled:opacity-50"
                   >
-                    {busy ? "Accepting…" : "Accept session →"}
+                    {busy ? "Accepting…" : "Accept run →"}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="rounded-xl border border-neutral-200 bg-white p-4 text-xs text-neutral-500">
-                Read-only — your role can’t accept sessions.
+                Read-only — your role can’t accept runs.
               </div>
             )}
           </section>
@@ -352,29 +352,29 @@ export default function AutoSchedulePage() {
             <div className="rounded-xl border border-neutral-200 bg-white p-5">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-neutral-800">
-                  Session ready ·{" "}
+                  Run ready ·{" "}
                   <span className="font-mono text-neutral-500">
-                    {accepted.session.encoded_code ?? accepted.session.provisional_code ?? accepted.session.id.slice(0, 8)}
+                    {accepted.run.encoded_code ?? accepted.run.provisional_code ?? accepted.run.id.slice(0, 8)}
                   </span>
                 </h2>
-                <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700">
-                  {accepted.task_count} task{accepted.task_count === 1 ? "" : "s"}
+                <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-[color:var(--cq-iris)]">
+                  {accepted.task_count} mission{accepted.task_count === 1 ? "" : "s"}
                 </span>
               </div>
               <p className="mt-1 text-sm text-neutral-500">
-                Download the CSV to run collection. When you’re done, uncheck any task you didn’t
+                Download the CSV to run collection. When you’re done, uncheck any mission you didn’t
                 complete (its row would be deleted from the CSV) and record the results.
               </p>
               <button
                 onClick={() =>
                   downloadCsv(
-                    `${accepted.session.provisional_code ?? "session"}.csv`,
-                    accepted.session_csv,
+                    `${accepted.run.provisional_code ?? "run"}.csv`,
+                    accepted.run_csv,
                   )
                 }
                 className="mt-4 w-full rounded-md border border-neutral-300 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
               >
-                Download session CSV
+                Download run CSV
               </button>
               {accepted.saved_path && (
                 <p className="mt-2 break-all text-xs text-neutral-500">
@@ -388,7 +388,7 @@ export default function AutoSchedulePage() {
               <div className="rounded-xl border border-neutral-200 bg-white p-5">
                 <h2 className="text-sm font-semibold text-neutral-800">Record what was collected</h2>
                 <ul className="mt-3 divide-y divide-neutral-100">
-                  {proposal.tasks.map((t) => (
+                  {proposal.missions.map((t) => (
                     <li key={t.id} className="flex items-center gap-3 py-2">
                       <input
                         id={`c-${t.id}`}
@@ -399,7 +399,7 @@ export default function AutoSchedulePage() {
                         className="h-4 w-4"
                       />
                       <label htmlFor={`c-${t.id}`} className="min-w-0 flex-1 text-sm text-neutral-800">
-                        <span className="font-mono text-neutral-500">{t.task_code}</span> · {t.name}
+                        <span className="font-mono text-neutral-500">{t.mission_code}</span> · {t.name}
                       </label>
                     </li>
                   ))}
@@ -408,7 +408,7 @@ export default function AutoSchedulePage() {
                   <button
                     onClick={record}
                     disabled={busy}
-                    className="mt-4 w-full rounded-md bg-teal-600 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    className="mt-4 w-full rounded-md bg-[color:var(--cq-iris)] py-2 text-sm font-medium text-white disabled:opacity-50"
                   >
                     {busy ? "Recording…" : "Record results"}
                   </button>
@@ -422,13 +422,13 @@ export default function AutoSchedulePage() {
                   <span className="text-neutral-500">{uploaded.reverted.length} back to available</span>
                 </div>
                 <ul className="mt-3 divide-y divide-neutral-100">
-                  {uploaded.tasks.map((c) => {
-                    const t = proposedById[c.task_id];
+                  {uploaded.missions.map((c) => {
+                    const t = proposedById[c.mission_id];
                     return (
-                      <li key={c.task_id} className="flex items-center gap-3 py-2 text-sm">
+                      <li key={c.mission_id} className="flex items-center gap-3 py-2 text-sm">
                         <ScheduleBadge status={c.schedule_status} />
                         <span className="min-w-0 flex-1 truncate text-neutral-800">
-                          <span className="font-mono text-neutral-500">{t?.task_code ?? c.task_id.slice(0, 6)}</span>
+                          <span className="font-mono text-neutral-500">{t?.mission_code ?? c.mission_id.slice(0, 6)}</span>
                           {t ? ` · ${t.name}` : ""}
                         </span>
                         <span className="text-xs text-neutral-400">{c.reps_gap} rep{c.reps_gap === 1 ? "" : "s"} left</span>
@@ -438,9 +438,9 @@ export default function AutoSchedulePage() {
                 </ul>
                 <button
                   onClick={reset}
-                  className="mt-4 w-full rounded-md bg-neutral-900 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+                  className="mt-4 w-full cq-btn-primary rounded-lg py-2 text-sm font-medium"
                 >
-                  Build another session
+                  Build another run
                 </button>
               </div>
             )}
@@ -457,7 +457,7 @@ function FitBadge({ total, budget, packed }: { total: number; budget: number; pa
       className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
         packed ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"
       }`}
-      title="Effort units used vs. a full session budget"
+      title="Effort units used vs. a full run budget"
     >
       {total}/{budget} units {packed ? "· full" : ""}
     </span>

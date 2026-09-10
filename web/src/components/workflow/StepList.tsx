@@ -23,7 +23,7 @@ export function StepList({
         return (
           <li
             key={s.key}
-            className={`rounded-lg px-3 py-2 ${active ? "bg-teal-50 ring-1 ring-teal-200" : ""}`}
+            className={`rounded-lg px-3 py-2 ${active ? "bg-violet-50 ring-1 ring-violet-200" : ""}`}
           >
             <div className="flex items-center gap-2">
               <span
@@ -31,7 +31,7 @@ export function StepList({
                   done
                     ? "bg-green-600 text-white"
                     : active
-                    ? "bg-teal-600 text-white"
+                    ? "bg-[color:var(--cq-iris)] text-white"
                     : "bg-neutral-200 text-neutral-500"
                 }`}
               >

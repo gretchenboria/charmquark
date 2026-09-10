@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api, ApiError } from "@/lib/api";
 import { addDays, formatDay, isoDate, isoWeek, startOfWeekMonday, weekDays } from "@/lib/dates";
-import { canWriteSession, canConfirmSession } from "@/lib/session";
+import { canWriteRun, canConfirmRun } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
-import type { Lab, Operator, Robot, Session, Study, TaskGroup } from "@/lib/types";
-import { SessionInspector } from "@/components/SessionInspector";
+import type { Lab, Operator, Robot, Run, Campaign, MissionGroup } from "@/lib/types";
+import { RunInspector } from "@/components/RunInspector";
 import { StatusDot } from "@/components/StatusDot";
 import { useToast } from "@/components/Toast";
 
@@ -17,17 +17,17 @@ const HOURS = Array.from({ length: 10 }, (_, i) => `${(8 + i).toString().padStar
 export default function SchedulePage() {
   const user = useUser();
   const toast = useToast();
-  const canWrite = canWriteSession(user?.role);
-  const canConfirm = canConfirmSession(user?.role);
+  const canWrite = canWriteRun(user?.role);
+  const canConfirm = canConfirmRun(user?.role);
 
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [studyId, setStudyId] = useState<string | null>(null);
+  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   const [monday, setMonday] = useState<Date>(() => startOfWeekMonday(new Date()));
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [runs, setRuns] = useState<Run[]>([]);
   const [robots, setRobots] = useState<Robot[]>([]);
   const [operators, setOperators] = useState<Operator[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
-  const [, setTaskGroups] = useState<TaskGroup[]>([]);
+  const [, setMissionGroups] = useState<MissionGroup[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [filling, setFilling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,28 +39,28 @@ export default function SchedulePage() {
       .listStudies()
       .then((s) => {
         setStudies(s);
-        if (s.length > 0) setStudyId((cur) => cur ?? s[0].id);
+        if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
       .catch(() => setError("Could not reach backend. Is it running on :8000?"));
   }, []);
 
   const loadWeek = useCallback(async () => {
-    if (!studyId) return;
+    if (!campaignId) return;
     const start = isoDate(days[0]);
     const end = isoDate(days[days.length - 1]);
     const [ss, p, o, l, tg] = await Promise.all([
-      api.listSessions(studyId, start, end),
+      api.listRuns(campaignId, start, end),
       api.listRobots(),
       api.listOperators(),
       api.listLabs(),
-      api.listTaskGroups(studyId),
+      api.listMissionGroups(campaignId),
     ]);
-    setSessions(ss);
+    setRuns(ss);
     setRobots(p);
     setOperators(o);
     setLabs(l);
-    setTaskGroups(tg);
-  }, [studyId, days]);
+    setMissionGroups(tg);
+  }, [campaignId, days]);
 
   useEffect(() => {
     loadWeek().catch(() => setError("Failed to load week."));
@@ -71,36 +71,36 @@ export default function SchedulePage() {
     return () => clearInterval(t);
   }, [loadWeek]);
 
-  const codeOf = (s: Session) => s.encoded_code ?? s.provisional_code ?? "—";
-  const sub = (s: Session) =>
+  const codeOf = (s: Run) => s.encoded_code ?? s.provisional_code ?? "—";
+  const sub = (s: Run) =>
     robots.find((p) => p.id === s.robot_id)?.robot_code ??
     operators.find((o) => o.id === s.operator_id)?.operator_code ??
     labs.find((l) => l.id === s.lab_id)?.name ??
     "unassigned";
 
-  const cellSessions = (date: Date, time: string) =>
-    sessions.filter((s) => s.slot_date === isoDate(date) && s.slot_time === time && s.state !== "CANCELLED");
-  const unscheduled = sessions.filter((s) => (!s.slot_time || !HOURS.includes(s.slot_time)) && s.state !== "CANCELLED");
+  const cellRuns = (date: Date, time: string) =>
+    runs.filter((s) => s.slot_date === isoDate(date) && s.slot_time === time && s.state !== "CANCELLED");
+  const unscheduled = runs.filter((s) => (!s.slot_time || !HOURS.includes(s.slot_time)) && s.state !== "CANCELLED");
 
-  const addSessionAt = async (date: Date, time: string) => {
-    if (!studyId) return;
+  const addRunAt = async (date: Date, time: string) => {
+    if (!campaignId) return;
     try {
-      const s = await api.createSession({ study_id: studyId, slot_date: isoDate(date), slot_time: time });
+      const s = await api.createRun({ campaign_id: campaignId, slot_date: isoDate(date), slot_time: time });
       await loadWeek();
       setSelected(s.id);
     } catch (e) {
-      toast("error", e instanceof ApiError ? e.friendly : "Could not create session");
+      toast("error", e instanceof ApiError ? e.friendly : "Could not create run");
     }
   };
 
   const autoFill = async () => {
-    if (!studyId) return;
+    if (!campaignId) return;
     setFilling(true);
     try {
-      const r = await api.autoFill(studyId, { start: isoDate(days[0]), end: isoDate(days[days.length - 1]) });
+      const r = await api.autoFill(campaignId, { start: isoDate(days[0]), end: isoDate(days[days.length - 1]) });
       await loadWeek();
       const tail = r.reps_remaining > 0 ? ` · ${r.reps_remaining} reps still unscheduled` : "";
-      toast(r.created > 0 ? "success" : "info", `Auto-fill: ${r.created} session(s) placed${tail}`);
+      toast(r.created > 0 ? "success" : "info", `Auto-fill: ${r.created} run(s) placed${tail}`);
     } catch (e) {
       toast("error", e instanceof ApiError ? e.friendly : "Auto-fill failed");
     } finally {
@@ -108,11 +108,11 @@ export default function SchedulePage() {
     }
   };
 
-  const chip = (s: Session) => (
+  const chip = (s: Run) => (
     <button
       key={s.id}
       onClick={() => setSelected(s.id)}
-      className="mb-1 block w-full rounded-md border border-neutral-200 bg-white px-2 py-1 text-left text-[11px] hover:border-teal-300 hover:bg-teal-50"
+      className="mb-1 block w-full rounded-md border border-neutral-200 bg-white px-2 py-1 text-left text-[11px] hover:border-violet-300 hover:bg-violet-50"
     >
       <span className="flex items-center gap-1">
         <StatusDot state={s.state} />
@@ -127,12 +127,12 @@ export default function SchedulePage() {
       <header className="flex items-center gap-4 border-b border-neutral-200 bg-white px-5 py-3">
         <h1 className="text-lg font-semibold">Schedule</h1>
         <select
-          value={studyId ?? ""}
-          onChange={(e) => setStudyId(e.target.value || null)}
-          className="rounded border border-neutral-300 px-2 py-1 text-sm"
+          value={campaignId ?? ""}
+          onChange={(e) => setCampaignId(e.target.value || null)}
+          className="cq-select"
         >
-          {studies.length === 0 && <option value="">No studies</option>}
-          {studies.map((s) => (
+          {campaigns.length === 0 && <option value="">No campaigns</option>}
+          {campaigns.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
@@ -149,8 +149,8 @@ export default function SchedulePage() {
         {canConfirm && (
           <button
             onClick={autoFill}
-            disabled={filling || !studyId}
-            className="ml-auto rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-neutral-300"
+            disabled={filling || !campaignId}
+            className="ml-auto cq-btn-primary rounded-lg px-3 py-1.5 text-sm font-medium"
           >
             {filling ? "Filling…" : "Auto-fill week"}
           </button>
@@ -177,14 +177,14 @@ export default function SchedulePage() {
               <div key={time} className="contents">
                 <div className="border-r border-neutral-100 py-2 pr-2 text-right text-xs text-neutral-400">{time}</div>
                 {days.map((d) => {
-                  const items = cellSessions(d, time);
+                  const items = cellRuns(d, time);
                   return (
                     <div key={isoDate(d) + time} className="min-h-[52px] border-b border-l border-neutral-100 p-1">
                       {items.map(chip)}
                       {canWrite && (
                         <button
-                          onClick={() => addSessionAt(d, time)}
-                          className="w-full rounded border border-dashed border-neutral-200 py-0.5 text-[11px] text-neutral-300 hover:border-teal-300 hover:text-teal-600"
+                          onClick={() => addRunAt(d, time)}
+                          className="w-full rounded border border-dashed border-neutral-200 py-0.5 text-[11px] text-neutral-300 hover:border-violet-300 hover:text-[color:var(--cq-iris)]"
                         >
                           +
                         </button>
@@ -208,10 +208,10 @@ export default function SchedulePage() {
           )}
         </div>
 
-        {selected && studyId && (
-          <SessionInspector
-            sessionId={selected}
-            studyId={studyId}
+        {selected && campaignId && (
+          <RunInspector
+            runId={selected}
+            campaignId={campaignId}
             canWrite={canWrite}
             canConfirm={canConfirm}
             onClose={() => setSelected(null)}

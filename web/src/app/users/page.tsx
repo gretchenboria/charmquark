@@ -11,9 +11,9 @@ import { NewButton } from "@/components/NewButton";
 import { useToast } from "@/components/Toast";
 
 const ROLE_OPTIONS = [
-  { value: "ROBOT_OPERATOR", label: "Robot Operator — runs sessions, records QA (no catalog writes)" },
+  { value: "ROBOT_OPERATOR", label: "Robot Operator — runs runs, records QA (no catalog writes)" },
   { value: "PM", label: "PM — full create/update/delete" },
-  { value: "FLEET_LEAD", label: "Fleet Lead — read-only + delete a whole study + legal review" },
+  { value: "FLEET_LEAD", label: "Fleet Lead — read-only + delete a whole campaign + legal review" },
 ];
 
 const columns: Column[] = [

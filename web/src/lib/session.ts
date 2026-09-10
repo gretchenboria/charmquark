@@ -42,7 +42,7 @@ export function clearUser(): void {
   window.dispatchEvent(new Event("charmquark-user-changed"));
 }
 
-// First-login onboarding: completion persists per user across sessions (localStorage).
+// First-login onboarding: completion persists per user across runs (localStorage).
 const ONBOARD_KEY = "charmquark.onboarded";
 
 function onboardId(u: User): string {
@@ -83,21 +83,21 @@ export function resetOnboarded(u: User): void {
 }
 
 // Permission helpers — FULL CRUD for every signed-in role (no hard-coded read-only).
-// Legal review stays a Study-Lead approval verdict (a domain action, not a read-only gate).
+// Legal review stays a Campaign-Lead approval verdict (a domain action, not a read-only gate).
 export const canCreate = (_r: Role | undefined) => true;
 export const canUpdate = (_r: Role | undefined) => true;
 export const canDelete = (_r: Role | undefined) => true;
-export const canDeleteStudy = (_r: Role | undefined) => true;
+export const canDeleteCampaign = (_r: Role | undefined) => true;
 export const isLegalReviewer = (r: Role | undefined) => r === "FLEET_LEAD";
 
 // Back-compat aliases used across existing components:
 export const canWriteCatalog = canCreate;          // creating catalog objects = PM
-export const canWriteSession = canUpdate;           // session operations = PM + Robot Operator
+export const canWriteRun = canUpdate;           // run operations = PM + Robot Operator
 
-// Planning ownership: confirming a session, advancing the post-collection pipeline, and
-// deleting a session belong to the PM / Fleet Lead. Robot operators run sessions (execute); they
+// Planning ownership: confirming a run, advancing the post-collection pipeline, and
+// deleting a run belong to the PM / Fleet Lead. Robot operators run runs (execute); they
 // don't confirm or hand-crank the pipeline.
-export const canConfirmSession = (r: Role | undefined) => r === "PM" || r === "FLEET_LEAD";
+export const canConfirmRun = (r: Role | undefined) => r === "PM" || r === "FLEET_LEAD";
 
 export const ROLE_LABEL: Record<Role, string> = {
   PM: "PM",

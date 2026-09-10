@@ -4,15 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ApiError, api } from "@/lib/api";
 import type {
-  DeviceFleet,
+  SensorRig,
   Lab,
   Operator,
   Robot,
   Readiness,
-  Session,
-  SessionAssign,
-  Task,
-  TaskGroup,
+  Run,
+  RunAssign,
+  Mission,
+  MissionGroup,
 } from "@/lib/types";
 import { StatusDot } from "./StatusDot";
 import { RoleRow } from "./RoleRow";
@@ -21,10 +21,10 @@ import { QAPanel } from "./QAPanel";
 import { useToast } from "./Toast";
 import { DATA_PIPELINE, STAGE_LABEL } from "@/lib/metrics";
 import { EligiblePicker, type Candidate } from "./EligiblePicker";
-import { TaskScopePicker } from "./TaskScopePicker";
-import { ExecuteSession } from "./ExecuteSession";
+import { MissionScopePicker } from "./MissionScopePicker";
+import { ExecuteRun } from "./ExecuteRun";
 
-type Role = "robot" | "operator" | "lab" | "device_fleet";
+type Role = "robot" | "operator" | "lab" | "sensor_rig";
 
 // Pre-confirm states where the PM/Fleet Lead can still confirm the plan.
 const PRE_CONFIRM = ["DRAFT", "ASSEMBLING", "READY", "BLOCKED"];
@@ -39,55 +39,55 @@ const NEXT_STAGE: Record<string, string> = {
   UPLOADED: "DONE",
 };
 
-export function SessionInspector({
-  sessionId,
-  studyId,
+export function RunInspector({
+  runId,
+  campaignId,
   canWrite,
   canConfirm,
   onClose,
   onChanged,
 }: {
-  sessionId: string;
-  studyId: string;
+  runId: string;
+  campaignId: string;
   canWrite: boolean;
   canConfirm: boolean;
   onClose: () => void;
   onChanged: () => void;
 }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [run, setRun] = useState<Run | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [robots, setRobots] = useState<Robot[]>([]);
   const [operators, setOperators] = useState<Operator[]>([]);
   const [labs, setLabs] = useState<Lab[]>([]);
-  const [taskGroups, setTaskGroups] = useState<TaskGroup[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [fleets, setFleets] = useState<DeviceFleet[]>([]);
+  const [missionGroups, setMissionGroups] = useState<MissionGroup[]>([]);
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [fleets, setFleets] = useState<SensorRig[]>([]);
   const [picker, setPicker] = useState<Role | null>(null);
-  const [taskPickerOpen, setTaskPickerOpen] = useState(false);
+  const [taskPickerOpen, setMissionPickerOpen] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
 
   const load = useCallback(async () => {
     const [s, r, p, o, l, tg, tk, f] = await Promise.all([
-      api.getSession(sessionId),
-      api.getReadiness(sessionId),
+      api.getRun(runId),
+      api.getReadiness(runId),
       api.listRobots(),
       api.listOperators(),
       api.listLabs(),
-      api.listTaskGroups(studyId),
-      api.listTasks(studyId),
-      api.listDeviceFleets(studyId),
+      api.listMissionGroups(campaignId),
+      api.listMissions(campaignId),
+      api.listSensorRigs(campaignId),
     ]);
-    setSession(s);
+    setRun(s);
     setReadiness(r);
     setRobots(p);
     setOperators(o);
     setLabs(l);
-    setTaskGroups(tg);
-    setTasks(tk);
+    setMissionGroups(tg);
+    setMissions(tk);
     setFleets(f);
-  }, [sessionId, studyId]);
+  }, [runId, campaignId]);
 
   useEffect(() => {
     load();
@@ -96,12 +96,12 @@ export function SessionInspector({
   const issueFor = (member: string): string | undefined =>
     readiness?.issues.find((i) => i.member === member)?.reason;
 
-  const applySwap = async (patch: SessionAssign) => {
+  const applySwap = async (patch: RunAssign) => {
     setError(null);
     setPicker(null);
-    setTaskPickerOpen(false);
+    setMissionPickerOpen(false);
     try {
-      await api.assignSession(sessionId, patch);
+      await api.assignRun(runId, patch);
       await load();
       onChanged();
     } catch (e) {
@@ -112,8 +112,8 @@ export function SessionInspector({
   const confirm = async () => {
     setError(null);
     try {
-      await api.confirmSession(sessionId);
-      toast("success", "Session confirmed");
+      await api.confirmRun(runId);
+      toast("success", "Run confirmed");
       await load();
       onChanged();
     } catch (e) {
@@ -124,10 +124,10 @@ export function SessionInspector({
   };
 
   const remove = async () => {
-    if (!window.confirm("Delete this session?")) return;
+    if (!window.confirm("Delete this run?")) return;
     try {
-      await api.deleteSession(sessionId);
-      toast("success", "Session deleted");
+      await api.deleteRun(runId);
+      toast("success", "Run deleted");
       onChanged();
       onClose();
     } catch (e) {
@@ -137,7 +137,7 @@ export function SessionInspector({
 
   const advance = async () => {
     try {
-      const s = await api.advanceSession(sessionId);
+      const s = await api.advanceRun(runId);
       toast("success", `Advanced to ${s.state.replace("_", " ").toLowerCase()}`);
       await load();
       onChanged();
@@ -148,7 +148,7 @@ export function SessionInspector({
 
   const swapStandby = async () => {
     try {
-      const r = await api.robotCancel(sessionId);
+      const r = await api.robotCancel(runId);
       toast(r.swapped_in ? "success" : "info", r.message);
       await load();
       onChanged();
@@ -157,7 +157,7 @@ export function SessionInspector({
     }
   };
 
-  if (!session) {
+  if (!run) {
     return (
       <aside className="w-[380px] shrink-0 border-l border-neutral-200 bg-white p-4">Loading…</aside>
     );
@@ -192,7 +192,7 @@ export function SessionInspector({
           eligible: l.is_available,
           reason: l.is_available ? undefined : "unavailable",
         }));
-      case "device_fleet":
+      case "sensor_rig":
         return fleets.map((f) => ({ id: f.id, label: f.name, eligible: true }));
     }
   };
@@ -201,31 +201,31 @@ export function SessionInspector({
     robot: "Swap Robot",
     operator: "Swap Robot Operator",
     lab: "Swap Lab",
-    device_fleet: "Swap Device Fleet",
+    sensor_rig: "Swap Sensor Rig",
   };
 
   const onPick = (role: Role) => (id: string) => {
-    const patch: SessionAssign =
+    const patch: RunAssign =
       role === "robot"
         ? { robot_id: id }
         : role === "operator"
         ? { operator_id: id }
         : role === "lab"
         ? { lab_id: id }
-        : { device_fleet_id: id };
+        : { sensor_rig_id: id };
     void applySwap(patch);
   };
 
-  // Task-row value + label reflect group-vs-single scope.
+  // Mission-row value + label reflect group-vs-single scope.
   const taskValue =
-    session.task_scope === "SINGLE"
-      ? session.task_ids.length
-        ? `${session.task_ids.length} task(s): ` +
-          session.task_ids.map((id) => tasks.find((t) => t.id === id)?.task_code ?? "?").join(", ")
+    run.mission_scope === "SINGLE"
+      ? run.mission_ids.length
+        ? `${run.mission_ids.length} mission(s): ` +
+          run.mission_ids.map((id) => missions.find((t) => t.id === id)?.mission_code ?? "?").join(", ")
         : null
-      : nameOf(taskGroups, session.task_group_id, (t) => `${t.name} (group)`);
+      : nameOf(missionGroups, run.mission_group_id, (t) => `${t.name} (group)`);
 
-  const code = session.encoded_code ?? session.provisional_code ?? "—";
+  const code = run.encoded_code ?? run.provisional_code ?? "—";
 
   return (
     <aside className="relative w-[380px] shrink-0 overflow-y-auto border-l border-neutral-200 bg-white">
@@ -233,7 +233,7 @@ export function SessionInspector({
         <div>
           <div className="font-mono text-sm text-neutral-800">{code}</div>
           <div className="mt-0.5">
-            <StatusDot state={session.state} />
+            <StatusDot state={run.state} />
           </div>
         </div>
         <button onClick={onClose} className="text-neutral-400 hover:text-neutral-700">
@@ -242,44 +242,44 @@ export function SessionInspector({
       </div>
 
       <div className="px-4 pb-2 pt-1 text-xs text-neutral-500">
-        {session.slot_date ?? "unscheduled"}
+        {run.slot_date ?? "unscheduled"}
       </div>
 
       <div className="px-4">
         <RoleRow
-          label="Tasks"
+          label="Missions"
           value={taskValue}
-          issue={issueFor("task")}
+          issue={issueFor("mission")}
           canSwap={canConfirm}
-          onSwap={() => setTaskPickerOpen(true)}
+          onSwap={() => setMissionPickerOpen(true)}
         />
         <RoleRow
           label="Robot"
-          value={nameOf(robots, session.robot_id, (p) => p.robot_code)}
+          value={nameOf(robots, run.robot_id, (p) => p.robot_code)}
           issue={issueFor("robot")}
           canSwap={canConfirm}
           onSwap={() => setPicker("robot")}
         />
         <RoleRow
           label="Robot Operator"
-          value={nameOf(operators, session.operator_id, (o) => o.operator_code)}
+          value={nameOf(operators, run.operator_id, (o) => o.operator_code)}
           issue={issueFor("operator")}
           canSwap={canConfirm}
           onSwap={() => setPicker("operator")}
         />
         <RoleRow
           label="Lab"
-          value={nameOf(labs, session.lab_id, (l) => l.name)}
+          value={nameOf(labs, run.lab_id, (l) => l.name)}
           issue={issueFor("lab")}
           canSwap={canConfirm}
           onSwap={() => setPicker("lab")}
         />
         <RoleRow
-          label="Device Fleet"
-          value={nameOf(fleets, session.device_fleet_id, (f) => f.name)}
-          issue={issueFor("device_fleet")}
+          label="Sensor Rig"
+          value={nameOf(fleets, run.sensor_rig_id, (f) => f.name)}
+          issue={issueFor("sensor_rig")}
           canSwap={canConfirm}
-          onSwap={() => setPicker("device_fleet")}
+          onSwap={() => setPicker("sensor_rig")}
         />
       </div>
 
@@ -290,62 +290,62 @@ export function SessionInspector({
       )}
 
       {/* Run entry — the robot operator's one verb. Opens the field view in place (no page jump). */}
-      {(session.state === "CONFIRMED" || session.state === "IN_EXECUTION") && canWrite && (
+      {(run.state === "CONFIRMED" || run.state === "IN_EXECUTION") && canWrite && (
         <button
           onClick={() => setExecuting(true)}
-          className="mx-4 mt-4 block w-[calc(100%-2rem)] rounded-md bg-teal-600 py-2 text-center text-sm font-medium text-white hover:bg-teal-700"
+          className="mx-4 mt-4 block w-[calc(100%-2rem)] rounded-md bg-[color:var(--cq-iris)] py-2 text-center text-sm font-medium text-white hover:bg-[color:var(--cq-violet)]"
         >
-          {session.state === "IN_EXECUTION" ? "Continue execution →" : "Open & execute →"}
+          {run.state === "IN_EXECUTION" ? "Continue execution →" : "Open & execute →"}
         </button>
       )}
 
-      {/* Data pipeline stepper — shown once the session is on the pipeline (Confirmed+). */}
-      {DATA_PIPELINE.includes(session.state as (typeof DATA_PIPELINE)[number]) || session.state === "CONFIRMED" || session.state === "IN_EXECUTION" ? (
+      {/* Data pipeline stepper — shown once the run is on the pipeline (Confirmed+). */}
+      {DATA_PIPELINE.includes(run.state as (typeof DATA_PIPELINE)[number]) || run.state === "CONFIRMED" || run.state === "IN_EXECUTION" ? (
         <div className="mx-4 mt-4 rounded-xl bg-neutral-50 p-3">
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Data pipeline</div>
           <Stepper
             stages={(["IN_EXECUTION", ...DATA_PIPELINE] as string[]).map((k) => ({ key: k, label: STAGE_LABEL[k] }))}
-            current={session.state}
+            current={run.state}
           />
           {/* Progression to Collected happens automatically when the robot operator finishes.
               Post-collection stages are advanced by the PM/Fleet Lead. */}
-          {canConfirm && POST_COLLECTION_ADVANCE.includes(session.state) && (
+          {canConfirm && POST_COLLECTION_ADVANCE.includes(run.state) && (
             <button onClick={advance} className="mt-3 w-full rounded-md border border-neutral-300 py-1.5 text-xs font-medium text-neutral-700 hover:bg-white">
-              Advance to {STAGE_LABEL[NEXT_STAGE[session.state]] ?? "next stage"} →
+              Advance to {STAGE_LABEL[NEXT_STAGE[run.state]] ?? "next stage"} →
             </button>
           )}
         </div>
       ) : null}
 
       {/* QA panel — available once data has been collected (runs alongside the pipeline). */}
-      {["COLLECTED", "EXTRACTED", "MANUAL_QA", "VALIDATED", "UPLOADED", "DONE"].includes(session.state) && (
-        <QAPanel sessionId={sessionId} canWrite={canWrite} />
+      {["COLLECTED", "EXTRACTED", "MANUAL_QA", "VALIDATED", "UPLOADED", "DONE"].includes(run.state) && (
+        <QAPanel runId={runId} canWrite={canWrite} />
       )}
 
-      {session.collected_rows && session.collected_rows.length > 0 && (
+      {run.collected_rows && run.collected_rows.length > 0 && (
         <div className="mx-4 mt-3 text-xs text-neutral-500">
-          {session.collected_rows.length} row{session.collected_rows.length === 1 ? "" : "s"} collected
+          {run.collected_rows.length} row{run.collected_rows.length === 1 ? "" : "s"} collected
         </div>
       )}
 
       {canWrite ? (
         <div className="sticky bottom-0 mt-3 border-t border-neutral-100 bg-white px-4 py-3">
           {error && <div className="mb-2 text-xs text-red-600">{error}</div>}
-          {canConfirm && PRE_CONFIRM.includes(session.state) && (
+          {canConfirm && PRE_CONFIRM.includes(run.state) && (
             <button
               onClick={confirm}
               disabled={!readiness?.can_confirm}
-              className="w-full rounded-md bg-teal-600 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
+              className="w-full rounded-md bg-[color:var(--cq-iris)] py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
             >
-              {readiness?.can_confirm ? "Confirm session" : "Not ready to confirm"}
+              {readiness?.can_confirm ? "Confirm run" : "Not ready to confirm"}
             </button>
           )}
           {canConfirm && (
             <button onClick={remove} className="mt-2 w-full rounded-md py-1.5 text-xs text-red-600 hover:bg-red-50">
-              Delete session
+              Delete run
             </button>
           )}
-          {canConfirm && session.robot_id && (
+          {canConfirm && run.robot_id && (
             <button
               onClick={swapStandby}
               className="mt-2 w-full rounded-md border border-neutral-300 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
@@ -355,13 +355,13 @@ export function SessionInspector({
           )}
           {!canConfirm && (
             <p className="text-xs text-neutral-500">
-              Planning is managed by the PM / Fleet Lead. Use <b>Open &amp; execute</b> to run this session.
+              Planning is managed by the PM / Fleet Lead. Use <b>Open &amp; execute</b> to run this run.
             </p>
           )}
         </div>
       ) : (
         <div className="mt-3 border-t border-neutral-100 px-4 py-3 text-xs text-neutral-500">
-          Read-only — your role can’t edit sessions.
+          Read-only — your role can’t edit runs.
         </div>
       )}
 
@@ -375,25 +375,25 @@ export function SessionInspector({
       )}
 
       {taskPickerOpen && canConfirm && (
-        <TaskScopePicker
-          groups={taskGroups}
-          tasks={tasks}
-          currentScope={session.task_scope}
-          currentGroupId={session.task_group_id}
-          currentTaskIds={session.task_ids}
+        <MissionScopePicker
+          groups={missionGroups}
+          missions={missions}
+          currentScope={run.mission_scope}
+          currentGroupId={run.mission_group_id}
+          currentMissionIds={run.mission_ids}
           onApply={(patch) => void applySwap(patch)}
-          onClose={() => setTaskPickerOpen(false)}
+          onClose={() => setMissionPickerOpen(false)}
         />
       )}
 
       {executing && (
-        <ExecuteSession
-          session={session}
+        <ExecuteRun
+          run={run}
           code={code}
           canEdit={canWrite}
           onClose={() => setExecuting(false)}
           onSaved={(s) => {
-            setSession(s);
+            setRun(s);
             onChanged();
           }}
         />

@@ -1,13 +1,40 @@
-<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CharmQuark">
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CharmQuark">
   <defs>
-    <linearGradient id="cq" x1="4" y1="2" x2="60" y2="62" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7C5CE0"/>
-      <stop offset="0.5" stop-color="#2E6FF2"/>
-      <stop offset="1" stop-color="#1FA8B8"/>
+    <linearGradient id="cqG" x1="14" y1="12" x2="114" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6D28A8"/>
+      <stop offset="0.52" stop-color="#5A4CA0"/>
+      <stop offset="1" stop-color="#3576C2"/>
     </linearGradient>
+    <radialGradient id="cqNode" cx="0.34" cy="0.30" r="0.85">
+      <stop offset="0" stop-color="#B79BE8"/>
+      <stop offset="0.45" stop-color="#6D42B8"/>
+      <stop offset="1" stop-color="#34206B"/>
+    </radialGradient>
   </defs>
-  <rect width="64" height="64" rx="15" fill="url(#cq)"/>
-  <ellipse cx="32" cy="32" rx="21" ry="9" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="2.5" transform="rotate(-28 32 32)"/>
-  <ellipse cx="32" cy="32" rx="21" ry="9" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="2.5" transform="rotate(28 32 32)"/>
-  <circle cx="32" cy="32" r="7" fill="#FFFFFF"/>
+
+  <g fill="none" stroke="url(#cqG)" stroke-linecap="round" stroke-linejoin="round">
+    <!-- hexagonal containment frame -->
+    <path d="M64 12 L107 37 L107 91 L64 116 L21 91 L21 37 Z" stroke-width="6"/>
+    <!-- inner lattice: the bonds between the quark nodes -->
+    <path d="M64 12 L64 100 M21 37 L107 91 M107 37 L21 91" stroke-width="3.2" opacity="0.75"/>
+    <path d="M40 52 L88 52 M40 52 L64 100 M88 52 L64 100" stroke-width="3.2" opacity="0.75"/>
+    <!-- crossed orbitals -->
+    <ellipse cx="64" cy="64" rx="42" ry="21" stroke-width="3.6" opacity="0.9" transform="rotate(-30 64 64)"/>
+    <ellipse cx="64" cy="64" rx="42" ry="21" stroke-width="3.6" opacity="0.9" transform="rotate(30 64 64)"/>
+  </g>
+
+  <!-- the quarks -->
+  <g>
+    <circle cx="64" cy="34" r="11" fill="url(#cqNode)"/>
+    <circle cx="64" cy="64" r="12.5" fill="url(#cqNode)"/>
+    <circle cx="40" cy="86" r="11" fill="url(#cqNode)"/>
+    <circle cx="88" cy="86" r="11" fill="url(#cqNode)"/>
+    <!-- specular highlights: the glossy read of the original mark -->
+    <g fill="#FFFFFF" opacity="0.55">
+      <ellipse cx="60.5" cy="30" rx="3.4" ry="2.4" transform="rotate(-28 60.5 30)"/>
+      <ellipse cx="60" cy="59.5" rx="3.9" ry="2.7" transform="rotate(-28 60 59.5)"/>
+      <ellipse cx="36.5" cy="82" rx="3.4" ry="2.4" transform="rotate(-28 36.5 82)"/>
+      <ellipse cx="84.5" cy="82" rx="3.4" ry="2.4" transform="rotate(-28 84.5 82)"/>
+    </g>
+  </g>
 </svg>

@@ -92,7 +92,7 @@ export function NewButton({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700"
+        className="cq-btn-primary rounded-lg px-3 py-1.5 text-sm font-medium"
       >
         + {label}
       </button>
@@ -172,7 +172,7 @@ export function NewButton({
               <button
                 onClick={submit}
                 disabled={busy || !isValid}
-                className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+                className="cq-btn-primary rounded-lg px-3 py-1.5 text-sm font-medium"
               >
                 {busy ? "Creating…" : "Create"}
               </button>

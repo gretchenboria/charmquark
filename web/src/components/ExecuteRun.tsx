@@ -1,33 +1,33 @@
 "use client";
 
-// Robot Operator "execute session" overlay. For each task in the session it shows the task
-// code/name, a variant/error (T#V#E#) picker (selection, not typing), the task's
+// Robot Operator "execute run" overlay. For each mission in the run it shows the mission
+// code/name, a variant/error (T#V#E#) picker (selection, not typing), the mission's
 // instructions rendered read-only, a Done toggle, and a free-text notes field. Every
-// change is saved via PUT /sessions/{id}/execution/{task_id} (debounced on note typing,
+// change is saved via PUT /runs/{id}/execution/{mission_id} (debounced on note typing,
 // immediate on Done/variant). The field log can be printed or exported (CSV/JSON).
 //
 // Field-usability guarantees:
-//  - Per-task sync status (saved / saving / not saved) with one-tap retry.
+//  - Per-mission sync status (saved / saving / not saved) with one-tap retry.
 //  - A localStorage draft mirrors the working log, so a reload/crash restores entries.
 //  - Pending note saves are flushed on Close and on Finish (not only on blur).
 //  - Done is gated on a chosen variant; Finish shows a recap of anything left open.
-//  - Finish advances the session to COLLECTED; Close just leaves.
+//  - Finish advances the run to COLLECTED; Close just leaves.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { api, ApiError } from "@/lib/api";
-import type { ExecutionLog, ExecutionLogEntry, QARun, Session, TaskDetail } from "@/lib/types";
+import type { ExecutionLog, ExecutionLogEntry, QARun, Run, MissionDetail } from "@/lib/types";
 import { useToast } from "@/components/Toast";
 
 // Field-check verdicts a robot operator can record per checklist item.
 const CHECK_RESULTS = ["NOT_CHECKED", "PASS", "ACCEPTABLE", "FAIL", "SKIP", "NOT_APPLICABLE"];
 
-// Per-task save status for the sync chip.
+// Per-mission save status for the sync chip.
 type SyncStatus = "saving" | "saved" | "error";
 
-const draftKey = (sessionId: string) => `charmquark:exec:${sessionId}`;
+const draftKey = (runId: string) => `charmquark:exec:${runId}`;
 
-interface TaskInstr {
+interface MissionInstr {
   format: string;
   content: string;
 }
@@ -43,15 +43,15 @@ const prettyJson = (raw: string): string => {
   }
 };
 
-const renderInstructions = (i: TaskInstr | null): string => {
+const renderInstructions = (i: MissionInstr | null): string => {
   if (!i || !i.content.trim()) return "";
   return i.format === "json" ? prettyJson(i.content) : i.content;
 };
 
-// One task's saved-log entry + its resolved detail/instructions.
+// One mission's saved-log entry + its resolved detail/instructions.
 interface Row {
-  task: TaskDetail;
-  instr: TaskInstr | null;
+  mission: MissionDetail;
+  instr: MissionInstr | null;
 }
 
 function csvCell(v: string): string {
@@ -59,28 +59,28 @@ function csvCell(v: string): string {
   return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
 
-export function ExecuteSession({
-  session,
+export function ExecuteRun({
+  run,
   code,
   canEdit,
   onClose,
   onSaved,
 }: {
-  session: Session;
+  run: Run;
   code: string;
   canEdit: boolean;
   onClose: () => void;
-  onSaved: (s: Session) => void;
+  onSaved: (s: Run) => void;
 }) {
   const toast = useToast();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  // Working copy of the field log, keyed by task_id. Seeded from the session, then a
+  // Working copy of the field log, keyed by mission_id. Seeded from the run, then a
   // localStorage draft (if any) is merged over it on mount so unsaved edits survive reload.
-  const [log, setLog] = useState<ExecutionLog>(() => ({ ...(session.execution_log ?? {}) }));
-  // Per-task sync status.
+  const [log, setLog] = useState<ExecutionLog>(() => ({ ...(run.execution_log ?? {}) }));
+  // Per-mission sync status.
   const [sync, setSync] = useState<Record<string, SyncStatus>>({});
-  // Field checklist (QA field-log gates) for this session, and the task whose full
+  // Field checklist (QA field-log gates) for this run, and the mission whose full
   // instructions are open in the modal.
   const [qa, setQa] = useState<QARun | null>(null);
   const [instrModal, setInstrModal] = useState<Row | null>(null);
@@ -113,10 +113,10 @@ export function ExecuteSession({
     setInstrSaving(true);
     try {
       const fmt = instrModal.instr?.format === "json" ? "json" : "txt";
-      const saved = await api.saveInstructions(instrModal.task.id, { content: instrDraft, format: fmt });
-      const next: TaskInstr = { format: saved.format, content: saved.content };
+      const saved = await api.saveInstructions(instrModal.mission.id, { content: instrDraft, format: fmt });
+      const next: MissionInstr = { format: saved.format, content: saved.content };
       // reflect the edit in both the modal and the inline preview
-      setRows((rs) => (rs ?? []).map((x) => (x.task.id === instrModal.task.id ? { ...x, instr: next } : x)));
+      setRows((rs) => (rs ?? []).map((x) => (x.mission.id === instrModal.mission.id ? { ...x, instr: next } : x)));
       setInstrModal((mo) => (mo ? { ...mo, instr: next } : mo));
       setInstrEditing(false);
       toast("success", "Instructions saved");
@@ -126,7 +126,7 @@ export function ExecuteSession({
       setInstrSaving(false);
     }
   }, [instrModal, instrDraft, toast]);
-  // Debounce timers for note saves, keyed by task_id.
+  // Debounce timers for note saves, keyed by mission_id.
   const noteTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // Portal target is only available after mount (SSR-safe).
   const [mounted, setMounted] = useState(false);
@@ -136,36 +136,36 @@ export function ExecuteSession({
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const raw = window.localStorage.getItem(draftKey(session.id));
+      const raw = window.localStorage.getItem(draftKey(run.id));
       if (raw) setLog((cur) => ({ ...cur, ...(JSON.parse(raw) as ExecutionLog) }));
     } catch {
       /* ignore malformed draft */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.id]);
+  }, [run.id]);
 
   // Persist the working log to localStorage on every change.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      window.localStorage.setItem(draftKey(session.id), JSON.stringify(log));
+      window.localStorage.setItem(draftKey(run.id), JSON.stringify(log));
     } catch {
       /* storage full/unavailable — the in-memory log still holds */
     }
-  }, [session.id, log]);
+  }, [run.id, log]);
 
   useEffect(() => {
     let live = true;
     (async () => {
       try {
-        // Resolve the tasks to execute from the session's scope: an explicit task_ids list
-        // (SINGLE), or every task in the chosen group (GROUP — task_ids is empty there).
-        let ids = session.task_ids ?? [];
-        if (session.task_scope === "GROUP" && session.task_group_id) {
-          const all = await api.listTasks(session.study_id);
-          ids = all.filter((t) => t.task_group_id === session.task_group_id).map((t) => t.id);
+        // Resolve the missions to execute from the run's scope: an explicit mission_ids list
+        // (SINGLE), or every mission in the chosen group (GROUP — mission_ids is empty there).
+        let ids = run.mission_ids ?? [];
+        if (run.mission_scope === "GROUP" && run.mission_group_id) {
+          const all = await api.listMissions(run.campaign_id);
+          ids = all.filter((t) => t.mission_group_id === run.mission_group_id).map((t) => t.id);
         }
-        const details = await Promise.all(ids.map((tid) => api.getTask(tid)));
+        const details = await Promise.all(ids.map((tid) => api.getMission(tid)));
         const instr = await Promise.all(
           ids.map((tid) =>
             api
@@ -175,17 +175,17 @@ export function ExecuteSession({
           ),
         );
         if (!live) return;
-        setRows(details.map((task, i) => ({ task, instr: instr[i] })));
+        setRows(details.map((mission, i) => ({ mission, instr: instr[i] })));
       } catch {
-        if (live) setErr("Failed to load session tasks.");
+        if (live) setErr("Failed to load run missions.");
       }
     })();
     return () => {
       live = false;
     };
-    // Only the task_ids drive the load; the working log is seeded separately.
+    // Only the mission_ids drive the load; the working log is seeded separately.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.id]);
+  }, [run.id]);
 
   // Clean up any pending debounce timers on unmount.
   useEffect(() => {
@@ -193,43 +193,43 @@ export function ExecuteSession({
     return () => Object.values(timers).forEach(clearTimeout);
   }, []);
 
-  // Opening the field view begins execution: move a CONFIRMED session to IN_EXECUTION so
+  // Opening the field view begins execution: move a CONFIRMED run to IN_EXECUTION so
   // the record reflects that collection is underway. Runs once, only for an editor.
   const advancedOnce = useRef(false);
   useEffect(() => {
-    if (advancedOnce.current || !canEdit || session.state !== "CONFIRMED") return;
+    if (advancedOnce.current || !canEdit || run.state !== "CONFIRMED") return;
     advancedOnce.current = true;
-    api.advanceSession(session.id).then(onSaved).catch(() => {
+    api.advanceRun(run.id).then(onSaved).catch(() => {
       /* non-fatal: the robot operator can still record; state stays CONFIRMED */
     });
-  }, [canEdit, session.state, session.id, onSaved]);
+  }, [canEdit, run.state, run.id, onSaved]);
 
-  // Load the session's field checklist (QA run) if one exists. Created on demand.
+  // Load the run's field checklist (QA run) if one exists. Created on demand.
   useEffect(() => {
     let live = true;
-    api.getQA(session.id)
+    api.getQA(run.id)
       .then((r) => { if (live) setQa(r); })
       .catch(() => { if (live) setQa(null); });  // 404 -> not started yet
     return () => { live = false; };
-  }, [session.id]);
+  }, [run.id]);
 
   const startChecklist = useCallback(async () => {
     try {
-      setQa(await api.createQA(session.id));
+      setQa(await api.createQA(run.id));
     } catch (e) {
       toast("error", e instanceof ApiError ? e.friendly : "Could not start the field checklist");
     }
-  }, [session.id, toast]);
+  }, [run.id, toast]);
 
   const setCheck = useCallback(async (gateIndex: number, checkIndex: number, result: string) => {
     try {
-      setQa(await api.updateQACheck(session.id, gateIndex, checkIndex, result));
+      setQa(await api.updateQACheck(run.id, gateIndex, checkIndex, result));
     } catch (e) {
       toast("error", e instanceof ApiError ? e.friendly : "Update failed");
     }
-  }, [session.id, toast]);
+  }, [run.id, toast]);
 
-  // Only the FIELD-level gates belong in the robot operator's in-session checklist (LOCAL/CLOUD
+  // Only the FIELD-level gates belong in the robot operator's in-run checklist (LOCAL/CLOUD
   // gates are post-collection). Keep each gate's ORIGINAL index for the PATCH call.
   const fieldGates = useMemo(
     () => (qa?.gates ?? []).map((g, gi) => ({ g, gi })).filter((x) => x.g.level === "FIELD"),
@@ -237,50 +237,50 @@ export function ExecuteSession({
   );
 
   const save = useCallback(
-    async (taskId: string, body: { done?: boolean; note?: string; variant_code?: string | null }) => {
-      setSync((m) => ({ ...m, [taskId]: "saving" }));
+    async (missionId: string, body: { done?: boolean; note?: string; variant_code?: string | null }) => {
+      setSync((m) => ({ ...m, [missionId]: "saving" }));
       try {
-        const updated = await api.setTaskExecution(session.id, taskId, body);
+        const updated = await api.setMissionExecution(run.id, missionId, body);
         setLog({ ...(updated.execution_log ?? {}) });
         onSaved(updated);
-        setSync((m) => ({ ...m, [taskId]: "saved" }));
+        setSync((m) => ({ ...m, [missionId]: "saved" }));
       } catch (e) {
         // Keep the robot operator's local value; flag it unsaved so they can retry.
         toast("error", e instanceof ApiError ? e.friendly : "Save failed — tap Retry");
-        setSync((m) => ({ ...m, [taskId]: "error" }));
+        setSync((m) => ({ ...m, [missionId]: "error" }));
       }
     },
-    [session.id, onSaved, toast],
+    [run.id, onSaved, toast],
   );
 
-  const setDone = (taskId: string, done: boolean) => {
-    setLog((l) => ({ ...l, [taskId]: { ...l[taskId], done } }));
-    save(taskId, { done });
+  const setDone = (missionId: string, done: boolean) => {
+    setLog((l) => ({ ...l, [missionId]: { ...l[missionId], done } }));
+    save(missionId, { done });
   };
 
-  const setVariant = (taskId: string, variant_code: string) => {
+  const setVariant = (missionId: string, variant_code: string) => {
     const vc = variant_code || null;
-    setLog((l) => ({ ...l, [taskId]: { ...l[taskId], variant_code: vc } }));
-    save(taskId, { variant_code: vc });
+    setLog((l) => ({ ...l, [missionId]: { ...l[missionId], variant_code: vc } }));
+    save(missionId, { variant_code: vc });
   };
 
   // Note edits update local state immediately; the save is debounced so typing stays fluid.
-  const onNoteChange = (taskId: string, note: string) => {
-    setLog((l) => ({ ...l, [taskId]: { ...l[taskId], note } }));
-    clearTimeout(noteTimers.current[taskId]);
-    noteTimers.current[taskId] = setTimeout(() => save(taskId, { note }), 700);
+  const onNoteChange = (missionId: string, note: string) => {
+    setLog((l) => ({ ...l, [missionId]: { ...l[missionId], note } }));
+    clearTimeout(noteTimers.current[missionId]);
+    noteTimers.current[missionId] = setTimeout(() => save(missionId, { note }), 700);
   };
 
   // Explicit save on blur flushes any pending debounce immediately.
-  const onNoteBlur = (taskId: string, note: string) => {
-    clearTimeout(noteTimers.current[taskId]);
-    save(taskId, { note });
+  const onNoteBlur = (missionId: string, note: string) => {
+    clearTimeout(noteTimers.current[missionId]);
+    save(missionId, { note });
   };
 
   // Retry re-sends the full current entry so the screen and server converge.
-  const retry = (taskId: string) => {
-    const e = log[taskId] ?? {};
-    save(taskId, { done: e.done, note: e.note, variant_code: e.variant_code ?? null });
+  const retry = (missionId: string) => {
+    const e = log[missionId] ?? {};
+    save(missionId, { done: e.done, note: e.note, variant_code: e.variant_code ?? null });
   };
 
   // Flush every pending note debounce, awaiting the saves. Called before Close/Finish.
@@ -288,25 +288,25 @@ export function ExecuteSession({
     const pending = Object.keys(noteTimers.current);
     if (pending.length === 0) return;
     await Promise.all(
-      pending.map((taskId) => {
-        clearTimeout(noteTimers.current[taskId]);
-        delete noteTimers.current[taskId];
-        return save(taskId, { note: log[taskId]?.note ?? "" });
+      pending.map((missionId) => {
+        clearTimeout(noteTimers.current[missionId]);
+        delete noteTimers.current[missionId];
+        return save(missionId, { note: log[missionId]?.note ?? "" });
       }),
     );
   }, [log, save]);
 
   const doneCount = useMemo(
-    () => (rows ?? []).filter((r) => log[r.task.id]?.done).length,
+    () => (rows ?? []).filter((r) => log[r.mission.id]?.done).length,
     [rows, log],
   );
 
   const hasUnsaved = useMemo(() => Object.values(sync).some((s) => s === "error"), [sync]);
 
   const variantLabel = (r: Row): string => {
-    const codeSel = log[r.task.id]?.variant_code;
+    const codeSel = log[r.mission.id]?.variant_code;
     if (!codeSel) return "";
-    for (const v of r.task.variant_options ?? []) {
+    for (const v of r.mission.variant_options ?? []) {
       const e = v.errors.find((x) => x.code === codeSel);
       if (e) return `${codeSel} — ${v.name} · ${e.label}`;
     }
@@ -316,8 +316,8 @@ export function ExecuteSession({
   // What is still open, surfaced in the Finish recap.
   const recap = useMemo(() => {
     const list = rows ?? [];
-    const notDone = list.filter((r) => !log[r.task.id]?.done);
-    const missingVariant = list.filter((r) => log[r.task.id]?.done && !log[r.task.id]?.variant_code);
+    const notDone = list.filter((r) => !log[r.mission.id]?.done);
+    const missingVariant = list.filter((r) => log[r.mission.id]?.done && !log[r.mission.id]?.variant_code);
     let checksOpen = 0;
     let checksFailed = 0;
     for (const { g } of fieldGates) {
@@ -329,9 +329,9 @@ export function ExecuteSession({
     return { notDone, missingVariant, checksOpen, checksFailed };
   }, [rows, log, fieldGates]);
 
-  const jumpTo = (taskId: string) => {
+  const jumpTo = (missionId: string) => {
     setFinishing(false);
-    document.getElementById(`task-${taskId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById(`mission-${missionId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const doClose = async () => {
@@ -349,17 +349,17 @@ export function ExecuteSession({
         return;
       }
       // Advance CONFIRMED/IN_EXECUTION down to COLLECTED (at most two steps).
-      let s = session;
+      let s = run;
       for (let i = 0; i < 3 && (s.state === "CONFIRMED" || s.state === "IN_EXECUTION"); i += 1) {
-        s = await api.advanceSession(s.id);
+        s = await api.advanceRun(s.id);
         onSaved(s);
         if (s.state === "COLLECTED") break;
       }
-      if (typeof window !== "undefined") window.localStorage.removeItem(draftKey(session.id));
-      toast("success", "Session finished");
+      if (typeof window !== "undefined") window.localStorage.removeItem(draftKey(run.id));
+      toast("success", "Run finished");
       onClose();
     } catch (e) {
-      toast("error", e instanceof ApiError ? e.friendly : "Could not finish the session");
+      toast("error", e instanceof ApiError ? e.friendly : "Could not finish the run");
     } finally {
       setFinishBusy(false);
     }
@@ -378,14 +378,14 @@ export function ExecuteSession({
   };
 
   const exportCsv = () => {
-    const header = ["task_code", "task_name", "variant_error", "done", "note", "updated_at"];
+    const header = ["mission_code", "task_name", "variant_error", "done", "note", "updated_at"];
     const lines = [header.join(",")];
     for (const r of rows ?? []) {
-      const e = log[r.task.id] ?? {};
+      const e = log[r.mission.id] ?? {};
       lines.push(
         [
-          r.task.task_code,
-          r.task.name,
+          r.mission.mission_code,
+          r.mission.name,
           variantLabel(r),
           e.done ? "yes" : "no",
           e.note ?? "",
@@ -411,13 +411,13 @@ export function ExecuteSession({
   const exportJson = () => {
     const payload = {
       session_code: code,
-      tasks: (rows ?? []).map((r) => ({
-        task_code: r.task.task_code,
-        task_name: r.task.name,
+      missions: (rows ?? []).map((r) => ({
+        mission_code: r.mission.mission_code,
+        task_name: r.mission.name,
         variant_error: variantLabel(r),
-        done: !!log[r.task.id]?.done,
-        note: log[r.task.id]?.note ?? "",
-        updated_at: log[r.task.id]?.updated_at ?? null,
+        done: !!log[r.mission.id]?.done,
+        note: log[r.mission.id]?.note ?? "",
+        updated_at: log[r.mission.id]?.updated_at ?? null,
       })),
       checklist: qa
         ? qa.gates.map((g) => ({
@@ -434,14 +434,14 @@ export function ExecuteSession({
   const preCls =
     "max-h-64 overflow-auto whitespace-pre-wrap rounded border border-neutral-200 bg-neutral-50 p-3 font-mono text-xs text-neutral-800";
 
-  // Sync chip for a task card.
-  const SyncChip = ({ taskId, entry }: { taskId: string; entry: ExecutionLogEntry }) => {
-    const st = sync[taskId];
+  // Sync chip for a mission card.
+  const SyncChip = ({ missionId, entry }: { missionId: string; entry: ExecutionLogEntry }) => {
+    const st = sync[missionId];
     if (st === "saving") return <span className="text-xs text-neutral-400">saving…</span>;
     if (st === "error")
       return (
         <button
-          onClick={() => retry(taskId)}
+          onClick={() => retry(missionId)}
           className="rounded border border-red-300 px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
         >
           Not saved · Retry
@@ -458,9 +458,9 @@ export function ExecuteSession({
       {/* toolbar — hidden on print */}
       <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-3 print:hidden">
         <div>
-          <h1 className="text-lg font-semibold">Execute session</h1>
+          <h1 className="text-lg font-semibold">Execute run</h1>
           <p className="text-sm text-neutral-500">
-            {code} · {doneCount}/{(rows ?? []).length} tasks done
+            {code} · {doneCount}/{(rows ?? []).length} missions done
             {!canEdit && " · read-only"}
             {hasUnsaved && <span className="ml-2 text-red-600">· unsaved changes</span>}
           </p>
@@ -495,7 +495,7 @@ export function ExecuteSession({
 
       {/* print-only header */}
       <div className="hidden px-6 pt-4 print:block">
-        <h1 className="text-lg font-semibold">Session field log — {code}</h1>
+        <h1 className="text-lg font-semibold">Run field log — {code}</h1>
       </div>
 
       <div className="flex-1 overflow-auto p-6 print:overflow-visible print:p-0">
@@ -504,10 +504,10 @@ export function ExecuteSession({
         ) : rows === null ? (
           <p className="text-sm text-neutral-400">Loading…</p>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-neutral-400">This session has no tasks to execute.</p>
+          <p className="text-sm text-neutral-400">This run has no missions to execute.</p>
         ) : (
           <div className="mx-auto max-w-3xl space-y-4">
-            {/* Field checklist — the robot operator's per-session QA field log (device on,
+            {/* Field checklist — the robot operator's per-run QA field log (sensor on,
                 recording confirmed, ...). Reuses the QA field-log gates. */}
             <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] print:break-inside-avoid print:shadow-none">
               <div className="mb-2 flex items-center justify-between">
@@ -521,7 +521,7 @@ export function ExecuteSession({
               {!qa ? (
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-neutral-400">
-                    Work through device/recording checks before and during the session.
+                    Work through sensor/recording checks before and during the run.
                   </p>
                   <button
                     onClick={startChecklist}
@@ -532,7 +532,7 @@ export function ExecuteSession({
                   </button>
                 </div>
               ) : fieldGates.length === 0 ? (
-                <p className="text-sm text-neutral-400">No field checks for this study.</p>
+                <p className="text-sm text-neutral-400">No field checks for this campaign.</p>
               ) : (
                 <div className="space-y-3">
                   {fieldGates.map(({ g, gi }) => (
@@ -569,29 +569,29 @@ export function ExecuteSession({
             </div>
 
             {rows.map((r) => {
-              const e = log[r.task.id] ?? {};
+              const e = log[r.mission.id] ?? {};
               const instructions = renderInstructions(r.instr);
-              const saving = sync[r.task.id] === "saving";
+              const saving = sync[r.mission.id] === "saving";
               const variantChosen = !!e.variant_code;
               return (
                 <div
-                  key={r.task.id}
-                  id={`task-${r.task.id}`}
+                  key={r.mission.id}
+                  id={`mission-${r.mission.id}`}
                   className="scroll-mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] print:break-inside-avoid print:shadow-none"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <span className="font-semibold text-neutral-800">{r.task.task_code}</span>
-                      <span className="ml-2 text-neutral-600">{r.task.name}</span>
+                      <span className="font-semibold text-neutral-800">{r.mission.mission_code}</span>
+                      <span className="ml-2 text-neutral-600">{r.mission.name}</span>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
-                      <span className="print:hidden"><SyncChip taskId={r.task.id} entry={e} /></span>
+                      <span className="print:hidden"><SyncChip missionId={r.mission.id} entry={e} /></span>
                       <label className="flex items-center gap-2 text-sm text-neutral-700">
                         <input
                           type="checkbox"
                           checked={!!e.done}
                           disabled={!canEdit || saving || (!e.done && !variantChosen)}
-                          onChange={(ev) => setDone(r.task.id, ev.target.checked)}
+                          onChange={(ev) => setDone(r.mission.id, ev.target.checked)}
                           className="h-4 w-4"
                         />
                         Done
@@ -606,11 +606,11 @@ export function ExecuteSession({
                       <select
                         value={e.variant_code ?? ""}
                         disabled={saving}
-                        onChange={(ev) => setVariant(r.task.id, ev.target.value)}
-                        className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+                        onChange={(ev) => setVariant(r.mission.id, ev.target.value)}
+                        className="cq-select w-full"
                       >
                         <option value="">— select —</option>
-                        {(r.task.variant_options ?? []).map((v) =>
+                        {(r.mission.variant_options ?? []).map((v) =>
                           v.errors.map((eo) => (
                             <option key={eo.code} value={eo.code}>
                               {eo.code} — {v.name} · {eo.label}
@@ -623,7 +623,7 @@ export function ExecuteSession({
                       <p className="text-sm text-neutral-800">{variantLabel(r) || "—"}</p>
                     )}
                     {canEdit && !variantChosen && (
-                      <p className="mt-1 text-xs text-neutral-400">Pick a variant to mark this task done.</p>
+                      <p className="mt-1 text-xs text-neutral-400">Pick a variant to mark this mission done.</p>
                     )}
                   </div>
 
@@ -651,8 +651,8 @@ export function ExecuteSession({
                     {canEdit ? (
                       <textarea
                         value={e.note ?? ""}
-                        onChange={(ev) => onNoteChange(r.task.id, ev.target.value)}
-                        onBlur={(ev) => onNoteBlur(r.task.id, ev.target.value)}
+                        onChange={(ev) => onNoteChange(r.mission.id, ev.target.value)}
+                        onBlur={(ev) => onNoteBlur(r.mission.id, ev.target.value)}
                         placeholder="Record anything the robot operator observed…"
                         className="h-24 w-full rounded border border-neutral-300 p-2 text-sm text-neutral-800 print:h-auto print:border-neutral-200"
                       />
@@ -664,14 +664,14 @@ export function ExecuteSession({
               );
             })}
 
-            {/* Finish — the one action that ends the session. */}
+            {/* Finish — the one action that ends the run. */}
             {canEdit && (
               <div className="flex justify-end pt-2 print:hidden">
                 <button
                   onClick={() => { setAckFailed(false); setFinishing(true); }}
-                  className="rounded-md bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
+                  className="rounded-md bg-[color:var(--cq-iris)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[color:var(--cq-violet)]"
                 >
-                  Finish session
+                  Finish run
                 </button>
               </div>
             )}
@@ -689,23 +689,23 @@ export function ExecuteSession({
             className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
             onClick={(ev) => ev.stopPropagation()}
           >
-            <h2 className="text-base font-semibold text-neutral-800">Finish session {code}?</h2>
+            <h2 className="text-base font-semibold text-neutral-800">Finish run {code}?</h2>
             <p className="mt-1 text-sm text-neutral-500">
-              {doneCount} of {(rows ?? []).length} tasks done. Finishing moves the session to Collected.
+              {doneCount} of {(rows ?? []).length} missions done. Finishing moves the run to Collected.
             </p>
 
             <div className="mt-4 space-y-2 text-sm">
               {recap.notDone.length > 0 && (
                 <div className="rounded-lg bg-amber-50 p-3">
-                  <div className="font-medium text-amber-800">{recap.notDone.length} task(s) not marked done</div>
+                  <div className="font-medium text-amber-800">{recap.notDone.length} mission(s) not marked done</div>
                   <div className="mt-1 flex flex-wrap gap-2">
                     {recap.notDone.map((r) => (
                       <button
-                        key={r.task.id}
-                        onClick={() => jumpTo(r.task.id)}
+                        key={r.mission.id}
+                        onClick={() => jumpTo(r.mission.id)}
                         className="rounded border border-amber-300 px-2 py-0.5 text-xs text-amber-800 hover:bg-amber-100"
                       >
-                        {r.task.task_code}
+                        {r.mission.mission_code}
                       </button>
                     ))}
                   </div>
@@ -713,7 +713,7 @@ export function ExecuteSession({
               )}
               {recap.missingVariant.length > 0 && (
                 <div className="rounded-lg bg-amber-50 p-3 text-amber-800">
-                  {recap.missingVariant.length} done task(s) missing a variant.
+                  {recap.missingVariant.length} done mission(s) missing a variant.
                 </div>
               )}
               {recap.checksOpen > 0 && (
@@ -747,16 +747,16 @@ export function ExecuteSession({
               <button
                 onClick={doFinish}
                 disabled={finishBusy || hasUnsaved || (recap.checksFailed > 0 && !ackFailed)}
-                className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
+                className="rounded-md bg-[color:var(--cq-iris)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cq-violet)] disabled:cursor-not-allowed disabled:bg-neutral-300"
               >
-                {finishBusy ? "Finishing…" : "Finish session"}
+                {finishBusy ? "Finishing…" : "Finish run"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Instruction modal — focused, readable view of one task's full instructions. */}
+      {/* Instruction modal — focused, readable view of one mission's full instructions. */}
       {instrModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 print:hidden"
@@ -770,7 +770,7 @@ export function ExecuteSession({
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-neutral-800">Instructions</div>
                 <div className="truncate text-xs text-neutral-500">
-                  {instrModal.task.task_code} · {instrModal.task.name}
+                  {instrModal.mission.mission_code} · {instrModal.mission.name}
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -804,7 +804,7 @@ export function ExecuteSession({
                 <textarea
                   value={instrDraft}
                   onChange={(e) => setInstrDraft(e.target.value)}
-                  placeholder="Write the task instructions the robot operator should follow…"
+                  placeholder="Write the mission instructions the robot operator should follow…"
                   className="h-[50vh] w-full rounded-lg border border-neutral-300 p-3 font-mono text-sm leading-relaxed text-neutral-800"
                 />
               ) : (

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
-import type { Study, Task, TaskGroup } from "@/lib/types";
+import type { Campaign, Mission, MissionGroup } from "@/lib/types";
 import { ListPage, type Column } from "@/components/ListPage";
 import { NewButton } from "@/components/NewButton";
 
@@ -19,12 +19,12 @@ const columns: Column[] = [
   { key: "ready", header: "Ready" },
 ];
 
-export default function TasksPage() {
+export default function MissionsPage() {
   const user = useUser();
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [studyId, setStudyId] = useState<string | null>(null);
-  const [groups, setGroups] = useState<TaskGroup[]>([]);
-  const [rows, setRows] = useState<Task[]>([]);
+  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [groups, setGroups] = useState<MissionGroup[]>([]);
+  const [rows, setRows] = useState<Mission[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [riskFilter, setRiskFilter] = useState("");
   const [readyFilter, setReadyFilter] = useState("");
@@ -34,26 +34,26 @@ export default function TasksPage() {
       .listStudies()
       .then((s) => {
         setStudies(s);
-        if (s.length > 0) setStudyId(s[0].id);
+        if (s.length > 0) setCampaignId(s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));
   }, []);
 
   const load = useCallback(() => {
-    if (!studyId) return;
-    api.listTasks(studyId).then(setRows).catch(() => setErr("Failed to load tasks."));
-    api.listTaskGroups(studyId).then(setGroups).catch(() => undefined);
-  }, [studyId]);
+    if (!campaignId) return;
+    api.listMissions(campaignId).then(setRows).catch(() => setErr("Failed to load missions."));
+    api.listMissionGroups(campaignId).then(setGroups).catch(() => undefined);
+  }, [campaignId]);
   useEffect(load, [load]);
 
   const studyPicker = (
     <select
-      value={studyId ?? ""}
-      onChange={(e) => setStudyId(e.target.value || null)}
-      className="rounded border border-neutral-300 px-2 py-1 text-sm"
+      value={campaignId ?? ""}
+      onChange={(e) => setCampaignId(e.target.value || null)}
+      className="cq-select"
     >
-      {studies.length === 0 && <option value="">No studies</option>}
-      {studies.map((s) => (
+      {campaigns.length === 0 && <option value="">No campaigns</option>}
+      {campaigns.map((s) => (
         <option key={s.id} value={s.id}>
           {s.name}
         </option>
@@ -61,25 +61,25 @@ export default function TasksPage() {
     </select>
   );
 
-  const canCreate = canWriteCatalog(user?.role) && !!studyId && groups.length > 0;
+  const canCreate = canWriteCatalog(user?.role) && !!campaignId && groups.length > 0;
   const isPM = canWriteCatalog(user?.role);
   const toolbar = (
     <>
       {studyPicker}
       <NewButton
-        hidden={!(isPM && !!studyId)}
+        hidden={!(isPM && !!campaignId)}
         label="New group"
-        title="New task group"
+        title="New mission group"
         fields={[{ name: "name", label: "Group name", required: true }]}
-        onCreate={(v) => api.createTaskGroup({ study_id: studyId as string, name: String(v.name) })}
+        onCreate={(v) => api.createMissionGroup({ campaign_id: campaignId as string, name: String(v.name) })}
         onDone={load}
       />
       <NewButton
         hidden={!canCreate}
-        label="New task"
-        title="New task"
+        label="New mission"
+        title="New mission"
         fields={[
-          { name: "task_group_id", label: "Task group", type: "select", options: groups.map((g) => ({ value: g.id, label: g.name })) },
+          { name: "mission_group_id", label: "Mission group", type: "select", options: groups.map((g) => ({ value: g.id, label: g.name })) },
           { name: "name", label: "Name", required: true },
           {
             name: "risk_level",
@@ -95,13 +95,13 @@ export default function TasksPage() {
           { name: "instructions_complete", label: "Instructions complete", type: "checkbox", default: true },
         ]}
         onCreate={(v) =>
-          api.createTask({
-            study_id: studyId,
-            task_group_id: v.task_group_id,
+          api.createMission({
+            campaign_id: campaignId,
+            mission_group_id: v.mission_group_id,
             name: v.name,
             risk_level: v.risk_level,
             instructions_complete: v.instructions_complete,
-            // seed a single default variant so a Low-risk task is schedulable out of the box
+            // seed a single default variant so a Low-risk mission is schedulable out of the box
             variants: [{ id: "v1", name: "Default", correct: { id: "v1-c" }, errors: [] }],
           })
         }
@@ -111,12 +111,12 @@ export default function TasksPage() {
   );
 
   return (
-    <ListPage<Task>
-      title="Tasks"
+    <ListPage<Mission>
+      title="Missions"
       toolbar={toolbar}
       columns={columns}
       items={rows}
-      search={{ toText: (t) => `${t.task_code} ${t.name}`, placeholder: "Search by code or name" }}
+      search={{ toText: (t) => `${t.mission_code} ${t.name}`, placeholder: "Search by code or name" }}
       filters={[
         {
           id: "risk",
@@ -143,11 +143,11 @@ export default function TasksPage() {
           ],
         },
       ]}
-      sort={[{ id: "code", label: "Code", compare: (a, b) => a.task_code.localeCompare(b.task_code) }]}
+      sort={[{ id: "code", label: "Code", compare: (a, b) => a.mission_code.localeCompare(b.mission_code) }]}
       toRow={(t) => ({
         code: (
-          <Link href={`/tasks/${t.id}`} className="text-blue-700 hover:underline">
-            {t.task_code}
+          <Link href={`/missions/${t.id}`} className="font-medium text-[color:var(--cq-iris)] hover:underline">
+            {t.mission_code}
           </Link>
         ),
         name: t.name,
@@ -156,7 +156,7 @@ export default function TasksPage() {
         instr: t.instructions_complete ? "Complete" : "Incomplete",
         ready: t.is_ready ? "Ready" : "Not ready",
       })}
-      empty={err ?? "No tasks for this study."}
+      empty={err ?? "No missions for this campaign."}
     />
   );
 }

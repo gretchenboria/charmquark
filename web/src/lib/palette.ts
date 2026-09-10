@@ -1,41 +1,66 @@
-// CharmQuark brand palette. Use these for ALL charts and status colors
-// (burndown, throughput, QA pass-rate, robot utilization, sensor health, etc.)
-// so the whole app reads as one system.
+// CharmQuark brand palette.
 //
-// Chosen for perceptual separation in both light and dark appearance and for
-// colorblind-safe ordering in the series ramp (blue/orange lead).
+// Sampled from the mark: the logo runs a single gradient from deep violet on the
+// left to a clear blue on the right (#470E6C -> #3576C2). Everything here is
+// anchored to that axis, and the accents are deliberately WARM — apricot, rose,
+// sage — so they read as a counterpoint to the cool brand rather than competing
+// with it. No cyan or teal: they sit too close to the brand blue and make the
+// whole surface go cold.
+//
+// Use these for ALL charts and status colors (burndown, throughput, QA pass-rate,
+// robot utilization, sensor health) so the app reads as one system.
 
-export const CQ = {
-  blue: "#2E6FF2",   // primary — nominal / done
-  green: "#2FB673",  // healthy / ready
-  amber: "#E8912D",  // attention / assembling
-  red: "#E14747",    // fault / blocked
-  teal: "#1FA8B8",   // confirmed / in-flight
-  violet: "#7C5CE0", // secondary series
-  magenta: "#D6459B",// secondary series
-  yellow: "#E5C230", // secondary series
-  slate: "#7A8493",  // idle / draft / unknown
+/** The brand gradient stops, in order. */
+export const BRAND = {
+  plum: "#3A0D4E",   // deepest — headers, the dark end of the ramp
+  violet: "#6D28A8", // brand purple
+  iris: "#5A4CA0",   // the midpoint where violet becomes blue
+  blue: "#3576C2",   // brand blue
 } as const;
 
-// Ordered series palette for multi-series charts. Order matters: the first four
-// stay distinguishable under the common colorblindness types.
+/** `background: CQ_GRADIENT` reproduces the mark's sweep. */
+export const CQ_GRADIENT = `linear-gradient(135deg, ${BRAND.violet} 0%, ${BRAND.iris} 52%, ${BRAND.blue} 100%)`;
+
+export const CQ = {
+  // --- brand axis ---
+  violet: BRAND.violet,
+  iris: BRAND.iris,
+  blue: BRAND.blue,
+  plum: BRAND.plum,
+  lilac: "#9B6FD4",       // lifted violet, for secondary series and hovers
+  periwinkle: "#6E86D6",  // lifted blue
+
+  // --- warm semantic accents ---
+  sage: "#4E9E71",        // healthy / ready / pass
+  apricot: "#E0913A",     // attention / assembling / in progress
+  rose: "#D4536B",        // fault / blocked / fail
+  honey: "#C9A227",       // caution, secondary series
+
+  // --- neutral, tinted toward the brand so grays never look muddy ---
+  slate: "#7B7A96",       // idle / draft / unknown
+} as const;
+
+/**
+ * Ordered series palette. The first four stay distinguishable under the common
+ * colorblindness types (blue / apricot / violet / sage separate on both axes).
+ */
 export const CHART_SERIES: string[] = [
   CQ.blue,
-  CQ.amber,
-  CQ.green,
+  CQ.apricot,
   CQ.violet,
-  CQ.teal,
-  CQ.magenta,
-  CQ.red,
-  CQ.yellow,
+  CQ.sage,
+  CQ.lilac,
+  CQ.rose,
+  CQ.periwinkle,
+  CQ.honey,
 ];
 
-// Semantic status colors (readiness, QA, pipeline).
+/** Semantic status colors (readiness, QA, the run pipeline). */
 export const STATUS_COLOR = {
-  ready: CQ.green,
-  assembling: CQ.amber,
-  blocked: CQ.red,
+  ready: CQ.sage,
+  assembling: CQ.apricot,
+  blocked: CQ.rose,
   draft: CQ.slate,
-  confirmed: CQ.teal,
+  confirmed: CQ.iris,
   done: CQ.blue,
 } as const;

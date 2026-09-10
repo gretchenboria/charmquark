@@ -2,46 +2,46 @@
 import { num, numOrNull, parseJson, str, strOrNull, toBool, type Row } from "./db";
 import {
   isSchedulable,
-  isTaskReady,
+  isMissionReady,
   repsGap,
   taskChecklist,
   variantOptions,
   type RiskLevel,
-  type TaskDuration,
-  type TaskLike,
+  type MissionDuration,
+  type MissionLike,
 } from "./domain";
 
-export const study = (r: Row) => ({
+export const campaign = (r: Row) => ({
   id: str(r, "id"),
   name: str(r, "name"),
-  study_type: str(r, "study_type"),
+  campaign_type: str(r, "campaign_type"),
   target_n: num(r, "target_n"),
   status: str(r, "status"),
-  default_device_fleet_id: strOrNull(r, "default_device_fleet_id"),
+  default_sensor_rig_id: strOrNull(r, "default_sensor_rig_id"),
 });
 
-export const taskGroup = (r: Row) => ({
+export const missionGroup = (r: Row) => ({
   id: str(r, "id"),
-  study_id: str(r, "study_id"),
+  campaign_id: str(r, "campaign_id"),
   name: str(r, "name"),
   order: num(r, "order"),
 });
 
 /** The structural shape the pure readiness engine needs, built from a DB row. */
-export function taskLike(r: Row): TaskLike & {
+export function taskLike(r: Row): MissionLike & {
   reps_target: number;
   reps_actual: number;
   schedule_status: string;
 } {
   return {
     id: str(r, "id"),
-    task_code: str(r, "task_code"),
+    mission_code: str(r, "mission_code"),
     name: str(r, "name"),
     instructions_complete: toBool(r["instructions_complete"]),
     risk_level: str(r, "risk_level") as RiskLevel,
     legal_approval: str(r, "legal_approval") as "NONE" | "PENDING" | "APPROVED",
-    review_status: str(r, "review_status") as TaskLike["review_status"],
-    duration_type: str(r, "duration_type") as TaskDuration,
+    review_status: str(r, "review_status") as MissionLike["review_status"],
+    duration_type: str(r, "duration_type") as MissionDuration,
     variants: parseJson<unknown[]>(r["variants"], []),
     reps_target: num(r, "reps_target"),
     reps_actual: num(r, "reps_actual"),
@@ -49,13 +49,13 @@ export function taskLike(r: Row): TaskLike & {
   };
 }
 
-export function task(r: Row) {
+export function mission(r: Row) {
   const t = taskLike(r);
   return {
     id: t.id,
-    study_id: str(r, "study_id"),
-    task_group_id: strOrNull(r, "task_group_id"),
-    task_code: t.task_code,
+    campaign_id: str(r, "campaign_id"),
+    mission_group_id: strOrNull(r, "mission_group_id"),
+    mission_code: t.mission_code,
     name: t.name,
     group: strOrNull(r, "group"),
     status: str(r, "status"),
@@ -68,19 +68,19 @@ export function task(r: Row) {
     reps_gap: repsGap(t),
     schedule_status: t.schedule_status,
     instructions_complete: t.instructions_complete,
-    is_ready: isTaskReady(t),
+    is_ready: isMissionReady(t),
     is_schedulable: isSchedulable(t),
     inventory_item_ids: parseJson<string[]>(r["inventory_item_ids"], []),
   };
 }
 
-/** Task + the embedded value objects and checklist the detail page renders. */
+/** Mission + the embedded value objects and checklist the detail page renders. */
 export function taskDetail(r: Row) {
   const t = taskLike(r);
   return {
-    ...task(r),
+    ...mission(r),
     variants: t.variants,
-    variant_options: variantOptions(t.task_code, t.variants),
+    variant_options: variantOptions(t.mission_code, t.variants),
     instructions: parseJson<unknown[]>(r["instructions"], []),
     checklist: taskChecklist(t, null),
   };
@@ -125,24 +125,24 @@ export const lab = (r: Row) => ({
   code_number: numOrNull(r, "code_number"),
 });
 
-export const device = (r: Row) => ({
+export const sensor = (r: Row) => ({
   id: str(r, "id"),
   asset_name: str(r, "asset_name"),
-  device_type: str(r, "device_type"),
+  sensor_type: str(r, "sensor_type"),
   status: str(r, "status"),
-  current_study_id: strOrNull(r, "current_study_id"),
+  current_campaign_id: strOrNull(r, "current_campaign_id"),
 });
 
-export const deviceFleet = (r: Row) => ({
+export const sensorRig = (r: Row) => ({
   id: str(r, "id"),
-  study_id: str(r, "study_id"),
+  campaign_id: str(r, "campaign_id"),
   name: str(r, "name"),
-  device_ids: parseJson<string[]>(r["device_ids"], []),
+  sensor_ids: parseJson<string[]>(r["sensor_ids"], []),
 });
 
 export const inventoryItem = (r: Row) => ({
   id: str(r, "id"),
-  study_id: str(r, "study_id"),
+  campaign_id: str(r, "campaign_id"),
   name: str(r, "name"),
   kind: str(r, "kind"),
   quantity: num(r, "quantity", 1),
@@ -151,34 +151,34 @@ export const inventoryItem = (r: Row) => ({
   is_available: str(r, "status") === "AVAILABLE",
 });
 
-export const session = (r: Row) => ({
+export const run = (r: Row) => ({
   id: str(r, "id"),
-  study_id: str(r, "study_id"),
+  campaign_id: str(r, "campaign_id"),
   slot_date: strOrNull(r, "slot_date"),
   slot_time: strOrNull(r, "slot_time"),
   state: str(r, "state"),
-  task_scope: str(r, "task_scope"),
-  task_group_id: strOrNull(r, "task_group_id"),
-  task_ids: parseJson<string[]>(r["task_ids"], []),
-  task_reps: parseJson<Record<string, number>>(r["task_reps"], {}),
-  completed_task_ids: parseJson<string[]>(r["completed_task_ids"], []),
+  mission_scope: str(r, "mission_scope"),
+  mission_group_id: strOrNull(r, "mission_group_id"),
+  mission_ids: parseJson<string[]>(r["mission_ids"], []),
+  mission_reps: parseJson<Record<string, number>>(r["mission_reps"], {}),
+  completed_mission_ids: parseJson<string[]>(r["completed_mission_ids"], []),
   collected_rows: parseJson<Record<string, string>[]>(r["collected_rows"], []),
   execution_log: parseJson<Record<string, unknown>>(r["execution_log"], {}),
   robot_id: strOrNull(r, "robot_id"),
   operator_id: strOrNull(r, "operator_id"),
   lab_id: strOrNull(r, "lab_id"),
-  device_fleet_id: strOrNull(r, "device_fleet_id"),
+  sensor_rig_id: strOrNull(r, "sensor_rig_id"),
   provisional_code: strOrNull(r, "provisional_code"),
   encoded_code: strOrNull(r, "encoded_code"),
-  session_seq: numOrNull(r, "session_seq"),
+  run_seq: numOrNull(r, "run_seq"),
   payload: strOrNull(r, "payload"),
-  session_lab: strOrNull(r, "session_lab"),
+  run_lab: strOrNull(r, "run_lab"),
   notes: strOrNull(r, "notes"),
 });
 
 export const qaRun = (r: Row) => ({
   id: str(r, "id"),
-  session_id: str(r, "session_id"),
+  run_id: str(r, "run_id"),
   level: str(r, "level"),
   overall_status: str(r, "overall_status"),
   gates: parseJson<unknown[]>(r["gates"], []),

@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { canDelete, canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
-import type { Lab, Session } from "@/lib/types";
+import type { Lab, Run } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { DeleteButton } from "@/components/DeleteButton";
 import { useToast } from "@/components/Toast";
@@ -20,7 +20,7 @@ export default function LabDetail() {
   const toast = useToast();
   const canEdit = canWriteCatalog(user?.role);
   const [l, setL] = useState<Lab | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [runs, setRuns] = useState<Run[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const [editing, setEditing] = useState(false);
@@ -35,7 +35,7 @@ export default function LabDetail() {
 
   const load = useCallback(() => {
     if (!id) return;
-    Promise.all([api.getLab(id), api.listSessionsBy({ lab_id: id })])
+    Promise.all([api.getLab(id), api.listRunsBy({ lab_id: id })])
       .then(([ll, ss]) => {
         setL(ll);
         setForm({
@@ -45,7 +45,7 @@ export default function LabDetail() {
           capacity: ll.capacity,
           code_number: ll.code_number ?? "",
         });
-        setSessions(ss);
+        setRuns(ss);
       })
       .catch(() => setErr("Failed to load lab."));
   }, [id]);
@@ -149,7 +149,7 @@ export default function LabDetail() {
           </div>
           <div className="mt-3 flex items-center gap-2">
             <button onClick={save} disabled={saving || !!formError}
-              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              className="rounded-md bg-[color:var(--cq-iris)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
               {saving ? "Saving…" : "Save"}
             </button>
             <button onClick={() => { setEditing(false); load(); }}
@@ -161,14 +161,14 @@ export default function LabDetail() {
         </Section>
       )}
 
-      <Section title={`Sessions (${sessions.length})`}>
+      <Section title={`Runs (${runs.length})`}>
         <LinkList
-          items={sessions.map((s) => ({
-            href: `/sessions/${s.id}`,
+          items={runs.map((s) => ({
+            href: `/runs/${s.id}`,
             label: s.encoded_code ?? s.provisional_code ?? s.id,
             note: `${s.slot_date ?? ""} ${s.state}`,
           }))}
-          empty="No sessions here."
+          empty="No runs here."
         />
       </Section>
     </DetailPage>

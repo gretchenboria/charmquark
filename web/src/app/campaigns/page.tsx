@@ -6,7 +6,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
-import type { Study } from "@/lib/types";
+import type { Campaign } from "@/lib/types";
 import { ListPage, type Column } from "@/components/ListPage";
 import { NewButton } from "@/components/NewButton";
 import { useToast } from "@/components/Toast";
@@ -21,7 +21,7 @@ const columns: Column[] = [
 export default function StudiesPage() {
   const user = useUser();
   const toast = useToast();
-  const [rows, setRows] = useState<Study[]>([]);
+  const [rows, setRows] = useState<Campaign[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -42,7 +42,7 @@ export default function StudiesPage() {
   const seedDemoData = async () => {
     try {
       const r = await api.seedDemo();
-      toast("success", `Demo ready — ${r.confirmed_sessions} confirmed sessions, ${r.tasks} tasks, ${r.standby} standby`);
+      toast("success", `Demo ready — ${r.confirmed_sessions} confirmed runs, ${r.missions} missions, ${r.standby} standby`);
       load();
     } catch {
       toast("error", "Could not load demo (PM only)");
@@ -53,7 +53,7 @@ export default function StudiesPage() {
   const toolbar = (
     <>
       {isPM && (
-        <button onClick={seedDemoData} className="rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-700">
+        <button onClick={seedDemoData} className="rounded-md bg-[color:var(--cq-iris)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[color:var(--cq-violet)]">
           Load demo (ready to run)
         </button>
       )}
@@ -64,12 +64,12 @@ export default function StudiesPage() {
       )}
       <NewButton
         hidden={!isPM}
-        label="New study"
-        title="New study"
+        label="New campaign"
+        title="New campaign"
         fields={[
           { name: "name", label: "Name", required: true },
           {
-            name: "study_type",
+            name: "campaign_type",
             label: "Type",
             type: "select",
             options: [
@@ -82,7 +82,7 @@ export default function StudiesPage() {
           { name: "target_n", label: "Target N", type: "number", default: 0 },
         ]}
         onCreate={(v) =>
-          api.createStudy({ name: String(v.name), study_type: String(v.study_type), target_n: Number(v.target_n) })
+          api.createCampaign({ name: String(v.name), campaign_type: String(v.campaign_type), target_n: Number(v.target_n) })
         }
         onDone={load}
       />
@@ -91,20 +91,20 @@ export default function StudiesPage() {
 
   return (
     <ListPage
-      title="Studies"
+      title="Campaigns"
       toolbar={toolbar}
       columns={columns}
       rows={rows.map((s) => ({
         name: (
-          <Link href={`/studies/${s.id}`} className="text-blue-700 hover:underline">
+          <Link href={`/campaigns/${s.id}`} className="font-medium text-[color:var(--cq-iris)] hover:underline">
             {s.name}
           </Link>
         ),
-        type: s.study_type,
+        type: s.campaign_type,
         target: s.target_n,
         status: s.status,
       }))}
-      empty={err ?? "No studies yet — click “Load sample program” or “New study”."}
+      empty={err ?? "No campaigns yet — click “Load sample program” or “New campaign”."}
     />
   );
 }

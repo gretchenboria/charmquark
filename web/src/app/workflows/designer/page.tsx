@@ -55,7 +55,7 @@ export default function WorkflowDesignerPage() {
         </div>
         <div className="flex items-center gap-3">
           {canCreateWf && (
-            <button onClick={createNew} className="rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-700">
+            <button onClick={createNew} className="rounded-md bg-[color:var(--cq-iris)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[color:var(--cq-violet)]">
               New workflow
             </button>
           )}
@@ -77,7 +77,7 @@ export default function WorkflowDesignerPage() {
                 key={w.id}
                 onClick={() => setSelected(w.id)}
                 className={`block w-full rounded-md px-3 py-2 text-left text-sm ${
-                  selected === w.id ? "bg-teal-50 font-medium text-teal-800" : "text-neutral-700 hover:bg-neutral-50"
+                  selected === w.id ? "bg-violet-50 font-medium text-[color:var(--cq-plum)]" : "text-neutral-700 hover:bg-neutral-50"
                 }`}
               >
                 {w.name}

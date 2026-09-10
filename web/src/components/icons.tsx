@@ -25,10 +25,10 @@ export const IconCalendar = (p: P) => (
 export const IconReport = (p: P) => (
   <svg {...base(p)}><path d="M6 2.5h8l4 4V21a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1Z" /><path d="M13 2.5V7h4.5M8.5 13h7M8.5 17h7" /></svg>
 );
-export const IconStudy = (p: P) => (
+export const IconCampaign = (p: P) => (
   <svg {...base(p)}><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13Z" /><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5A1.5 1.5 0 0 0 20 18.5v-13Z" /></svg>
 );
-export const IconTask = (p: P) => (
+export const IconMission = (p: P) => (
   <svg {...base(p)}><rect x="4" y="3.5" width="16" height="17" rx="2.5" /><path d="M8 9l2 2 3-3.5M8 15.5h8" /></svg>
 );
 export const IconInventory = (p: P) => (
@@ -46,6 +46,6 @@ export const IconOperator = (p: P) => (
 export const IconLab = (p: P) => (
   <svg {...base(p)}><path d="M12 21c4-4.5 6.5-7.8 6.5-11a6.5 6.5 0 1 0-13 0C5.5 13.2 8 16.5 12 21Z" /><circle cx="12" cy="10" r="2.4" /></svg>
 );
-export const IconDevice = (p: P) => (
+export const IconSensor = (p: P) => (
   <svg {...base(p)}><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
 );

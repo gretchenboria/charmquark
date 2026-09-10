@@ -15,8 +15,8 @@ const yn = (b: boolean) => (b ? "Yes" : "No");
 const columns: Column[] = [
   { key: "code", header: "Code" },
   { key: "status", header: "Status" },
-  { key: "consent", header: "Consent" },
-  { key: "ask", header: "Ask survey" },
+  { key: "safety", header: "Safety cert" },
+  { key: "calibration", header: "Calibration" },
   { key: "commissioned", header: "Commissioned" },
   { key: "cleared", header: "Cleared" },
 ];
@@ -81,13 +81,13 @@ export default function RobotsPage() {
       sort={[{ id: "code", label: "Code", compare: (a, b) => a.robot_code.localeCompare(b.robot_code) }]}
       toRow={(p) => ({
         code: (
-          <Link href={`/robots/${p.id}`} className="text-blue-700 hover:underline">
+          <Link href={`/robots/${p.id}`} className="font-medium text-[color:var(--cq-iris)] hover:underline">
             {p.robot_code}
           </Link>
         ),
         status: p.status,
-        consent: yn(p.safety_certified),
-        ask: yn(p.calibration_valid),
+        safety: yn(p.safety_certified),
+        calibration: yn(p.calibration_valid),
         commissioned: yn(p.commissioned),
         cleared: p.is_cleared ? "Cleared" : "Not cleared",
       })}

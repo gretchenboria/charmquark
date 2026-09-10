@@ -1,10 +1,10 @@
 /**
- * Automated session scheduling.
+ * Automated run scheduling.
  *
- * The headline feature: given a program, propose a set of tasks (and how many
- * repetitions of each) that fills — without exceeding — a session's effort
+ * The headline feature: given a program, propose a set of missions (and how many
+ * repetitions of each) that fills — without exceeding — a run's effort
  * budget, then emit the run sheet as CSV, then reconcile what actually got
- * recorded back into the task repetition counts.
+ * recorded back into the mission repetition counts.
  */
 import { Hono } from "hono";
 import type { Env, Vars } from "../types";
@@ -12,7 +12,7 @@ import { jsonCol, num, parseJson, str, uuid, type Row } from "../db";
 import { badRequest, conflict, notFound } from "../errors";
 import {
   DEFAULT_SLOTS,
-  SESSION_EFFORT_BUDGET,
+  RUN_EFFORT_BUDGET,
   effortUnits,
   isSchedulable,
   isWeekday,
@@ -24,35 +24,35 @@ import { parseCsv } from "./catalog";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
-type TaskRec = ReturnType<typeof S.taskLike> & { group: string | null };
+type MissionRec = ReturnType<typeof S.taskLike> & { group: string | null };
 
-interface Allocation { task: TaskRec; reps: number }
+interface Allocation { mission: MissionRec; reps: number }
 
 // ---------------------------------------------------------------- packing
 /**
- * Allocate schedulable tasks *and their repetitions* to fill (without exceeding)
+ * Allocate schedulable missions *and their repetitions* to fill (without exceeding)
  * the budget.
  *
- * A task may be recorded several times in one session. Each repetition costs the
- * task's effort units, and a task contributes at most its remaining gap. Greedy
- * and deterministic: largest tasks first (a single Long fills the slot), tie-broken
- * by task_code. `remaining` overrides the static gap so auto-fill can spread
+ * A mission may be recorded several times in one run. Each repetition costs the
+ * mission's effort units, and a mission contributes at most its remaining gap. Greedy
+ * and deterministic: largest missions first (a single Long fills the slot), tie-broken
+ * by mission_code. `remaining` overrides the static gap so auto-fill can spread
  * repetitions across many slots without over-planning.
  *
  * An under-filled result is returned as-is so the caller can report the shortfall.
  */
-function packTasks(
-  tasks: TaskRec[],
+function packMissions(
+  missions: MissionRec[],
   opts: { budget?: number; excludeIds?: Set<string>; remaining?: Record<string, number> } = {},
 ): { allocations: Allocation[]; used: number } {
-  const budget = opts.budget ?? SESSION_EFFORT_BUDGET;
+  const budget = opts.budget ?? RUN_EFFORT_BUDGET;
   const exclude = opts.excludeIds ?? new Set<string>();
   const remaining = opts.remaining;
 
-  const eligible = tasks
+  const eligible = missions
     .filter((t) => (remaining ? (remaining[t.id] ?? 0) > 0 : isSchedulable(t)) && !exclude.has(t.id))
     .sort((a, b) => effortUnits(b.duration_type) - effortUnits(a.duration_type)
-      || a.task_code.localeCompare(b.task_code));
+      || a.mission_code.localeCompare(b.mission_code));
 
   const allocations: Allocation[] = [];
   let used = 0;
@@ -64,85 +64,85 @@ function packTasks(
     const want = remaining ? (remaining[t.id] ?? 0) : repsGap(t);
     const reps = Math.min(want, room);           // never over-record past the goal
     if (reps <= 0) continue;
-    allocations.push({ task: t, reps });
+    allocations.push({ mission: t, reps });
     used += reps * u;
     if (used >= budget) break;
   }
   return { allocations, used };
 }
 
-// ---------------------------------------------------------------- session CSV contract
+// ---------------------------------------------------------------- run CSV contract
 /**
- * SINGLE SOURCE OF TRUTH for the session-CSV contract. The generated run sheet
+ * SINGLE SOURCE OF TRUTH for the run-CSV contract. The generated run sheet
  * and the upload parser both derive from this list, so they cannot drift.
  * `source` says who fills each column:
- *   "task" -> auto-filled from the task catalog when the CSV is generated
+ *   "mission" -> auto-filled from the mission catalog when the CSV is generated
  *   "user" -> entered by the operator at accept time (robot / payload / lab)
  *   "post" -> left blank; filled by the collection tooling AFTER recording
  */
-export const SESSION_CSV_SPEC = [
+export const RUN_CSV_SPEC = [
   { name: "recording_folder", source: "post", desc: "Folder holding the captured bag/recording; filled after collection." },
-  { name: "odr", source: "post", desc: "On-device recording identifier; filled after collection." },
-  { name: "session_id", source: "post", desc: "Collection session identifier; filled after collection." },
-  { name: "robot_id", source: "user", desc: "Robot code, entered when the session is accepted." },
-  { name: "task_id", source: "task", desc: "Task identifier (join key back to the app on upload)." },
-  { name: "group", source: "task", desc: "Task group / category, from the task catalog." },
-  { name: "task", source: "task", desc: "Task name, from the task catalog." },
-  { name: "variant", source: "task", desc: "Task variant used, from the task catalog." },
-  { name: "error", source: "task", desc: "Injected error scenario for the variant, if any." },
-  { name: "device_name", source: "post", desc: "Capture device / sensor name; filled after collection." },
+  { name: "odr", source: "post", desc: "On-sensor recording identifier; filled after collection." },
+  { name: "run_id", source: "post", desc: "Collection run identifier; filled after collection." },
+  { name: "robot_id", source: "user", desc: "Robot code, entered when the run is accepted." },
+  { name: "mission_id", source: "mission", desc: "Mission identifier (join key back to the app on upload)." },
+  { name: "group", source: "mission", desc: "Mission group / category, from the mission catalog." },
+  { name: "mission", source: "mission", desc: "Mission name, from the mission catalog." },
+  { name: "variant", source: "mission", desc: "Mission variant used, from the mission catalog." },
+  { name: "error", source: "mission", desc: "Injected error scenario for the variant, if any." },
+  { name: "device_name", source: "post", desc: "Capture sensor / sensor name; filled after collection." },
   { name: "file_name", source: "post", desc: "Recorded file name; filled after collection." },
   { name: "relative_path", source: "post", desc: "Path to the recording within the folder; filled after collection." },
-  { name: "payload", source: "user", desc: "Sensor payload configuration, entered when the session is accepted." },
+  { name: "payload", source: "user", desc: "Sensor payload configuration, entered when the run is accepted." },
   { name: "instructions_changed", source: "post", desc: "Whether instructions changed during collection; filled after." },
   { name: "payload_changed", source: "post", desc: "Whether the payload changed during collection; filled after." },
-  { name: "session_lab", source: "user", desc: "Lab the run took place in, entered when the session is accepted." },
+  { name: "run_lab", source: "user", desc: "Lab the run took place in, entered when the run is accepted." },
   { name: "recording_duration", source: "post", desc: "Recording duration; filled after collection." },
 ] as const;
 
-export const SESSION_CSV_COLUMNS = SESSION_CSV_SPEC.map((c) => c.name);
+export const RUN_CSV_COLUMNS = RUN_CSV_SPEC.map((c) => c.name);
 
 const csvCell = (v: unknown): string => {
   const s = String(v ?? "");
   return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
 };
 
-const firstVariant = (t: TaskRec): Record<string, unknown> => {
+const firstVariant = (t: MissionRec): Record<string, unknown> => {
   const v = t.variants[0];
   return v && typeof v === "object" ? (v as Record<string, unknown>) : {};
 };
 
-/** One CSV row per planned repetition — a task with 3 reps emits 3 rows. */
-function generateSessionCsv(
+/** One CSV row per planned repetition — a mission with 3 reps emits 3 rows. */
+function generateRunCsv(
   allocations: Allocation[],
-  ctx: { robotCode: string; payload: string; sessionLab: string },
+  ctx: { robotCode: string; payload: string; runLab: string },
 ): string {
-  const lines = [SESSION_CSV_COLUMNS.join(",")];
-  for (const { task, reps } of allocations) {
-    const v = firstVariant(task);
+  const lines = [RUN_CSV_COLUMNS.join(",")];
+  for (const { mission, reps } of allocations) {
+    const v = firstVariant(mission);
     for (let i = 0; i < reps; i++) {
       const row: Record<string, unknown> = {
         robot_id: ctx.robotCode,
-        task_id: task.id,
-        group: task.group ?? "",
-        task: task.name,
+        mission_id: mission.id,
+        group: mission.group ?? "",
+        mission: mission.name,
         variant: v.name ?? "Standard",
         error: "",
         payload: ctx.payload,
-        session_lab: ctx.sessionLab,
+        run_lab: ctx.runLab,
       };
-      lines.push(SESSION_CSV_COLUMNS.map((col) => csvCell(row[col] ?? "")).join(","));
+      lines.push(RUN_CSV_COLUMNS.map((col) => csvCell(row[col] ?? "")).join(","));
     }
   }
   return lines.join("\n");
 }
 
-/** task_id -> number of recorded rows, from an uploaded run sheet. */
+/** mission_id -> number of recorded rows, from an uploaded run sheet. */
 function parseCompletedCounts(csvText: string): Record<string, number> {
   const rows = parseCsv(csvText ?? "");
   if (rows.length < 2) return {};
   const header = rows[0]!.map((h) => h.trim());
-  const idIdx = header.indexOf("task_id");
+  const idIdx = header.indexOf("mission_id");
   if (idIdx === -1) return {};
   const counts: Record<string, number> = {};
   for (let i = 1; i < rows.length; i++) {
@@ -153,30 +153,30 @@ function parseCompletedCounts(csvText: string): Record<string, number> {
 }
 
 // ---------------------------------------------------------------- helpers
-async function loadTasks(db: D1Database, studyId: string): Promise<TaskRec[]> {
+async function loadMissions(db: D1Database, campaignId: string): Promise<MissionRec[]> {
   const { results } = await db
-    .prepare(`SELECT * FROM tasks WHERE study_id = ? ORDER BY task_code`)
-    .bind(studyId).all<Row>();
+    .prepare(`SELECT * FROM missions WHERE campaign_id = ? ORDER BY mission_code`)
+    .bind(campaignId).all<Row>();
   return results.map((r) => ({ ...S.taskLike(r), group: r["group"] === null ? null : String(r["group"]) }));
 }
 
 const proposalPayload = (
-  sessionId: string,
+  runId: string,
   allocations: Allocation[],
   used: number,
   budget: number,
 ) => ({
-  session_id: sessionId,
-  tasks: allocations.map(({ task, reps }) => ({
-    id: task.id,
-    task_code: task.task_code,
-    name: task.name,
-    group: task.group,
-    duration_type: task.duration_type,
-    effort_units: effortUnits(task.duration_type),
-    reps_gap: repsGap(task),
+  run_id: runId,
+  missions: allocations.map(({ mission, reps }) => ({
+    id: mission.id,
+    mission_code: mission.mission_code,
+    name: mission.name,
+    group: mission.group,
+    duration_type: mission.duration_type,
+    effort_units: effortUnits(mission.duration_type),
+    reps_gap: repsGap(mission),
     reps,
-    row_units: effortUnits(task.duration_type) * reps,
+    row_units: effortUnits(mission.duration_type) * reps,
   })),
   total_units: used,
   total_reps: allocations.reduce((n, a) => n + a.reps, 0),
@@ -187,62 +187,62 @@ const proposalPayload = (
 
 export function mountAutoschedule(app: App): void {
   // ------------------------------------------------------------ propose
-  /** Build a draft session and fill it with a proposed task/rep allocation. */
-  app.post("/session-proposals", async (c) => {
-    const b = await c.req.json<{ study_id: string; slot_date?: string | null; slot_time?: string | null; budget?: number }>();
-    if (!b.study_id) throw badRequest("study_id is required");
-    const budget = b.budget ?? SESSION_EFFORT_BUDGET;
+  /** Build a draft run and fill it with a proposed mission/rep allocation. */
+  app.post("/run-proposals", async (c) => {
+    const b = await c.req.json<{ campaign_id: string; slot_date?: string | null; slot_time?: string | null; budget?: number }>();
+    if (!b.campaign_id) throw badRequest("campaign_id is required");
+    const budget = b.budget ?? RUN_EFFORT_BUDGET;
 
-    const tasks = await loadTasks(c.env.DB, b.study_id);
-    const { allocations, used } = packTasks(tasks, { budget });
+    const missions = await loadMissions(c.env.DB, b.campaign_id);
+    const { allocations, used } = packMissions(missions, { budget });
     if (allocations.length === 0) {
-      throw conflict("no schedulable tasks: every task is either not ready, unavailable, or has met its repetition goal");
+      throw conflict("no schedulable missions: every mission is either not ready, unavailable, or has met its repetition goal");
     }
 
     const id = uuid();
     const slotDate = b.slot_date ?? null;
-    const taskReps = Object.fromEntries(allocations.map((a) => [a.task.id, a.reps]));
+    const taskReps = Object.fromEntries(allocations.map((a) => [a.mission.id, a.reps]));
     await c.env.DB.prepare(
-      `INSERT INTO sessions (id, study_id, slot_date, slot_time, state, task_scope, task_ids, task_reps, provisional_code)
+      `INSERT INTO runs (id, campaign_id, slot_date, slot_time, state, mission_scope, mission_ids, mission_reps, provisional_code)
        VALUES (?, ?, ?, ?, 'ASSEMBLING', 'SINGLE', ?, ?, ?)`,
     ).bind(
-      id, b.study_id, slotDate, b.slot_time ?? null,
-      jsonCol(allocations.map((a) => a.task.id)), jsonCol(taskReps), provisionalCode(slotDate),
+      id, b.campaign_id, slotDate, b.slot_time ?? null,
+      jsonCol(allocations.map((a) => a.mission.id)), jsonCol(taskReps), provisionalCode(slotDate),
     ).run();
 
     return c.json(proposalPayload(id, allocations, used, budget), 201);
   });
 
   /** Re-roll: propose a different set, excluding whatever was just rejected. */
-  app.post("/sessions/:id/reject-proposal", async (c) => {
+  app.post("/runs/:id/reject-proposal", async (c) => {
     const id = c.req.param("id");
-    const row = await c.env.DB.prepare(`SELECT * FROM sessions WHERE id = ?`).bind(id).first<Row>();
-    if (!row) throw notFound("session");
-    const s = S.session(row);
+    const row = await c.env.DB.prepare(`SELECT * FROM runs WHERE id = ?`).bind(id).first<Row>();
+    if (!row) throw notFound("run");
+    const s = S.run(row);
 
-    const tasks = await loadTasks(c.env.DB, s.study_id);
-    const { allocations, used } = packTasks(tasks, { excludeIds: new Set(s.task_ids) });
-    const taskReps = Object.fromEntries(allocations.map((a) => [a.task.id, a.reps]));
+    const missions = await loadMissions(c.env.DB, s.campaign_id);
+    const { allocations, used } = packMissions(missions, { excludeIds: new Set(s.mission_ids) });
+    const taskReps = Object.fromEntries(allocations.map((a) => [a.mission.id, a.reps]));
     await c.env.DB.prepare(
-      `UPDATE sessions SET task_ids = ?, task_reps = ?, updated_at = datetime('now') WHERE id = ?`,
-    ).bind(jsonCol(allocations.map((a) => a.task.id)), jsonCol(taskReps), id).run();
+      `UPDATE runs SET mission_ids = ?, mission_reps = ?, updated_at = datetime('now') WHERE id = ?`,
+    ).bind(jsonCol(allocations.map((a) => a.mission.id)), jsonCol(taskReps), id).run();
 
-    return c.json(proposalPayload(id, allocations, used, SESSION_EFFORT_BUDGET));
+    return c.json(proposalPayload(id, allocations, used, RUN_EFFORT_BUDGET));
   });
 
   // ------------------------------------------------------------ accept
   /**
-   * Accept the proposal: record the operator's run inputs, mark the tasks
+   * Accept the proposal: record the operator's run inputs, mark the missions
    * IN_PROGRESS, and emit the run-sheet CSV (also stored in the vault).
    */
-  app.post("/sessions/:id/accept-proposal", async (c) => {
+  app.post("/runs/:id/accept-proposal", async (c) => {
     const id = c.req.param("id");
-    const b = await c.req.json<{ robot_id?: string | null; payload?: string | null; session_lab?: string | null }>();
+    const b = await c.req.json<{ robot_id?: string | null; payload?: string | null; run_lab?: string | null }>();
 
-    const row = await c.env.DB.prepare(`SELECT * FROM sessions WHERE id = ?`).bind(id).first<Row>();
-    if (!row) throw notFound("session");
-    const s = S.session(row);
-    if (s.task_ids.length === 0) throw conflict("session has no proposed tasks to accept");
+    const row = await c.env.DB.prepare(`SELECT * FROM runs WHERE id = ?`).bind(id).first<Row>();
+    if (!row) throw notFound("run");
+    const s = S.run(row);
+    if (s.mission_ids.length === 0) throw conflict("run has no proposed missions to accept");
 
     const robotId = b.robot_id ?? s.robot_id;
     let robotCode = "";
@@ -251,19 +251,19 @@ export function mountAutoschedule(app: App): void {
       robotCode = r ? str(r, "robot_code") : "";
     }
 
-    const all = await loadTasks(c.env.DB, s.study_id);
+    const all = await loadMissions(c.env.DB, s.campaign_id);
     const byId = new Map(all.map((t) => [t.id, t]));
-    const allocations: Allocation[] = s.task_ids
+    const allocations: Allocation[] = s.mission_ids
       .map((tid) => {
-        const task = byId.get(tid);
-        return task ? { task, reps: s.task_reps[tid] ?? 1 } : null;
+        const mission = byId.get(tid);
+        return mission ? { mission, reps: s.mission_reps[tid] ?? 1 } : null;
       })
       .filter((a): a is Allocation => a !== null);
 
-    const csv = generateSessionCsv(allocations, {
+    const csv = generateRunCsv(allocations, {
       robotCode,
       payload: b.payload ?? s.payload ?? "",
-      sessionLab: b.session_lab ?? s.session_lab ?? "",
+      runLab: b.run_lab ?? s.run_lab ?? "",
     });
 
     const key = `run-sheets/${s.provisional_code ?? id}_${id.slice(0, 8)}.csv`;
@@ -271,103 +271,103 @@ export function mountAutoschedule(app: App): void {
 
     const stmts: D1PreparedStatement[] = [
       c.env.DB.prepare(
-        `UPDATE sessions SET robot_id = ?, payload = ?, session_lab = ?, state = 'READY',
+        `UPDATE runs SET robot_id = ?, payload = ?, run_lab = ?, state = 'READY',
                              updated_at = datetime('now') WHERE id = ?`,
-      ).bind(robotId ?? null, b.payload ?? s.payload, b.session_lab ?? s.session_lab, id),
+      ).bind(robotId ?? null, b.payload ?? s.payload, b.run_lab ?? s.run_lab, id),
     ];
     for (const a of allocations) {
       stmts.push(c.env.DB
-        .prepare(`UPDATE tasks SET schedule_status = 'IN_PROGRESS', updated_at = datetime('now') WHERE id = ?`)
-        .bind(a.task.id));
+        .prepare(`UPDATE missions SET schedule_status = 'IN_PROGRESS', updated_at = datetime('now') WHERE id = ?`)
+        .bind(a.mission.id));
     }
     await c.env.DB.batch(stmts);
 
-    const updated = await c.env.DB.prepare(`SELECT * FROM sessions WHERE id = ?`).bind(id).first<Row>();
+    const updated = await c.env.DB.prepare(`SELECT * FROM runs WHERE id = ?`).bind(id).first<Row>();
     return c.json({
-      session: S.session(updated!),
+      run: S.run(updated!),
       task_count: allocations.length,
-      session_csv: csv,
+      run_csv: csv,
       saved_path: key,
     });
   });
 
   // ------------------------------------------------------------ upload / reconcile
   /**
-   * Reconcile what actually got recorded. Tasks present in the uploaded sheet
+   * Reconcile what actually got recorded. Missions present in the uploaded sheet
    * (or explicitly ticked) have their repetition counts advanced; anything the
-   * operator dropped goes back to AVAILABLE so the next session picks it up.
+   * operator dropped goes back to AVAILABLE so the next run picks it up.
    */
-  app.post("/sessions/:id/upload-csv", async (c) => {
+  app.post("/runs/:id/upload-csv", async (c) => {
     const id = c.req.param("id");
-    const b = await c.req.json<{ completed_task_ids?: string[]; csv_text?: string }>();
+    const b = await c.req.json<{ completed_mission_ids?: string[]; csv_text?: string }>();
 
-    const row = await c.env.DB.prepare(`SELECT * FROM sessions WHERE id = ?`).bind(id).first<Row>();
-    if (!row) throw notFound("session");
-    const s = S.session(row);
+    const row = await c.env.DB.prepare(`SELECT * FROM runs WHERE id = ?`).bind(id).first<Row>();
+    if (!row) throw notFound("run");
+    const s = S.run(row);
 
     const counts = b.csv_text ? parseCompletedCounts(b.csv_text) : {};
-    const explicit = new Set(b.completed_task_ids ?? []);
+    const explicit = new Set(b.completed_mission_ids ?? []);
     const completedIds = new Set<string>([...Object.keys(counts), ...explicit]);
 
-    const all = await loadTasks(c.env.DB, s.study_id);
+    const all = await loadMissions(c.env.DB, s.campaign_id);
     const byId = new Map(all.map((t) => [t.id, t]));
 
     const recorded: string[] = [];
     const reverted: string[] = [];
-    const changes: { task_id: string; schedule_status: string; reps_actual: number; reps_gap: number }[] = [];
+    const changes: { mission_id: string; schedule_status: string; reps_actual: number; reps_gap: number }[] = [];
     const stmts: D1PreparedStatement[] = [];
 
-    for (const tid of s.task_ids) {
+    for (const tid of s.mission_ids) {
       const t = byId.get(tid);
       if (!t) continue;
       if (completedIds.has(tid)) {
         // Prefer the real recorded row count; fall back to the planned reps.
-        const got = counts[tid] ?? s.task_reps[tid] ?? 1;
+        const got = counts[tid] ?? s.mission_reps[tid] ?? 1;
         const repsActual = Math.min(t.reps_target, t.reps_actual + got);
         const gap = Math.max(0, t.reps_target - repsActual);
         const status = gap === 0 ? "RECORDED" : "AVAILABLE";
         stmts.push(c.env.DB.prepare(
-          `UPDATE tasks SET reps_actual = ?, schedule_status = ?, updated_at = datetime('now') WHERE id = ?`,
+          `UPDATE missions SET reps_actual = ?, schedule_status = ?, updated_at = datetime('now') WHERE id = ?`,
         ).bind(repsActual, status, tid));
-        recorded.push(t.task_code);
-        changes.push({ task_id: tid, schedule_status: status, reps_actual: repsActual, reps_gap: gap });
+        recorded.push(t.mission_code);
+        changes.push({ mission_id: tid, schedule_status: status, reps_actual: repsActual, reps_gap: gap });
       } else {
         stmts.push(c.env.DB.prepare(
-          `UPDATE tasks SET schedule_status = 'AVAILABLE', updated_at = datetime('now') WHERE id = ?`,
+          `UPDATE missions SET schedule_status = 'AVAILABLE', updated_at = datetime('now') WHERE id = ?`,
         ).bind(tid));
-        reverted.push(t.task_code);
+        reverted.push(t.mission_code);
         changes.push({
-          task_id: tid, schedule_status: "AVAILABLE",
+          mission_id: tid, schedule_status: "AVAILABLE",
           reps_actual: t.reps_actual, reps_gap: repsGap(t),
         });
       }
     }
 
-    const rows = b.csv_text ? parseSessionRows(b.csv_text) : [];
+    const rows = b.csv_text ? parseRunRows(b.csv_text) : [];
     stmts.push(c.env.DB.prepare(
-      `UPDATE sessions SET state = 'COLLECTED', completed_task_ids = ?, collected_rows = ?,
+      `UPDATE runs SET state = 'COLLECTED', completed_mission_ids = ?, collected_rows = ?,
                            updated_at = datetime('now') WHERE id = ?`,
     ).bind(jsonCol([...completedIds]), jsonCol(rows), id));
 
     await c.env.DB.batch(stmts);
-    return c.json({ recorded, reverted, tasks: changes });
+    return c.json({ recorded, reverted, missions: changes });
   });
 
   // ------------------------------------------------------------ auto-fill a date range
   /**
    * Spread every outstanding repetition across the open weekday slots in a range,
-   * creating one confirmed-ready session per filled slot. Stops when the
+   * creating one confirmed-ready run per filled slot. Stops when the
    * repetitions run out or the slots do.
    */
-  app.post("/studies/:id/auto-fill", async (c) => {
-    const studyId = c.req.param("id");
+  app.post("/campaigns/:id/auto-fill", async (c) => {
+    const campaignId = c.req.param("id");
     const b = await c.req.json<{ start: string; end: string; budget?: number }>();
     if (!b.start || !b.end) throw badRequest("start and end are required");
-    const budget = b.budget ?? SESSION_EFFORT_BUDGET;
+    const budget = b.budget ?? RUN_EFFORT_BUDGET;
 
-    const tasks = await loadTasks(c.env.DB, studyId);
+    const missions = await loadMissions(c.env.DB, campaignId);
     const remaining: Record<string, number> = {};
-    for (const t of tasks) {
+    for (const t of missions) {
       if (isSchedulable(t)) remaining[t.id] = repsGap(t);
     }
 
@@ -379,41 +379,41 @@ export function mountAutoschedule(app: App): void {
       for (const time of DEFAULT_SLOTS) slots.push({ date: iso, time });
     }
 
-    const sessionIds: string[] = [];
+    const runIds: string[] = [];
     const stmts: D1PreparedStatement[] = [];
     let slotsUsed = 0;
 
     for (const slot of slots) {
       if (Object.values(remaining).every((n) => n <= 0)) break;
-      const { allocations } = packTasks(tasks, { budget, remaining });
+      const { allocations } = packMissions(missions, { budget, remaining });
       if (allocations.length === 0) break;
 
       const id = uuid();
-      const taskReps = Object.fromEntries(allocations.map((a) => [a.task.id, a.reps]));
+      const taskReps = Object.fromEntries(allocations.map((a) => [a.mission.id, a.reps]));
       stmts.push(c.env.DB.prepare(
-        `INSERT INTO sessions (id, study_id, slot_date, slot_time, state, task_scope, task_ids, task_reps, provisional_code)
+        `INSERT INTO runs (id, campaign_id, slot_date, slot_time, state, mission_scope, mission_ids, mission_reps, provisional_code)
          VALUES (?, ?, ?, ?, 'ASSEMBLING', 'SINGLE', ?, ?, ?)`,
-      ).bind(id, studyId, slot.date, slot.time, jsonCol(allocations.map((a) => a.task.id)),
+      ).bind(id, campaignId, slot.date, slot.time, jsonCol(allocations.map((a) => a.mission.id)),
         jsonCol(taskReps), provisionalCode(slot.date)));
 
-      for (const a of allocations) remaining[a.task.id] = (remaining[a.task.id] ?? 0) - a.reps;
-      sessionIds.push(id);
+      for (const a of allocations) remaining[a.mission.id] = (remaining[a.mission.id] ?? 0) - a.reps;
+      runIds.push(id);
       slotsUsed += 1;
     }
 
     if (stmts.length) await c.env.DB.batch(stmts);
     const repsRemaining = Object.values(remaining).reduce((n, v) => n + Math.max(0, v), 0);
     return c.json({
-      created: sessionIds.length,
+      created: runIds.length,
       slots_used: slotsUsed,
       reps_remaining: repsRemaining,
-      session_ids: sessionIds,
+      run_ids: runIds,
     });
   });
 }
 
 /** Every uploaded row, kept verbatim so QA can inspect what was actually captured. */
-function parseSessionRows(csvText: string): Record<string, string>[] {
+function parseRunRows(csvText: string): Record<string, string>[] {
   const rows = parseCsv(csvText ?? "");
   if (rows.length < 2) return [];
   const header = rows[0]!.map((h) => h.trim());

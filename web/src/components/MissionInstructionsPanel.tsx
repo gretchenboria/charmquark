@@ -1,13 +1,13 @@
 "use client";
 
-// Robot Operator-facing editor for a task's execution instructions (.txt / JSON template).
+// Robot Operator-facing editor for a mission's execution instructions (.txt / JSON template).
 // Saving PUTs a new immutable version; the version history lets you preview, restore,
 // and prune earlier revisions. PM + Robot Operator may edit; everyone else sees read-only
 // content. JSON content is pretty-printed for display and validated before save.
 import { useCallback, useEffect, useState } from "react";
 
 import { api, ApiError } from "@/lib/api";
-import type { InstructionFormat, TaskInstructions } from "@/lib/types";
+import type { InstructionFormat, MissionInstructions } from "@/lib/types";
 import { useToast } from "@/components/Toast";
 
 const fmtWhen = (iso: string) => {
@@ -40,9 +40,9 @@ const jsonError = (raw: string): string | null => {
   }
 };
 
-export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; canEdit: boolean }) {
+export function MissionInstructionsPanel({ missionId, canEdit }: { missionId: string; canEdit: boolean }) {
   const toast = useToast();
-  const [data, setData] = useState<TaskInstructions | null>(null);
+  const [data, setData] = useState<MissionInstructions | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const [content, setContent] = useState("");
@@ -58,7 +58,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
 
   const load = useCallback(() => {
     api
-      .getInstructions(taskId)
+      .getInstructions(missionId)
       .then((d) => {
         setData(d);
         setContent(d.format === "json" ? prettyJson(d.content) : d.content);
@@ -67,7 +67,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
         setJsonErr(null);
       })
       .catch(() => setErr("Failed to load instructions."));
-  }, [taskId]);
+  }, [missionId]);
   useEffect(load, [load]);
 
   // Shared save path used by both the manual "Save version" button and the
@@ -84,7 +84,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
       }
       setSaving(true);
       try {
-        const d = await api.saveInstructions(taskId, {
+        const d = await api.saveInstructions(missionId, {
           content: payload.content,
           format: payload.format,
           notes: payload.notes?.trim() || undefined,
@@ -104,7 +104,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
         setSaving(false);
       }
     },
-    [taskId, toast],
+    [missionId, toast],
   );
 
   const save = () => persist({ content, format, notes }, "Instructions saved (new version)");
@@ -128,7 +128,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${taskId}-instructions.${ext}`;
+    a.download = `${missionId}-instructions.${ext}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -137,7 +137,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
 
   const showVersion = async (versionId: string) => {
     try {
-      const v = await api.getInstructionVersion(taskId, versionId);
+      const v = await api.getInstructionVersion(missionId, versionId);
       setPreview({
         version_number: v.version_number,
         content: format === "json" ? prettyJson(v.content) : v.content,
@@ -150,7 +150,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
   // Load a historical version's content and save it as a new current version.
   const restoreVersion = async (versionId: string, versionNumber: number) => {
     try {
-      const v = await api.getInstructionVersion(taskId, versionId);
+      const v = await api.getInstructionVersion(missionId, versionId);
       await persist(
         { content: v.content, format, notes: `Restored from v${versionNumber}` },
         `Restored v${versionNumber} as new current version`,
@@ -162,7 +162,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
 
   const removeVersion = async (versionId: string) => {
     try {
-      await api.deleteInstructionVersion(taskId, versionId);
+      await api.deleteInstructionVersion(missionId, versionId);
       toast("success", "Version deleted");
       load();
     } catch (e) {
@@ -267,7 +267,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
             <button
               onClick={save}
               disabled={saving}
-              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded-md bg-[color:var(--cq-iris)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save version"}
             </button>
@@ -297,7 +297,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
                   >
                     <span className="font-medium text-blue-700">v{v.version_number}</span>
                     {isCurrent && (
-                      <span className="ml-2 rounded bg-teal-100 px-1.5 py-0.5 text-xs font-medium text-teal-700">
+                      <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-[color:var(--cq-iris)]">
                         current
                       </span>
                     )}
@@ -312,7 +312,7 @@ export function TaskInstructionsPanel({ taskId, canEdit }: { taskId: string; can
                         <button
                           onClick={() => restoreVersion(v.version_id, v.version_number)}
                           disabled={saving}
-                          className="rounded border border-neutral-200 px-2 py-0.5 text-xs text-teal-700 hover:bg-neutral-50 disabled:opacity-50"
+                          className="rounded border border-neutral-200 px-2 py-0.5 text-xs text-[color:var(--cq-iris)] hover:bg-neutral-50 disabled:opacity-50"
                         >
                           Restore
                         </button>

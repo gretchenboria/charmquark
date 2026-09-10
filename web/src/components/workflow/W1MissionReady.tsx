@@ -2,18 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import type { Study, Task, TaskDetail } from "@/lib/types";
+import type { Campaign, Mission, MissionDetail } from "@/lib/types";
 import type { LogFn } from "./types";
 import { Field, GhostButton, IssueLine, Panel, PrimaryButton, RISK_COLOR, selectClass } from "./ui";
 import { ReadinessChecklist } from "../ReadinessChecklist";
 import { RiskLegalPanel } from "../RiskLegalPanel";
 import type { Role } from "@/lib/session";
 
-/** Workflow 1 — Get a task schedulable.
- *  Steps: pick task -> instructions complete -> risk & legal -> READY.
+/** Workflow 1 — Get a mission schedulable.
+ *  Steps: pick mission -> instructions complete -> risk & legal -> READY.
  *  Every step performs the real backend call; the runner unlocks READY only when
- *  getTask() reports is_ready === true. */
-export function W1TaskReady({
+ *  getMission() reports is_ready === true. */
+export function W1MissionReady({
   role,
   canWrite,
   log,
@@ -24,34 +24,34 @@ export function W1TaskReady({
   log: LogFn;
   onProgress: (currentIndex: number, doneIndex: number) => void;
 }) {
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [studyId, setStudyId] = useState("");
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [taskId, setTaskId] = useState("");
-  const [detail, setDetail] = useState<TaskDetail | null>(null);
+  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState("");
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [missionId, setMissionId] = useState("");
+  const [detail, setDetail] = useState<MissionDetail | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api.listStudies().then((s) => {
       setStudies(s);
-      if (s[0]) setStudyId((c) => c || s[0].id);
+      if (s[0]) setCampaignId((c) => c || s[0].id);
     }).catch(() => log("error", "Backend unreachable — start it on :8000."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!studyId) return;
-    api.listTasks(studyId).then(setTasks).catch(() => setTasks([]));
-    setTaskId("");
+    if (!campaignId) return;
+    api.listMissions(campaignId).then(setMissions).catch(() => setMissions([]));
+    setMissionId("");
     setDetail(null);
-  }, [studyId]);
+  }, [campaignId]);
 
   const loadDetail = useCallback(
     async (id: string, announce: boolean) => {
-      const d = await api.getTask(id);
+      const d = await api.getMission(id);
       setDetail(d);
       if (announce) {
-        log("info", `Loaded ${d.task_code} — risk ${d.risk_level}, legal ${d.legal_approval}, ${d.variants.length} variant(s).`);
+        log("info", `Loaded ${d.mission_code} — risk ${d.risk_level}, legal ${d.legal_approval}, ${d.variants.length} variant(s).`);
         const open = (d.checklist ?? []).filter((c) => !c.done);
         if (open.length) log("warn", `${open.length} readiness item(s) outstanding: ${open.map((c) => c.label).join(", ")}.`);
       }
@@ -75,14 +75,14 @@ export function W1TaskReady({
     }
   }, [detail, onProgress]);
 
-  const pickTask = async (id: string) => {
-    setTaskId(id);
+  const pickMission = async (id: string) => {
+    setMissionId(id);
     if (!id) {
       setDetail(null);
       return;
     }
-    const t = tasks.find((x) => x.id === id);
-    log("action", `Selected task ${t?.task_code ?? id} (${t?.duration_type?.toLowerCase() ?? "?"}).`);
+    const t = missions.find((x) => x.id === id);
+    log("action", `Selected mission ${t?.mission_code ?? id} (${t?.duration_type?.toLowerCase() ?? "?"}).`);
     await loadDetail(id, true);
   };
 
@@ -100,52 +100,52 @@ export function W1TaskReady({
   const markInstructions = () =>
     guard(async () => {
       if (!detail) return;
-      log("action", `Marking instructions complete for ${detail.task_code}…`);
-      await api.updateTask(detail.id, { instructions_complete: true });
+      log("action", `Marking instructions complete for ${detail.mission_code}…`);
+      await api.updateMission(detail.id, { instructions_complete: true });
       const d = await loadDetail(detail.id, false);
-      log("success", `Instructions complete. ${d.is_ready ? "Task is now READY." : "Continue to risk & legal."}`);
+      log("success", `Instructions complete. ${d.is_ready ? "Mission is now READY." : "Continue to risk & legal."}`);
     });
 
   const refreshAfterRiskLegal = () =>
     guard(async () => {
       if (!detail) return;
       const d = await loadDetail(detail.id, false);
-      if (d.is_ready) log("success", `${d.task_code} is READY — risk ${d.risk_level}, legal ${d.legal_approval}.`);
+      if (d.is_ready) log("success", `${d.mission_code} is READY — risk ${d.risk_level}, legal ${d.legal_approval}.`);
       else {
         const riskOk = d.risk_level === "LOW" || d.legal_approval === "APPROVED";
         log(riskOk ? "info" : "warn", `Risk ${d.risk_level} / legal ${d.legal_approval}${riskOk ? "" : " — still needs clearance."}`);
       }
     });
 
-  const selectedTask = tasks.find((t) => t.id === taskId);
+  const selectedMission = missions.find((t) => t.id === missionId);
 
   return (
     <div className="space-y-4">
-      <Panel title="Pick a task">
+      <Panel title="Pick a mission">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Study">
-            <select value={studyId} onChange={(e) => setStudyId(e.target.value)} className={selectClass()}>
-              {studies.length === 0 && <option value="">No studies</option>}
-              {studies.map((s) => (
+          <Field label="Campaign">
+            <select value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className={selectClass()}>
+              {campaigns.length === 0 && <option value="">No campaigns</option>}
+              {campaigns.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           </Field>
-          <Field label="Task">
-            <select value={taskId} onChange={(e) => void pickTask(e.target.value)} className={selectClass()}>
+          <Field label="Mission">
+            <select value={missionId} onChange={(e) => void pickMission(e.target.value)} className={selectClass()}>
               <option value="">— select —</option>
-              {tasks.map((t) => (
+              {missions.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.task_code} · {t.name}{t.is_ready ? " (ready)" : ""}
+                  {t.mission_code} · {t.name}{t.is_ready ? " (ready)" : ""}
                 </option>
               ))}
             </select>
           </Field>
         </div>
-        {selectedTask && (
+        {selectedMission && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-            <span className={`rounded-full px-2 py-0.5 font-medium ${RISK_COLOR[selectedTask.risk_level] ?? ""}`}>Risk {selectedTask.risk_level}</span>
-            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-neutral-600">Legal {selectedTask.legal_approval}</span>
+            <span className={`rounded-full px-2 py-0.5 font-medium ${RISK_COLOR[selectedMission.risk_level] ?? ""}`}>Risk {selectedMission.risk_level}</span>
+            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-neutral-600">Legal {selectedMission.legal_approval}</span>
             <span className={`rounded-full px-2 py-0.5 font-medium ${detail?.is_ready ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>
               {detail?.is_ready ? "READY" : "Not ready"}
             </span>
@@ -159,7 +159,7 @@ export function W1TaskReady({
             <ReadinessChecklist items={detail.checklist ?? []} canEdit={false} />
             {!detail.is_ready && (
               <p className="mt-3 text-xs text-neutral-500">
-                Clear each item below. The task becomes schedulable only when the backend reports it ready.
+                Clear each item below. The mission becomes schedulable only when the backend reports it ready.
               </p>
             )}
           </Panel>
@@ -175,7 +175,7 @@ export function W1TaskReady({
                     Mark instructions complete
                   </PrimaryButton>
                 ) : (
-                  <p className="text-xs text-neutral-400">Your role can’t edit tasks.</p>
+                  <p className="text-xs text-neutral-400">Your role can’t edit missions.</p>
                 )}
               </div>
             )}
@@ -183,7 +183,7 @@ export function W1TaskReady({
 
           <Panel title="Step 2 · Risk & legal review">
             <RiskLegalPanel
-              task={detail}
+              mission={detail}
               role={role}
               onChanged={() => void refreshAfterRiskLegal()}
             />
@@ -196,7 +196,7 @@ export function W1TaskReady({
 
           {detail.is_ready && (
             <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-              {detail.task_code} is <b>READY</b> and schedulable. It can now be pulled into a session
+              {detail.mission_code} is <b>READY</b> and schedulable. It can now be pulled into a run
               (Workflow 2 or Auto-Schedule).
             </div>
           )}

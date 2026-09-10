@@ -5,89 +5,89 @@ import { useParams } from "next/navigation";
 
 import { api } from "@/lib/api";
 import type {
-  DeviceFleet,
+  SensorRig,
   Lab,
   Operator,
   Robot,
   Readiness,
-  Session,
-  SessionState,
-  Study,
-  TaskGroup,
+  Run,
+  RunState,
+  Campaign,
+  MissionGroup,
 } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
-import { ExecuteSession } from "@/components/ExecuteSession";
-import { SessionFiles } from "@/components/SessionFiles";
+import { ExecuteRun } from "@/components/ExecuteRun";
+import { RunFiles } from "@/components/RunFiles";
 import { STATE_META } from "@/components/StatusDot";
-import { canWriteSession } from "@/lib/session";
+import { canWriteRun } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
 
-export default function SessionDetail() {
+export default function RunDetail() {
   const { id } = useParams<{ id: string }>();
   const user = useUser();
-  const canEdit = canWriteSession(user?.role);
-  const [session, setSession] = useState<Session | null>(null);
+  const canEdit = canWriteRun(user?.role);
+  const [run, setRun] = useState<Run | null>(null);
   const [executing, setExecuting] = useState(false);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
-  const [study, setStudy] = useState<Study | null>(null);
-  const [group, setGroup] = useState<TaskGroup | null>(null);
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [group, setGroup] = useState<MissionGroup | null>(null);
   const [robot, setRobot] = useState<Robot | null>(null);
   const [operator, setOperator] = useState<Operator | null>(null);
   const [lab, setLab] = useState<Lab | null>(null);
-  const [fleet, setFleet] = useState<DeviceFleet | null>(null);
+  const [fleet, setFleet] = useState<SensorRig | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       try {
-        const s = await api.getSession(id);
-        setSession(s);
+        const s = await api.getRun(id);
+        setRun(s);
         setReadiness(await api.getReadiness(id));
         const [st, tg, p, o, l, f] = await Promise.all([
-          api.getStudy(s.study_id),
-          s.task_group_id ? api.getTaskGroup(s.task_group_id) : Promise.resolve(null),
+          api.getCampaign(s.campaign_id),
+          s.mission_group_id ? api.getMissionGroup(s.mission_group_id) : Promise.resolve(null),
           s.robot_id ? api.getRobot(s.robot_id) : Promise.resolve(null),
           s.operator_id ? api.getOperator(s.operator_id) : Promise.resolve(null),
           s.lab_id ? api.getLab(s.lab_id) : Promise.resolve(null),
-          s.device_fleet_id ? api.getDeviceFleet(s.device_fleet_id) : Promise.resolve(null),
+          s.sensor_rig_id ? api.getSensorRig(s.sensor_rig_id) : Promise.resolve(null),
         ]);
-        setStudy(st);
+        setCampaign(st);
         setGroup(tg);
         setRobot(p);
         setOperator(o);
         setLab(l);
         setFleet(f);
       } catch {
-        setErr("Failed to load session.");
+        setErr("Failed to load run.");
       }
     })();
   }, [id]);
 
   if (err) return <div className="p-6 text-sm text-red-600">{err}</div>;
-  if (!session) return <div className="p-6 text-sm text-neutral-400">Loading…</div>;
+  if (!run) return <div className="p-6 text-sm text-neutral-400">Loading…</div>;
 
-  const code = session.encoded_code ?? session.provisional_code ?? session.id;
-  // Execute is only meaningful once a session is confirmed (or already underway/collected).
+  const code = run.encoded_code ?? run.provisional_code ?? run.id;
+  // Execute is only meaningful once a run is confirmed (or already underway/collected).
   // Before that, members may be missing or ineligible, so stop it at the door.
-  const EXECUTABLE_STATES: SessionState[] = [
+  const EXECUTABLE_STATES: RunState[] = [
     "CONFIRMED", "IN_EXECUTION", "COLLECTED", "EXTRACTED", "MANUAL_QA", "VALIDATED", "UPLOADED", "DONE",
   ];
-  const canExecute = EXECUTABLE_STATES.includes(session.state);
+  const canExecute = EXECUTABLE_STATES.includes(run.state);
   const executeReason = canExecute
     ? ""
-    : session.state === "BLOCKED"
+    : run.state === "BLOCKED"
       ? "Resolve readiness issues first"
-      : "Confirm the session first";
-  const rows = session.collected_rows ?? [];
+      : "Confirm the run first";
+  const rows = run.collected_rows ?? [];
   // Columns worth showing, in order; only render those with at least one non-empty value.
   const COLLECTED_COLS: { key: string; label: string }[] = [
-    { key: "task", label: "Task" },
+    { key: "mission", label: "Mission" },
     { key: "variant", label: "Variant" },
     { key: "robot_id", label: "Robot" },
     { key: "payload", label: "Payload" },
-    { key: "session_lab", label: "Lab" },
-    { key: "device_name", label: "Device" },
+    { key: "run_lab", label: "Lab" },
+    { key: "device_name", label: "Sensor" },
     { key: "file_name", label: "File" },
     { key: "video_duration", label: "Duration" },
   ];
@@ -95,8 +95,8 @@ export default function SessionDetail() {
     rows.some((r) => (r[c.key] ?? "").trim() !== ""),
   );
   const assembly = [
-    { href: study ? `/studies/${study.id}` : undefined, label: `Study: ${study?.name ?? "—"}` },
-    { label: `Task Group: ${group?.name ?? "—"}` },
+    { href: campaign ? `/campaigns/${campaign.id}` : undefined, label: `Campaign: ${campaign?.name ?? "—"}` },
+    { label: `Mission Group: ${group?.name ?? "—"}` },
     {
       href: robot ? `/robots/${robot.id}` : undefined,
       label: `Robot: ${robot?.robot_code ?? "—"}`,
@@ -109,14 +109,14 @@ export default function SessionDetail() {
       href: lab ? `/labs/${lab.id}` : undefined,
       label: `Lab: ${lab?.name ?? "—"}`,
     },
-    { label: `Device Fleet: ${fleet?.name ?? "—"}` },
+    { label: `Sensor Rig: ${fleet?.name ?? "—"}` },
   ];
 
   return (
     <>
     <DetailPage
       title={code}
-      subtitle={STATE_META[session.state].label}
+      subtitle={STATE_META[run.state].label}
       backHref="/schedule"
       backLabel="Schedule"
       actions={
@@ -125,7 +125,7 @@ export default function SessionDetail() {
             onClick={() => setExecuting(true)}
             disabled={!canExecute}
             title={executeReason}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
+            className="rounded-md bg-[color:var(--cq-iris)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cq-violet)] disabled:cursor-not-allowed disabled:bg-neutral-300"
           >
             Execute
           </button>
@@ -133,11 +133,11 @@ export default function SessionDetail() {
         </div>
       }
       fields={[
-        { label: "State", value: STATE_META[session.state].label },
-        { label: "Slot date", value: session.slot_date ?? "unscheduled" },
-        { label: "Task scope", value: session.task_scope },
-        { label: "Provisional code", value: session.provisional_code ?? "—" },
-        { label: "Encoded code", value: session.encoded_code ?? "—" },
+        { label: "State", value: STATE_META[run.state].label },
+        { label: "Slot date", value: run.slot_date ?? "unscheduled" },
+        { label: "Mission scope", value: run.mission_scope },
+        { label: "Provisional code", value: run.provisional_code ?? "—" },
+        { label: "Encoded code", value: run.encoded_code ?? "—" },
       ]}
     >
       <Section title="Assembly">
@@ -185,16 +185,16 @@ export default function SessionDetail() {
       </Section>
 
       <Section title="Files">
-        <SessionFiles sessionId={session.id} canEdit={canEdit} />
+        <RunFiles runId={run.id} canEdit={canEdit} />
       </Section>
     </DetailPage>
     {executing && (
-      <ExecuteSession
-        session={session}
+      <ExecuteRun
+        run={run}
         code={code}
         canEdit={canEdit}
         onClose={() => setExecuting(false)}
-        onSaved={setSession}
+        onSaved={setRun}
       />
     )}
     </>

@@ -5,22 +5,22 @@ import Image from "next/image";
 
 import { api } from "@/lib/api";
 import { CQ, STATUS_COLOR } from "@/lib/palette";
-import { DATA_PIPELINE, dailyExecution, loadStudyMetrics, PIPELINE_STAGES, STAGE_LABEL, type StudyMetrics } from "@/lib/metrics";
-import type { Study } from "@/lib/types";
+import { DATA_PIPELINE, dailyExecution, loadCampaignMetrics, PIPELINE_STAGES, STAGE_LABEL, type CampaignMetrics } from "@/lib/metrics";
+import type { Campaign } from "@/lib/types";
 import { useUser } from "@/lib/useUser";
 import { Funnel, Progress } from "@/components/Cards";
 import { Stepper } from "@/components/Stepper";
-import { StudyHeader } from "@/components/StudyHeader";
+import { CampaignHeader } from "@/components/CampaignHeader";
 
 const STATE_FILL: Record<string, string> = {
   DRAFT: STATUS_COLOR.draft,
   ASSEMBLING: STATUS_COLOR.assembling,
   READY: STATUS_COLOR.ready,
   CONFIRMED: STATUS_COLOR.confirmed,
-  IN_EXECUTION: CQ.teal,
+  IN_EXECUTION: CQ.iris,
   COLLECTED: CQ.blue,
   UPLOADED: CQ.violet,
-  DONE: CQ.magenta,
+  DONE: CQ.lilac,
   BLOCKED: STATUS_COLOR.blocked,
 };
 
@@ -37,9 +37,9 @@ type SectionKey = (typeof SECTIONS)[number]["key"];
 
 export default function ReportsPage() {
   const user = useUser();
-  const [studies, setStudies] = useState<Study[]>([]);
-  const [studyId, setStudyId] = useState<string | null>(null);
-  const [m, setM] = useState<StudyMetrics | null>(null);
+  const [campaigns, setStudies] = useState<Campaign[]>([]);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [m, setM] = useState<CampaignMetrics | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const [enabled, setEnabled] = useState<Record<SectionKey, boolean>>({
@@ -62,16 +62,16 @@ export default function ReportsPage() {
       .listStudies()
       .then((s) => {
         setStudies(s);
-        if (s.length > 0) setStudyId(s[0].id);
+        if (s.length > 0) setCampaignId(s[0].id);
       })
       .catch(() => setErr("Backend unreachable (start it on :8000)."));
   }, []);
 
   const load = useCallback(() => {
-    if (!studyId) return;
+    if (!campaignId) return;
     const range = scoped && start && end ? { start, end } : undefined;
-    loadStudyMetrics(studyId, range).then(setM).catch(() => setErr("Failed to load report."));
-  }, [studyId, scoped, start, end]);
+    loadCampaignMetrics(campaignId, range).then(setM).catch(() => setErr("Failed to load report."));
+  }, [campaignId, scoped, start, end]);
   useEffect(load, [load]);
 
   const funnel = m
@@ -91,7 +91,7 @@ export default function ReportsPage() {
 
   return (
     <div className="flex h-full flex-col bg-neutral-50">
-      <StudyHeader title="Reports" studies={studies} studyId={studyId} onChange={setStudyId} right={controls} />
+      <CampaignHeader title="Reports" campaigns={campaigns} campaignId={campaignId} onChange={setCampaignId} right={controls} />
       {err && <div className="bg-red-50 px-6 py-2 text-sm text-red-700">{err}</div>}
 
       <div className="flex flex-1 overflow-hidden">
@@ -133,9 +133,9 @@ export default function ReportsPage() {
               <div className="mb-6 flex items-start justify-between border-b border-neutral-200 pb-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Weekly Status Report</div>
-                  <h1 className="mt-1 text-2xl font-semibold">{m.study.name}</h1>
+                  <h1 className="cq-display mt-1 text-2xl font-semibold">{m.campaign.name}</h1>
                   <p className="text-sm text-neutral-500">
-                    {m.study.study_type} study · prepared by {user?.name ?? "—"} · status {m.study.status}
+                    {m.campaign.campaign_type} campaign · prepared by {user?.name ?? "—"} · status {m.campaign.status}
                     {scoped && start && end ? ` · ${start} → ${end}` : ""}
                   </p>
                 </div>
@@ -145,10 +145,10 @@ export default function ReportsPage() {
               {enabled.execution && (
                 <Section title="Execution Numbers">
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                    <Kpi label="Sessions" value={m.sessions.length} />
-                    <Kpi label="Confirmed" value={m.confirmedPlus} color={CQ.teal} />
-                    <Kpi label="Collected" value={m.collectedPlus} color={CQ.green} />
-                    <Kpi label="Blocked" value={m.blocked} color={m.blocked ? CQ.red : CQ.slate} />
+                    <Kpi label="Runs" value={m.runs.length} />
+                    <Kpi label="Confirmed" value={m.confirmedPlus} color={CQ.iris} />
+                    <Kpi label="Collected" value={m.collectedPlus} color={CQ.sage} />
+                    <Kpi label="Blocked" value={m.blocked} color={m.blocked ? CQ.rose : CQ.slate} />
                   </div>
                 </Section>
               )}
@@ -166,15 +166,15 @@ export default function ReportsPage() {
                 <Section title="Daily Execution">
                   <p className="mb-3 flex items-center gap-2 text-xs text-neutral-400">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-300" />
-                    Auto-populated from session state (system-tracked). Not yet wired to the live
+                    Auto-populated from run state (system-tracked). Not yet wired to the live
                     S3 ingestion / extraction pipeline — those stages will sync automatically once connected.
                   </p>
                   {(() => {
-                    const de = dailyExecution(m.sessions);
+                    const de = dailyExecution(m.runs);
                     return (
                       <>
                         <ul className="mb-4 space-y-1 text-sm text-neutral-700">
-                          <li><b>{de.uploaded}</b> robots’ sessions uploaded</li>
+                          <li><b>{de.uploaded}</b> robots’ runs uploaded</li>
                           <li><b>{de.extractedQAd}</b> extracted and QA’d</li>
                           <li>
                             <b>{de.pending}</b> pending extraction / QA
@@ -231,7 +231,7 @@ export default function ReportsPage() {
                       <Row k="Cleared to participate" v={`${m.clearedRobots} (consent · booking · Ask)`} />
                       <Row k="Operators" v={m.operators.length} />
                       <Row k="Labs" v={m.labs.length} />
-                      <Row k="Devices operational" v={`${m.operationalDevices} of ${m.devices.length}`} />
+                      <Row k="Sensors operational" v={`${m.operationalSensors} of ${m.sensors.length}`} />
                     </tbody>
                   </table>
                 </Section>
@@ -241,16 +241,16 @@ export default function ReportsPage() {
                 <Section title="Risk & Mitigation">
                   {m.blocked > 0 ? (
                     <p className="text-sm text-red-700">
-                      {m.blocked} session(s) blocked — open each in the Schedule to see the failing member and swap it.
+                      {m.blocked} run(s) blocked — open each in the Schedule to see the failing member and swap it.
                     </p>
                   ) : (
-                    <p className="text-sm text-green-700">No blocked sessions. Pipeline healthy.</p>
+                    <p className="text-sm text-green-700">No blocked runs. Pipeline healthy.</p>
                   )}
                 </Section>
               )}
 
               <p className="mt-8 text-xs text-neutral-400">
-                Generated by CharmQuark · {m.study.name} · figures reflect live data at time of viewing.
+                Generated by CharmQuark · {m.campaign.name} · figures reflect live data at time of viewing.
               </p>
             </article>
           )}

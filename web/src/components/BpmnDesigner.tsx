@@ -99,7 +99,7 @@ export function BpmnDesigner({ id, canEdit }: { id: string; canEdit: boolean }) 
           <button
             onClick={save}
             disabled={saving || status !== "ready" || !dirty}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
+            className="rounded-md bg-[color:var(--cq-iris)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--cq-violet)] disabled:cursor-not-allowed disabled:bg-neutral-300"
           >
             {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
           </button>

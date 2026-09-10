@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import type { TaskDetail } from "@/lib/types";
+import type { MissionDetail } from "@/lib/types";
 import { isLegalReviewer, canUpdate, type Role } from "@/lib/session";
 import { useToast } from "./Toast";
 
@@ -13,15 +13,15 @@ const RISK_COLOR: Record<string, string> = {
   UNKNOWN: "bg-neutral-100 text-neutral-500",
 };
 
-/** Risk calculator + legal-review panel for a task.
+/** Risk calculator + legal-review panel for a mission.
  *  - anyone who can update runs the risk calculator (assess)
  *  - if flagged (PENDING legal), a Fleet Lead approves/holds and can email legal via the default mail client */
 export function RiskLegalPanel({
-  task,
+  mission,
   role,
   onChanged,
 }: {
-  task: TaskDetail;
+  mission: MissionDetail;
   role: Role | undefined;
   onChanged: () => void;
 }) {
@@ -31,7 +31,7 @@ export function RiskLegalPanel({
 
   const assess = async () => {
     try {
-      const r = await api.assessRisk(task.id);
+      const r = await api.assessRisk(mission.id);
       setRationale(`${r.risk_level}: ${r.rationale}`);
       toast(r.needs_legal_review ? "info" : "success", `Risk assessed: ${r.risk_level}`);
       onChanged();
@@ -42,7 +42,7 @@ export function RiskLegalPanel({
 
   const verdict = async (approved: boolean) => {
     try {
-      await api.legalReview(task.id, approved);
+      await api.legalReview(mission.id, approved);
       toast("success", approved ? "Legal approved" : "Kept on hold");
       onChanged();
     } catch (e) {
@@ -52,23 +52,23 @@ export function RiskLegalPanel({
 
   const mailto = () => {
     const to = encodeURIComponent(legalEmail.trim());
-    const subject = encodeURIComponent(`Legal review needed: ${task.task_code} — ${task.name}`);
+    const subject = encodeURIComponent(`Legal review needed: ${mission.mission_code} — ${mission.name}`);
     const body = encodeURIComponent(
-      `Task ${task.task_code} (${task.name}) is flagged ${task.risk_level} and needs legal review.\n\n` +
+      `Mission ${mission.mission_code} (${mission.name}) is flagged ${mission.risk_level} and needs legal review.\n\n` +
         `Please advise on approval.\n`,
     );
     window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
   };
 
-  const flagged = task.legal_approval === "PENDING";
+  const flagged = mission.legal_approval === "PENDING";
   return (
     <div className="rounded-xl bg-neutral-50 p-4">
       <div className="mb-3 flex items-center gap-2">
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${RISK_COLOR[task.risk_level] ?? ""}`}>
-          Risk: {task.risk_level}
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${RISK_COLOR[mission.risk_level] ?? ""}`}>
+          Risk: {mission.risk_level}
         </span>
         <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
-          Legal: {task.legal_approval}
+          Legal: {mission.legal_approval}
         </span>
         {canUpdate(role) && (
           <button onClick={assess} className="ml-auto rounded-md border border-neutral-300 px-2.5 py-1 text-xs hover:bg-white">

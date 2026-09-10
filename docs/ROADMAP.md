@@ -49,21 +49,25 @@ Ordered as the spec recommends (Appendix A):
 8. **Multi-robot runs and lab bays** — `LabBay` as the real capacity unit,
    `RunRobot` for concurrent robots in one run.
 
-## A naming decision left open
+## The naming decision — made and applied
 
-The spec argues for renaming the core objects to fleet-native terms:
+The spec argued for renaming the core objects to fleet-native terms, and that
+argument won. The rename is applied throughout — schema, API, types and UI:
 
-| Today | Spec proposes |
-|---|---|
-| `Study` | `Campaign` |
-| `Task` | `Mission` |
-| `Session` | `Run` |
-| `TaskGroup` | `MissionGroup` |
-| `DeviceFleet` | `SensorRig` |
+| Was | Now | Why |
+|---|---|---|
+| `Study` | `Campaign` | "Collection campaign" is what practitioners actually say. |
+| `TaskGroup` | `MissionGroup` | Follows `Mission`. |
+| `Task` | `Mission` | The standard word in robotics and drone ops; an operator reads it without translating. |
+| `Session` | `Run` | Standard in both robotics and ML ("training run", "eval run"); short, and it frees "session" for its ordinary meaning — the logged-in user's session. |
+| `Device` | `Sensor` | Says what the thing is. |
+| `DeviceFleet` | `SensorRig` | The important one: "fleet" now means *robots* and nothing else. Using it for sensors was a permanent source of confusion. |
 
-The reasoning is sound — "fleet" meaning *sensors* rather than *robots* is a
-permanent source of confusion, and `Run` reads far better than `Session` for a
-recorded robot activity. It is deliberately **not** applied here: it touches
-every table, route, type and page, and is better done as one deliberate
-migration than folded into the port. Decide before real data is loaded — it is
-cheap now and expensive later.
+Two guardrails came out of doing it: `FLEET_LEAD` and the `FLEET_STATUS` binding
+keep their names, because there "fleet" correctly means robots.
+
+## Design system
+
+The UI is built on the brand mark — see [BRAND.md](BRAND.md). Tokens live in
+`web/src/app/globals.css` and `web/src/lib/palette.ts`; there is no cyan or teal
+anywhere in the app, deliberately.

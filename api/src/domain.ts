@@ -7,27 +7,27 @@
  */
 
 // ---------------------------------------------------------------- effort budget
-export type TaskDuration = "SHORT" | "MEDIUM" | "LONG" | "UNSPECIFIED";
+export type MissionDuration = "SHORT" | "MEDIUM" | "LONG" | "UNSPECIFIED";
 
 /**
- * Effort weight in session-budget units. UNSPECIFIED defaults to 1 so un-sized
- * legacy tasks are never retroactively blocked.
+ * Effort weight in run-budget units. UNSPECIFIED defaults to 1 so un-sized
+ * legacy missions are never retroactively blocked.
  */
-export const EFFORT_UNITS: Record<TaskDuration, number> = {
+export const EFFORT_UNITS: Record<MissionDuration, number> = {
   SHORT: 1,
   MEDIUM: 2,
   LONG: 4,
   UNSPECIFIED: 1,
 };
 
-/** A session holds 4 effort units: 1 long = 2 medium = 4 short (~1 hour). */
-export const SESSION_EFFORT_BUDGET = 4;
+/** A run holds 4 effort units: 1 long = 2 medium = 4 short (~1 hour). */
+export const RUN_EFFORT_BUDGET = 4;
 
 export const effortUnits = (d: string | null | undefined): number =>
-  EFFORT_UNITS[(d ?? "UNSPECIFIED") as TaskDuration] ?? 1;
+  EFFORT_UNITS[(d ?? "UNSPECIFIED") as MissionDuration] ?? 1;
 
 // ---------------------------------------------------------------- time slots
-/** Default slot starts (one-hour sessions). */
+/** Default slot starts (one-hour runs). */
 export const DEFAULT_SLOTS = ["09:00", "11:00", "13:00", "15:00"] as const;
 
 /** The pre-generated grid: hourly starts across the weekday working window. */
@@ -53,9 +53,9 @@ export function isValidSlotTime(t: string | null | undefined): boolean {
   return minutes >= MIN_MINUTES && minutes <= MAX_MINUTES;
 }
 
-// ---------------------------------------------------------------- session codes
+// ---------------------------------------------------------------- run codes
 /**
- * Two-phase session code.
+ * Two-phase run code.
  *   Phase A — provisional: a date-to-the-day stub used while a slot is assembled.
  *   Phase B — encoded: on confirmation, encodes year/week/operator/lab/sequence.
  * Pure functions so the convention lives in one place.
@@ -77,21 +77,21 @@ export function isoWeek(slotDate: string): number {
   return 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 3600 * 1000));
 }
 
-/** e.g. 26W17m3L1S1 — year(2), ISO week, operator, lab, session sequence. */
+/** e.g. 26W17m3L1S1 — year(2), ISO week, operator, lab, run sequence. */
 export function encodedCode(args: {
   slotDate: string;
   operatorNumber: number;
   labNumber: number;
-  sessionSeq: number;
+  runSeq: number;
 }): string {
   const yy = args.slotDate.slice(2, 4);
-  return `${yy}W${isoWeek(args.slotDate)}m${args.operatorNumber}L${args.labNumber}S${args.sessionSeq}`;
+  return `${yy}W${isoWeek(args.slotDate)}m${args.operatorNumber}L${args.labNumber}S${args.runSeq}`;
 }
 
 // ---------------------------------------------------------------- risk calculator
 /**
- * A lean, explainable heuristic that flags potentially hazardous tasks. No ML:
- * it scans the task name + instruction text for hazard signals and suggests a
+ * A lean, explainable heuristic that flags potentially hazardous missions. No ML:
+ * it scans the mission name + instruction text for hazard signals and suggests a
  * RiskLevel with a human-readable rationale. POTENTIAL/HIGH route to Fleet-Lead
  * legal review. It never auto-approves — a person always gives the verdict.
  *
@@ -123,9 +123,9 @@ export interface RiskAssessment {
   needs_legal_review: boolean;
 }
 
-export function assessRisk(task: { name: string; instructions: unknown[] }): RiskAssessment {
-  const parts: string[] = [task.name ?? ""];
-  for (const step of task.instructions ?? []) {
+export function assessRisk(mission: { name: string; instructions: unknown[] }): RiskAssessment {
+  const parts: string[] = [mission.name ?? ""];
+  for (const step of mission.instructions ?? []) {
     if (step && typeof step === "object" && "text" in step) parts.push(String((step as { text: unknown }).text ?? ""));
     else parts.push(String(step));
   }
@@ -151,7 +151,7 @@ export function assessRisk(task: { name: string; instructions: unknown[] }): Ris
   }
   return {
     risk_level: "LOW",
-    rationale: "No hazard signals detected in task name or instructions.",
+    rationale: "No hazard signals detected in mission name or instructions.",
     matched_terms: [],
     needs_legal_review: false,
   };
@@ -159,7 +159,7 @@ export function assessRisk(task: { name: string; instructions: unknown[] }): Ris
 
 // ---------------------------------------------------------------- readiness
 export interface ReadinessIssue {
-  /** "task" | "robot" | "operator" | "lab" | "device_fleet" | "inventory" */
+  /** "mission" | "robot" | "operator" | "lab" | "sensor_rig" | "inventory" */
   member: string;
   reason: string;
 }
@@ -182,15 +182,15 @@ const item = (key: string, label: string, done: boolean, source: "auto" | "manua
 const INVENTORY_READY = ["AVAILABLE"];
 
 // --- shapes the readiness engine consumes (structural, not ORM-bound) ---
-export interface TaskLike {
+export interface MissionLike {
   id: string;
-  task_code: string;
+  mission_code: string;
   name: string;
   instructions_complete: boolean;
   risk_level: RiskLevel;
   legal_approval: "NONE" | "PENDING" | "APPROVED";
   review_status: "DRAFT" | "PENDING_PM_REVIEW" | "APPROVED" | "UNAVAILABLE";
-  duration_type: TaskDuration;
+  duration_type: MissionDuration;
   variants: unknown[];
 }
 export interface RobotLike {
@@ -201,11 +201,11 @@ export interface RobotLike {
 }
 export interface OperatorLike { operator_code: string; is_active: boolean }
 export interface LabLike { name: string; is_available: boolean; capacity: number }
-export interface FleetLike { name: string; device_ids: string[] }
-export interface DeviceLike { asset_name: string; status: string }
+export interface FleetLike { name: string; sensor_ids: string[] }
+export interface SensorLike { asset_name: string; status: string }
 export interface InventoryLike { name: string; status: string }
 
-const riskOk = (t: TaskLike): boolean => t.risk_level === "LOW" || t.legal_approval === "APPROVED";
+const riskOk = (t: MissionLike): boolean => t.risk_level === "LOW" || t.legal_approval === "APPROVED";
 
 /**
  * Robot mission clearance. All three gates are MANUAL today: safety certification,
@@ -220,8 +220,8 @@ export function robotChecklist(r: RobotLike): ChecklistItem[] {
   ];
 }
 
-/** Task readiness. Variants / risk / inventory are auto-derived; the rest are ticked. */
-export function taskChecklist(t: TaskLike, inventory: InventoryLike[] | null = null): ChecklistItem[] {
+/** Mission readiness. Variants / risk / inventory are auto-derived; the rest are ticked. */
+export function taskChecklist(t: MissionLike, inventory: InventoryLike[] | null = null): ChecklistItem[] {
   const items: ChecklistItem[] = [
     item("instructions_complete", "Instructions complete", t.instructions_complete, "manual"),
     item("variants", "Variants defined", t.variants.length > 0, "auto"),
@@ -236,21 +236,21 @@ export function taskChecklist(t: TaskLike, inventory: InventoryLike[] | null = n
 }
 
 // ------------------------------------------------------------------ per-member
-export function taskIssues(t: TaskLike, inventory: InventoryLike[] | null = null): ReadinessIssue[] {
+export function taskIssues(t: MissionLike, inventory: InventoryLike[] | null = null): ReadinessIssue[] {
   const issues: ReadinessIssue[] = [];
-  const code = t.task_code || "task";
+  const code = t.mission_code || "mission";
 
-  if (!t.instructions_complete) issues.push({ member: "task", reason: `${code}: instructions incomplete` });
+  if (!t.instructions_complete) issues.push({ member: "mission", reason: `${code}: instructions incomplete` });
 
   if (!riskOk(t)) {
     const needs = NEEDS_LEGAL_REVIEW.includes(t.risk_level);
     const detail = needs ? "needs legal approval (Fleet Lead)" : "needs legal approval";
-    issues.push({ member: "task", reason: `${code}: ${t.risk_level.toLowerCase()} risk ${detail}` });
+    issues.push({ member: "mission", reason: `${code}: ${t.risk_level.toLowerCase()} risk ${detail}` });
   }
 
-  if (t.variants.length === 0) issues.push({ member: "task", reason: `${code}: no variants defined` });
+  if (t.variants.length === 0) issues.push({ member: "mission", reason: `${code}: no variants defined` });
 
-  if (t.review_status === "UNAVAILABLE") issues.push({ member: "task", reason: `${code}: marked unavailable` });
+  if (t.review_status === "UNAVAILABLE") issues.push({ member: "mission", reason: `${code}: marked unavailable` });
 
   if (inventory !== null) {
     for (const i of inventory) {
@@ -294,12 +294,12 @@ export function labIssues(lab: LabLike | null, used = 0, blackedOut = false): Re
   return issues;
 }
 
-export function deviceFleetIssues(fleet: FleetLike | null, devices: DeviceLike[]): ReadinessIssue[] {
-  if (!fleet) return [{ member: "device_fleet", reason: "no sensor fleet assigned" }];
-  if (fleet.device_ids.length === 0) return [{ member: "device_fleet", reason: `${fleet.name}: empty fleet` }];
-  const down = devices.filter((d) => d.status !== "OPERATIONAL").map((d) => d.asset_name);
+export function sensorRigIssues(fleet: FleetLike | null, sensors: SensorLike[]): ReadinessIssue[] {
+  if (!fleet) return [{ member: "sensor_rig", reason: "no sensor fleet assigned" }];
+  if (fleet.sensor_ids.length === 0) return [{ member: "sensor_rig", reason: `${fleet.name}: empty fleet` }];
+  const down = sensors.filter((d) => d.status !== "OPERATIONAL").map((d) => d.asset_name);
   return down.length
-    ? [{ member: "device_fleet", reason: `${fleet.name}: not operational: ${down.join(", ")}` }]
+    ? [{ member: "sensor_rig", reason: `${fleet.name}: not operational: ${down.join(", ")}` }]
     : [];
 }
 
@@ -311,26 +311,26 @@ export function inventoryIssues(items: InventoryLike[]): ReadinessIssue[] {
 
 /**
  * Effort-budget rule (1 long = 2 medium = 4 short):
- *   - an empty session fails;
- *   - FLOOR: a valid session needs at least 2 units ("two short tasks or one long");
- *   - CEILING: at most SESSION_EFFORT_BUDGET (4) units.
- * The floor is skipped when every task is un-sized, so legacy/single-task flows
+ *   - an empty run fails;
+ *   - FLOOR: a valid run needs at least 2 units ("two short missions or one long");
+ *   - CEILING: at most RUN_EFFORT_BUDGET (4) units.
+ * The floor is skipped when every mission is un-sized, so legacy/single-mission flows
  * are not retroactively blocked until an effort level is set.
  */
-export function sessionCompositionIssues(tasks: TaskLike[]): ReadinessIssue[] {
-  if (tasks.length === 0) return [{ member: "task", reason: "no tasks assigned" }];
-  const units = tasks.reduce((sum, t) => sum + effortUnits(t.duration_type), 0);
-  const sized = tasks.some((t) => (t.duration_type ?? "UNSPECIFIED") !== "UNSPECIFIED");
-  if (units > SESSION_EFFORT_BUDGET) {
+export function sessionCompositionIssues(missions: MissionLike[]): ReadinessIssue[] {
+  if (missions.length === 0) return [{ member: "mission", reason: "no missions assigned" }];
+  const units = missions.reduce((sum, t) => sum + effortUnits(t.duration_type), 0);
+  const sized = missions.some((t) => (t.duration_type ?? "UNSPECIFIED") !== "UNSPECIFIED");
+  if (units > RUN_EFFORT_BUDGET) {
     return [{
-      member: "task",
-      reason: `over effort budget: ${units}/${SESSION_EFFORT_BUDGET} units (1 long = 2 medium = 4 short)`,
+      member: "mission",
+      reason: `over effort budget: ${units}/${RUN_EFFORT_BUDGET} units (1 long = 2 medium = 4 short)`,
     }];
   }
   if (sized && units < 2) {
     return [{
-      member: "task",
-      reason: `under minimum: needs at least 2 effort units (two short tasks or one long); has ${units}`,
+      member: "mission",
+      reason: `under minimum: needs at least 2 effort units (two short missions or one long); has ${units}`,
     }];
   }
   return [];
@@ -339,52 +339,52 @@ export function sessionCompositionIssues(tasks: TaskLike[]): ReadinessIssue[] {
 // ------------------------------------------------------------------ composite
 /** Reduce every member's readiness for a specific slot into one issue list. */
 export function sessionReadiness(args: {
-  tasks: TaskLike[];
+  missions: MissionLike[];
   robot: RobotLike | null;
   operator: OperatorLike | null;
   lab: LabLike | null;
-  deviceFleet: FleetLike | null;
-  fleetDevices: DeviceLike[];
+  sensorRig: FleetLike | null;
+  rigSensors: SensorLike[];
   inventoryItems: InventoryLike[];
-  /** task.id -> that task's resolved inventory, so the gate is attributed per task. */
-  taskInventory?: Record<string, InventoryLike[]> | null;
+  /** mission.id -> that mission's resolved inventory, so the gate is attributed per mission. */
+  missionInventory?: Record<string, InventoryLike[]> | null;
   labUsed?: number;
   operatorConflicts?: number;
   labBlackedOut?: boolean;
 }): ReadinessIssue[] {
   const issues: ReadinessIssue[] = [];
-  issues.push(...sessionCompositionIssues(args.tasks));
-  for (const t of args.tasks) {
-    const perTask = args.taskInventory == null ? null : (args.taskInventory[t.id] ?? []);
-    issues.push(...taskIssues(t, perTask));
+  issues.push(...sessionCompositionIssues(args.missions));
+  for (const t of args.missions) {
+    const perMission = args.missionInventory == null ? null : (args.missionInventory[t.id] ?? []);
+    issues.push(...taskIssues(t, perMission));
   }
   issues.push(...robotIssues(args.robot));
   issues.push(...operatorIssues(args.operator, args.operatorConflicts ?? 0));
   issues.push(...labIssues(args.lab, args.labUsed ?? 0, args.labBlackedOut ?? false));
-  issues.push(...deviceFleetIssues(args.deviceFleet, args.fleetDevices));
-  if (args.taskInventory == null) issues.push(...inventoryIssues(args.inventoryItems));
+  issues.push(...sensorRigIssues(args.sensorRig, args.rigSensors));
+  if (args.missionInventory == null) issues.push(...inventoryIssues(args.inventoryItems));
   return issues;
 }
 
 /**
- * Hard invariant behind the Confirm button: a session may be confirmed only when
+ * Hard invariant behind the Confirm button: a run may be confirmed only when
  * it has zero readiness issues (missing roles produce issues, so this implies
  * every required role is filled).
  */
 export const canConfirm = (issues: ReadinessIssue[]): boolean => issues.length === 0;
 
-// ------------------------------------------------------------------ derived task fields
+// ------------------------------------------------------------------ derived mission fields
 export const repsGap = (t: { reps_target: number; reps_actual: number }): number =>
   Math.max(0, (t.reps_target ?? 0) - (t.reps_actual ?? 0));
 
-export const isTaskReady = (t: TaskLike): boolean =>
+export const isMissionReady = (t: MissionLike): boolean =>
   Boolean(t.instructions_complete) && riskOk(t) && t.variants.length > 0;
 
 /** Eligible for an automated proposal: ready, still owes reps, AVAILABLE, not unavailable. */
 export const isSchedulable = (
-  t: TaskLike & { reps_target: number; reps_actual: number; schedule_status: string },
+  t: MissionLike & { reps_target: number; reps_actual: number; schedule_status: string },
 ): boolean =>
-  isTaskReady(t) &&
+  isMissionReady(t) &&
   repsGap(t) > 0 &&
   t.schedule_status === "AVAILABLE" &&
   t.review_status !== "UNAVAILABLE";
@@ -393,7 +393,7 @@ export const isSchedulable = (
  * Numbered variant/error picker options carrying T#V#E# execution codes
  * (E0 = correct, E1.. = planned errors), so the UI can offer selection with no typing.
  */
-export function variantOptions(taskCode: string, variants: unknown[]): unknown[] {
+export function variantOptions(missionCode: string, variants: unknown[]): unknown[] {
   const opts: unknown[] = [];
   variants.forEach((v, i) => {
     if (!v || typeof v !== "object") return;
@@ -401,7 +401,7 @@ export function variantOptions(taskCode: string, variants: unknown[]): unknown[]
     const vi = i + 1;
     const correct = (vv.correct && typeof vv.correct === "object" ? vv.correct : {}) as Record<string, unknown>;
     const errors: unknown[] = [
-      { error_number: 0, label: "Correct (no error)", code: `${taskCode}V${vi}E0`, reps: correct.reps ?? null },
+      { error_number: 0, label: "Correct (no error)", code: `${missionCode}V${vi}E0`, reps: correct.reps ?? null },
     ];
     const errList = Array.isArray(vv.errors) ? vv.errors : [];
     errList.forEach((e, j) => {
@@ -410,7 +410,7 @@ export function variantOptions(taskCode: string, variants: unknown[]): unknown[]
       errors.push({
         error_number: ei,
         label: eo.label ?? eo.errorClass ?? `Error ${ei}`,
-        code: `${taskCode}V${vi}E${ei}`,
+        code: `${missionCode}V${vi}E${ei}`,
         reps: eo.reps ?? null,
       });
     });

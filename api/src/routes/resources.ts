@@ -1,9 +1,9 @@
 /**
- * Resource CRUD — robots, operators, labs, devices, sensor fleets, inventory, users.
+ * Resource CRUD — robots, operators, labs, sensors, sensor fleets, inventory, users.
  *
  * These are all the same shape (list / get / create / update / delete over one
  * table), so they are built from one factory. Anything with real domain rules
- * lives in sessions.ts or autoschedule.ts instead.
+ * lives in runs.ts or autoschedule.ts instead.
  */
 import { Hono } from "hono";
 import type { Env, Vars } from "../types";
@@ -132,26 +132,26 @@ export function mountResources(app: App): void {
   });
 
   crud(app, {
-    path: "devices",
-    table: "devices",
-    label: "device",
-    serialize: S.device,
-    required: ["asset_name", "device_type"],
+    path: "sensors",
+    table: "sensors",
+    label: "sensor",
+    serialize: S.sensor,
+    required: ["asset_name", "sensor_type"],
     orderBy: "asset_name",
-    createColumns: ["asset_name", "device_type", "status", "current_study_id"],
-    updateColumns: ["asset_name", "device_type", "status", "current_study_id"],
+    createColumns: ["asset_name", "sensor_type", "status", "current_campaign_id"],
+    updateColumns: ["asset_name", "sensor_type", "status", "current_campaign_id"],
   });
 
   crud(app, {
-    path: "device-fleets",
-    table: "device_fleets",
+    path: "sensor-rigs",
+    table: "sensor_rigs",
     label: "sensor fleet",
-    serialize: S.deviceFleet,
-    required: ["study_id", "name"],
+    serialize: S.sensorRig,
+    required: ["campaign_id", "name"],
     orderBy: "name",
-    createColumns: ["study_id", "name", "device_ids"],
-    updateColumns: ["name", "device_ids"],
-    transform: { device_ids: json },
+    createColumns: ["campaign_id", "name", "sensor_ids"],
+    updateColumns: ["name", "sensor_ids"],
+    transform: { sensor_ids: json },
   });
 
   crud(app, {
@@ -159,9 +159,9 @@ export function mountResources(app: App): void {
     table: "inventory_items",
     label: "inventory item",
     serialize: S.inventoryItem,
-    required: ["study_id", "name", "kind"],
+    required: ["campaign_id", "name", "kind"],
     orderBy: "name",
-    createColumns: ["study_id", "name", "kind", "quantity", "unit", "status"],
+    createColumns: ["campaign_id", "name", "kind", "quantity", "unit", "status"],
     updateColumns: ["name", "kind", "quantity", "unit", "status"],
   });
 
@@ -177,17 +177,17 @@ export function mountResources(app: App): void {
     transform: { is_active: bool },
   });
 
-  // --- study-scoped collection listings -------------------------------------
-  app.get("/studies/:id/device-fleets", async (c) => {
+  // --- campaign-scoped collection listings -------------------------------------
+  app.get("/campaigns/:id/sensor-rigs", async (c) => {
     const { results } = await c.env.DB
-      .prepare(`SELECT * FROM device_fleets WHERE study_id = ? ORDER BY name`)
+      .prepare(`SELECT * FROM sensor_rigs WHERE campaign_id = ? ORDER BY name`)
       .bind(c.req.param("id")).all<Row>();
-    return c.json(results.map(S.deviceFleet));
+    return c.json(results.map(S.sensorRig));
   });
 
-  app.get("/studies/:id/inventory-items", async (c) => {
+  app.get("/campaigns/:id/inventory-items", async (c) => {
     const { results } = await c.env.DB
-      .prepare(`SELECT * FROM inventory_items WHERE study_id = ? ORDER BY name`)
+      .prepare(`SELECT * FROM inventory_items WHERE campaign_id = ? ORDER BY name`)
       .bind(c.req.param("id")).all<Row>();
     return c.json(results.map(S.inventoryItem));
   });
