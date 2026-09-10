@@ -12,6 +12,17 @@ export interface Env {
   VAULT?: R2Bucket;
   FLEET_STATUS: KVNamespace;
   ENVIRONMENT: string;
+
+  /**
+   * Cloudflare Access. Both must be set for Access to be enforced — a team
+   * domain alone proves the org, not which application the token was for.
+   *   CF_ACCESS_TEAM_DOMAIN  e.g. "yourteam.cloudflareaccess.com"
+   *   CF_ACCESS_AUD          the Access application's AUD tag
+   * While unset the API falls back to the development header shim and says so
+   * loudly via GET /api/cloud/status.
+   */
+  CF_ACCESS_TEAM_DOMAIN?: string;
+  CF_ACCESS_AUD?: string;
   /**
    * Stripe credentials for metered run credits. Optional for the same reason
    * VAULT is: a deployment without them still runs — it just reports that

@@ -139,7 +139,7 @@ export default function ReportsPage() {
                     {scoped && start && end ? ` · ${start} → ${end}` : ""}
                   </p>
                 </div>
-                <Image src="/charmquark-wordmark.svg" alt="CharmQuark" width={92} height={34} priority />
+                <Image src="/charmquark-wordmark.svg" alt="CharmQuark" width={150} height={32} priority />
               </div>
 
               {enabled.execution && (

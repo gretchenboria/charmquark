@@ -7,7 +7,7 @@ robot, in which lab, with which sensor rig, driven by which operator, running
 which missions — and whether every gate is green before anyone presses record.
 
 It merges two predecessor systems: a research data-collection orchestrator (the
-scheduling canvas, readiness engine, auto-scheduler and QA pipeline) and a lab
+readiness engine, run board, auto-scheduler and QA pipeline) and a lab
 operations toolkit (sensor inventory, operator roster, maintenance, stock).
 
 ---

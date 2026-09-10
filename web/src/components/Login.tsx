@@ -8,7 +8,7 @@ export function Login() {
     <div className="flex h-screen items-center justify-center bg-neutral-50">
       <div className="w-[420px] rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <Image src="/charmquark-wordmark.svg" alt="CharmQuark" width={132} height={48} priority />
+          <Image src="/charmquark-wordmark.svg" alt="CharmQuark" width={300} height={64} priority />
           <div className="text-xs text-neutral-400">AIML DataOps · Scheduling</div>
         </div>
         <p className="mb-4 text-sm text-neutral-500">Sign in as:</p>

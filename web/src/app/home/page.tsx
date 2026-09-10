@@ -162,7 +162,7 @@ export default function HomePage() {
 
   return (
     <div className="flex h-full flex-col bg-neutral-50">
-      <CampaignHeader title="Home" campaigns={campaigns} campaignId={campaignId} onChange={setCampaignId} />
+      <CampaignHeader title="Fleet Overview" campaigns={campaigns} campaignId={campaignId} onChange={setCampaignId} />
       {err && <div className="bg-red-50 px-6 py-2 text-sm text-red-700">{err}</div>}
 
       <div className="flex-1 overflow-auto p-6">

@@ -76,21 +76,36 @@ function CloudIndicator() {
   );
 }
 
+/**
+ * Navigation, ordered as a fleet-orchestration system rather than a scheduler.
+ *
+ * The fleet is the subject of this product: robots, the sensors mounted on them,
+ * the labs they work in and the operators who run them. Scheduling is one thing
+ * you *do* to a fleet, not the centre of it — so Operations sits below Fleet,
+ * and the calendar is one entry inside it rather than the first thing in the app.
+ */
 const SECTIONS: { title: string; items: { href: string; label: string; icon: Icon }[] }[] = [
   {
-    title: "Plan",
+    title: "Overview",
     items: [
-      { href: "/home", label: "Home", icon: IconDashboard },
-      { href: "/schedule", label: "Schedule", icon: IconCalendar },
-      { href: "/auto-schedule", label: "Auto-Schedule", icon: IconWorkflow },
-      { href: "/monitoring", label: "Monitoring", icon: IconReport },
-      { href: "/reports", label: "Reports", icon: IconReport },
+      { href: "/home", label: "Fleet Overview", icon: IconDashboard },
     ],
   },
   {
-    title: "Workflows",
+    title: "Fleet",
     items: [
-      { href: "/workflows", label: "Workflow Designer", icon: IconWorkflow },
+      { href: "/robots", label: "Robots", icon: IconRobot },
+      { href: "/sensors", label: "Sensors", icon: IconSensor },
+      { href: "/labs", label: "Labs", icon: IconLab },
+      { href: "/operators", label: "Operators", icon: IconOperator },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { href: "/schedule", label: "Run Board", icon: IconCalendar },
+      { href: "/auto-schedule", label: "Auto-Schedule", icon: IconWorkflow },
+      { href: "/monitoring", label: "Monitoring", icon: IconReport },
     ],
   },
   {
@@ -103,16 +118,14 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
     ],
   },
   {
-    title: "Resources",
+    title: "Insights",
     items: [
-      { href: "/robots", label: "Robots", icon: IconRobot },
-      { href: "/operators", label: "Operators", icon: IconOperator },
-      { href: "/labs", label: "Labs", icon: IconLab },
-      { href: "/sensors", label: "Sensors", icon: IconSensor },
+      { href: "/reports", label: "Reports", icon: IconReport },
+      { href: "/workflows", label: "Workflow Designer", icon: IconWorkflow },
     ],
   },
   {
-    title: "Manage",
+    title: "Admin",
     items: [
       { href: "/users", label: "Users & Roles", icon: IconRobot },
     ],
@@ -132,8 +145,21 @@ export function Sidebar() {
 
   return (
     <nav className="cq-rail flex w-56 shrink-0 flex-col">
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-4">
-        <Image src="/charmquark-wordmark-light.svg" alt="CharmQuark" width={116} height={25} priority />
+      <div className="flex flex-col items-center gap-2.5 border-b border-white/10 px-4 pb-5 pt-6">
+        <Image
+          src="/charmquark-logo-light.svg"
+          alt=""
+          width={76}
+          height={76}
+          priority
+          className="drop-shadow-[0_4px_18px_rgba(155,111,212,0.45)]"
+        />
+        <span
+          className="cq-display text-[15px] font-bold uppercase tracking-[0.2em] text-white/90"
+          style={{ textShadow: "0 1px 10px rgba(155,111,212,0.35)" }}
+        >
+          CharmQuark
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">

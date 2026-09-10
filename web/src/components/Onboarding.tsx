@@ -45,9 +45,11 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
     title: `Welcome to CharmQuark, ${user.name.split(" ")[0]}`,
     body: (
       <p className="text-sm text-neutral-600">
-        CharmQuark schedules ML data-collection runs. Each run is an assembly —
-        robot, robot operator, lab, missions and sensor rig — and every part must be
-        <b> validated as ready</b> before a run can go on the calendar.
+        CharmQuark orchestrates a robot fleet and the data it collects. You manage
+        robots, the sensor rigs mounted on them, the labs they work in and the
+        operators who run them. A <b>run</b> puts those together to execute a set of
+        missions — and every part must be <b>validated as ready</b> before one can go
+        ahead. Scheduling is how runs get placed; it is not the point of the system.
       </p>
     ),
   };
@@ -113,7 +115,7 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-[520px] rounded-2xl border border-neutral-200 bg-white p-7 shadow-2xl">
         <div className="mb-5 flex items-center gap-3">
-          <Image src="/charmquark-wordmark.svg" alt="CharmQuark" width={84} height={30} priority />
+          <Image src="/charmquark-wordmark.svg" alt="CharmQuark" width={168} height={36} priority />
           <span className="ml-auto text-xs text-neutral-400">
             Step {i + 1} of {steps.length}
           </span>
