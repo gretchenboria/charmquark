@@ -1,14 +1,26 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { hasOnboarded } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
 import { Login } from "./Login";
 import { Onboarding } from "./Onboarding";
 import { Sidebar } from "./Sidebar";
 
+/**
+ * Routes served without the app chrome or a login gate.
+ *
+ * The product itself sits behind Cloudflare Access, which means a crawler — or
+ * an AI assistant answering a question about CharmQuark — sees a login redirect
+ * and nothing else. These paths are the public surface that makes the product
+ * discoverable at all, so they must render for an anonymous visitor.
+ */
+const PUBLIC_ROUTES = new Set(["/"]);
+
 /** Gates the app behind login; shows the onboarding wizard on first login per user. */
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const user = useUser();
   const [showOnboard, setShowOnboard] = useState(false);
 
@@ -18,6 +30,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.addEventListener("charmquark-onboard-changed", sync);
     return () => window.removeEventListener("charmquark-onboard-changed", sync);
   }, [user]);
+
+  // Public pages render bare: no rail, no login, no onboarding.
+  if (PUBLIC_ROUTES.has(pathname)) return <>{children}</>;
 
   if (!user) return <Login />;
 
