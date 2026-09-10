@@ -1,0 +1,17 @@
+<svg width="264" height="64" viewBox="0 0 264 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CharmQuark">
+  <defs>
+    <linearGradient id="cqw" x1="4" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C5CE0"/>
+      <stop offset="0.5" stop-color="#2E6FF2"/>
+      <stop offset="1" stop-color="#1FA8B8"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(4 12) scale(0.625)">
+    <rect width="64" height="64" rx="15" fill="url(#cqw)"/>
+    <ellipse cx="32" cy="32" rx="21" ry="9" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="2.5" transform="rotate(-28 32 32)"/>
+    <ellipse cx="32" cy="32" rx="21" ry="9" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="2.5" transform="rotate(28 32 32)"/>
+    <circle cx="32" cy="32" r="7" fill="#FFFFFF"/>
+  </g>
+  <text x="52" y="41" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
+        font-size="25" font-weight="650" letter-spacing="-0.6" fill="#12161C">CharmQuark</text>
+</svg>

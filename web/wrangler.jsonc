@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "charmquark-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "observability": { "enabled": true },
+
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+
+  "vars": {
+    // Origin the Next rewrite proxies /api/* to. Point this at the deployed
+    // charmquark-api Worker; or bind charmquark.app/api/* straight to that
+    // Worker, in which case requests never come through here at all.
+    "API_URL": "https://charmquark-api.workers.dev"
+  }
+
+  // Bind the production hostname once charmquark.app is on this account:
+  // "routes": [{ "pattern": "charmquark.app/*", "zone_name": "charmquark.app" }]
+}

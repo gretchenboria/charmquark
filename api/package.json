@@ -1,0 +1,24 @@
+{
+  "name": "charmquark-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "db:migrate:local": "wrangler d1 migrations apply charmquark --local",
+    "db:migrate": "wrangler d1 migrations apply charmquark --remote",
+    "db:seed:local": "wrangler d1 execute charmquark --local --file=../db/seed/0001_dummy.sql",
+    "db:seed": "wrangler d1 execute charmquark --remote --file=../db/seed/0001_dummy.sql",
+    "db:reset:local": "rm -rf .wrangler/state && npm run db:migrate:local && npm run db:seed:local",
+    "db:seed:generate": "node --experimental-strip-types --no-warnings scripts/gen-seed.mjs"
+  },
+  "dependencies": {
+    "hono": "^4.6.14"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241224.0",
+    "typescript": "^5.5.3",
+    "wrangler": "^3.99.0"
+  }
+}

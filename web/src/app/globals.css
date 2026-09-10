@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  /* System font stack -- uses the platform UI font wherever the app runs. */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+}
+
+html {
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  @apply bg-neutral-50 text-neutral-900 antialiased;
+  font-family: var(--font-ui);
+}
+
+/* Print: hide the app chrome so Reports print as a clean document. */
+@media print {
+  nav {
+    display: none !important;
+  }
+
+  /* When the robot operator field log overlay is open (portaled to <body>), print only
+     it: hide the app shell, then let the overlay flow as normal document content. */
+  body:has(.execute-overlay) > *:not(.execute-overlay) {
+    display: none !important;
+  }
+  .execute-overlay {
+    position: static !important;
+  }
+}
