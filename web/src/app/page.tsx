@@ -128,7 +128,6 @@ export default function LandingPage() {
         <p>CharmQuark: Enterprise Fleet Orchestration</p>
         <div className="mt-4 flex justify-center gap-6">
           <Link href="/home" className="hover:underline font-medium">App Dashboard</Link>
-          <a href="/llms.txt" className="hover:underline font-medium">llms.txt</a>
         </div>
       </footer>
     </main>

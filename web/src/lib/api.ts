@@ -254,7 +254,7 @@ export const api = {
   // catalog sync (CSV round-trip: export -> edit in a spreadsheet -> upsert)
   exportCatalogCsv: async (campaignId: string): Promise<string> => {
     const res = await fetch(`${BASE}/campaigns/${campaignId}/catalog.csv`, {
-      headers: { ...authHeaders() },
+      headers: { ...await authHeaders() },
       cache: "no-store",
       credentials: "same-origin",
     });
