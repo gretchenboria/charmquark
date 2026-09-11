@@ -148,7 +148,7 @@ export function Sidebar() {
     <nav className="cq-rail flex w-64 shrink-0 flex-col">
       <div className="flex flex-col items-center gap-2.5 border-b border-white/10 px-4 pb-5 pt-6">
         <Image
-          src="/charmquark-logo-light.svg"
+          src="/cq-logo.png"
           alt=""
           width={148}
           height={148}

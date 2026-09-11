@@ -194,10 +194,25 @@ export function mountCatalog(app: App): void {
     const id = c.req.param("id");
     const row = await c.env.DB.prepare(`SELECT * FROM missions WHERE id = ?`).bind(id).first<Row>();
     if (!row) throw notFound("mission");
-    const result = assessRisk({
+    const missionObj = {
       name: str(row, "name"),
       instructions: parseJson<unknown[]>(row["instructions"], []),
-    });
+    };
+
+    const prompt = `You are a safety classifier for robot data collection missions. Determine the hazard level based on the mission name and instructions. Return valid JSON only: { "risk_level": "LOW" | "POTENTIAL" | "HIGH", "rationale": "...", "matched_terms": ["..."], "needs_legal_review": boolean }. HIGH risk involves public roads, heavy machinery, high voltage. POTENTIAL involves humans or unpredictable environments. Otherwise LOW. Mission: ${JSON.stringify(missionObj)}`;
+    
+    let result: any;
+    try {
+      const aiResponse = await c.env.AI.run('@cf/meta/llama-3-8b-instruct', {
+        messages: [{ role: "user", content: prompt }]
+      });
+      const text = aiResponse.response.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
+      result = JSON.parse(text);
+      if (!["LOW", "POTENTIAL", "HIGH"].includes(result.risk_level)) result.risk_level = "UNKNOWN";
+    } catch (e) {
+      // Fallback to legacy heuristic if AI fails
+      result = assessRisk(missionObj);
+    }
     // Record the suggestion and route it to review; never auto-approve.
     const legal = result.needs_legal_review ? "PENDING" : "NONE";
     await c.env.DB

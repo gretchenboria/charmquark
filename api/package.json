@@ -19,7 +19,7 @@
     "stripe": "^17.7.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241224.0",
+    "@cloudflare/workers-types": "^4.20260702.1",
     "typescript": "^5.5.3",
     "wrangler": "^3.99.0"
   }

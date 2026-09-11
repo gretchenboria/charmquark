@@ -12,6 +12,7 @@ export interface Env {
   VAULT?: R2Bucket;
   FLEET_STATUS: KVNamespace;
   ENVIRONMENT: string;
+  AI: any;
 
   /**
    * Cloudflare Access. Both must be set for Access to be enforced — a team

@@ -9,7 +9,7 @@ export function Login() {
       <div className="w-[420px] rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <div className="flex flex-col items-center gap-4">
-            <Image src="/charmquark-logo.svg" alt="" width={200} height={200} priority />
+            <Image src="/cq-logo.png" alt="" width={200} height={200} priority />
             <span className="cq-display text-3xl font-bold uppercase tracking-[0.22em] text-[color:var(--cq-iris)]">
               CharmQuark
             </span>

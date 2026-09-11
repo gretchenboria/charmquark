@@ -21,14 +21,25 @@
   // R2 — recordings, instruction files, exported reports.
   //   wrangler r2 bucket create charmquark-vault
   "r2_buckets": [
-    { "binding": "VAULT", "bucket_name": "charmquark-vault" }
+    { 
+      "binding": "VAULT", 
+      "bucket_name": "charmquark-vault",
+      "preview_bucket_name": "charmquark-vault-preview" 
+    }
   ],
 
   // KV — hot fleet status cache (last-seen robot telemetry snapshots).
   //   wrangler kv namespace create FLEET_STATUS
   "kv_namespaces": [
-    { "binding": "FLEET_STATUS", "id": "634e3230fd224dadbc7546b9535b8a80" }
+    { 
+      "binding": "FLEET_STATUS", 
+      "id": "634e3230fd224dadbc7546b9535b8a80",
+      "preview_id": "84ce7cdcc4774a94bea01f67074882d3"
+    }
   ],
+
+  // Cloudflare Workers AI for risk assessment classification.
+  "ai": { "binding": "AI" },
 
   // Fail safe: the committed default is production, so a plain `wrangler deploy`
   // can never silently re-expose /dev/seed/* (those endpoints wipe the database).
