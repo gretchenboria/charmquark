@@ -72,7 +72,7 @@ export default function LandingPage() {
           {/* Browser Content */}
           <div className="relative aspect-[16/9] w-full">
             <Image 
-              src="/hero-dashboard-mockup-v2.png" 
+              src="/fleet-hero.jpg" 
               alt="CharmQuark Dashboard" 
               fill
               className="object-cover"
