@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { PRESET_USERS, setUser } from "@/lib/session";
+import { setUser } from "@/lib/session";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -14,15 +14,8 @@ export function Login() {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
-        // Map firebase user to internal session
-        setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
-      } else {
-        // Fallback for development if Firebase is not yet configured by user
-        const found = PRESET_USERS[0];
-        setUser(found);
-      }
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
     }
@@ -30,11 +23,9 @@ export function Login() {
 
   const handleGoogleLogin = async () => {
     try {
-      if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        const provider = new GoogleAuthProvider();
-        const cred = await signInWithPopup(auth, provider);
-        setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
-      }
+      const provider = new GoogleAuthProvider();
+      const cred = await signInWithPopup(auth, provider);
+      setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
     } catch (err: any) {
       setError(err.message || "Google sign in failed");
     }

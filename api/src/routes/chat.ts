@@ -8,10 +8,6 @@ chat.post("/", async (c) => {
   const apiKey = c.env.GEMINI_API_KEY;
 
   if (!apiKey) {
-    // For development, provide a mock response if no API key is present
-    if (c.env.ENVIRONMENT !== "production") {
-      return c.json({ text: "Hi! I'm Charmy. (Mock mode: GEMINI_API_KEY is missing). How can I guide you through CharmQuark today?" });
-    }
     return c.json({ error: "GEMINI_API_KEY is not configured on the backend." }, 500);
   }
 
