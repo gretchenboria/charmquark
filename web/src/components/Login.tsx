@@ -17,7 +17,7 @@ export function Login() {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
         const cred = await signInWithEmailAndPassword(auth, email, password);
         // Map firebase user to internal session
-        setUser({ name: cred.user.displayName || email, role: "PM", email: cred.user.email || email, title: "Manager" });
+        setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
       } else {
         // Fallback for development if Firebase is not yet configured by user
         const found = PRESET_USERS.find(
@@ -35,7 +35,7 @@ export function Login() {
       if (process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
         const provider = new GoogleAuthProvider();
         const cred = await signInWithPopup(auth, provider);
-        setUser({ name: cred.user.displayName || email, role: "PM", email: cred.user.email || email, title: "Manager" });
+        setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
       }
     } catch (err: any) {
       setError(err.message || "Google sign in failed");
