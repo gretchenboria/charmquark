@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 
-const TAGLINE = "Enterprise Fleet Orchestration";
-const SUMMARY = "How CharmQuark applies rigid, enterprise-grade ontology and lifecycles to RobotOps data collection.";
+const TAGLINE = "Enterprise Fleet Orchestration & Resource Management";
+const SUMMARY = "CharmQuark is the central platform for RoboOps, applying rigid ontology and lifecycles to hardware management and field execution.";
 
 export const metadata = {
   title: `CharmQuark — ${TAGLINE}`,
@@ -15,7 +15,7 @@ export default function LandingPage() {
       <header className="flex flex-col items-center text-center">
         <Image src="/cq-logo.png" alt="CharmQuark" width={132} height={132} priority />
         <p className="mt-5 max-w-3xl text-[17px] leading-relaxed text-[color:var(--cq-ink-soft)]">
-          Inspired by enterprise compliance systems like Veeva Vault, CharmQuark brings strict ontology, state-driven lifecycles, and zero-trust security to robotic fleet operations.
+          The ultimate <strong>Fleet Orchestration and Resource Management</strong> platform for Robot Operations (RoboOps). We bring strict ontology, state-driven lifecycles, and zero-trust security to your physical assets and field execution.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link href="/home" className="cq-btn-primary rounded-lg px-6 py-3 text-sm font-semibold shadow-md">
@@ -49,9 +49,10 @@ export default function LandingPage() {
         <h2 id="the-solution" className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">2. The Solution: Ontology & Lifecycles</h2>
         <div className="mt-6 text-[16px] leading-relaxed text-[color:var(--cq-ink-soft)] space-y-4 max-w-3xl">
           <p>
-            CharmQuark solves this by treating every component (Robots, Sensors, Missions, Runs) as a rigidly versioned entity with strict lifecycles.
+            CharmQuark solves this by treating every physical asset and field operation as a rigidly versioned entity with strict lifecycles.
           </p>
           <ul className="list-disc pl-5 space-y-3">
+            <li><strong>Complete Resource Management:</strong> Track the exact state, location, and health of your physical assets (Robots, Sensors, Sensor Rigs, Labs, and human Operators) all in one place.</li>
             <li><strong>Strong Ontology:</strong> A &quot;Mission&quot; isn&apos;t free text. It is a structured object linked relationally to specific Inventory, Safety Hazards, and Execution Variants.</li>
             <li><strong>State-Driven QA Gates:</strong> A run cannot transition from <code>SCHEDULED</code> to <code>CONFIRMED</code> without legal sign-off. It cannot move to <code>EXPORTED</code> without human QA approval.</li>
             <li><strong>Agentic Variant Generation:</strong> Built-in AI autonomously breaks down standard missions into structured &quot;Negative Examples&quot; (e.g., E1: Sensor Glare, E2: Hardware Fault) to force operators to collect ML failure edge cases.</li>
@@ -107,7 +108,10 @@ export default function LandingPage() {
         <h2 id="roboflow" className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">5. Seamless Roboflow Integration</h2>
         <div className="mt-6 text-[16px] leading-relaxed text-[color:var(--cq-ink-soft)] space-y-4 max-w-3xl">
           <p>
-            CharmQuark acts as an elite gatekeeper for your ML pipeline. Built with a native <strong>Roboflow integration</strong>, the platform ensures that only pristine, fully-validated runs are exported to your Roboflow workspaces. By strictly blocking exports until all Legal and QA gates pass, teams eliminate the massive cost of annotating and training on garbage data.
+            CharmQuark acts as an <strong>elite ML gatekeeper</strong> for your Computer Vision pipeline. RobotOps teams generate massive amounts of visual data during field runs, and traditionally, ML engineers waste thousands of hours manually cleaning and downloading that data.
+          </p>
+          <p>
+            With our native <strong>Roboflow Integration</strong>, CharmQuark automates this handoff. Once a field run successfully passes strict QA and Legal validation gates, CharmQuark programmatically pipes the pristine images directly out of the Cloudflare R2 Vault and into your Roboflow datasets. By catching errors at the RoboOps level, you eliminate the massive cost of annotating and training ML models on garbage data.
           </p>
         </div>
       </section>
