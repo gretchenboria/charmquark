@@ -190,7 +190,7 @@ export function CreditMeter() {
       <span className="truncate">
         <span className="font-semibold text-white/80">{label}</span> run credits
       </span>
-      <span className="ml-auto shrink-0 text-white/35">Buy</span>
+      <span className="ml-auto shrink-0 text-white/35">{account.store_url ? "Store" : "Buy"}</span>
     </button>
   );
 }
@@ -254,7 +254,7 @@ function PurchaseModal({
       role="presentation"
     >
       <div
-        className="cq-card max-h-[88vh] w-full max-w-4xl overflow-y-auto p-6"
+        className="cq-card max-h-[88vh] w-full max-w-4xl overflow-y-auto p-6 flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -291,7 +291,26 @@ function PurchaseModal({
           )}
         </div>
 
-        {account && !account.payments_configured && (
+        {account && account.store_url && (
+          <div className="mt-4 rounded-xl border border-[color:var(--cq-line)] bg-[color:var(--cq-ground)] p-4 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-[color:var(--cq-ink)]">CharmQuark Store</h3>
+              <p className="text-sm text-[color:var(--cq-ink-soft)] mt-1">
+                This deployment&apos;s credits are centrally managed. Purchases are processed through the CharmQuark Store.
+              </p>
+            </div>
+            <a 
+              href={account.store_url} 
+              target="_blank" 
+              rel="noopener" 
+              className="cq-btn-primary shrink-0 rounded-lg px-4 py-2 text-sm font-medium"
+            >
+              Open Store
+            </a>
+          </div>
+        )}
+
+        {account && !account.payments_configured && !account.store_url && (
           <p className="mt-4 rounded-xl border border-[color:var(--cq-line)] bg-[color:var(--cq-ground)] p-3 text-sm text-[color:var(--cq-ink-soft)]">
             Payments are not configured on this deployment yet. Credits can still be granted
             directly on the account — see <span className="font-medium">docs/BILLING.md</span>.
@@ -304,7 +323,7 @@ function PurchaseModal({
               key={p.id}
               onClick={() => buy(p)}
               disabled={busy !== null}
-              className="relative rounded-2xl border border-[color:var(--cq-line)] bg-white p-4 text-left transition-shadow hover:shadow-[var(--cq-shadow-lift)] disabled:cursor-wait disabled:opacity-60"
+              className="relative flex flex-col items-start rounded-2xl border border-[color:var(--cq-line)] bg-white p-4 text-left transition-shadow hover:shadow-[var(--cq-shadow-lift)] disabled:cursor-wait disabled:opacity-60"
             >
               {p.tag && (
                 <span
@@ -322,14 +341,17 @@ function PurchaseModal({
               <div className="text-xs text-[color:var(--cq-ink-soft)]">
                 {usd(p.cents_per_credit)} per run
               </div>
-              <div className="mt-2 text-xs leading-snug text-[color:var(--cq-ink-faint)]">
+              <div className="mt-2 mb-4 text-xs leading-snug text-[color:var(--cq-ink-faint)] flex-1">
                 {p.description}
+              </div>
+              <div className="mt-auto w-full text-center rounded-lg border border-[color:var(--cq-line)] bg-[color:var(--cq-ground)] py-1.5 text-xs font-medium text-[color:var(--cq-ink-soft)]">
+                {account?.store_url ? "Buy in Store ↗" : "Buy locally"}
               </div>
             </button>
           ))}
         </div>
 
-        <div className="mt-5 flex items-center justify-between gap-4">
+        <div className="mt-auto pt-5 flex items-center justify-between gap-4">
           <p className="min-h-[1.25rem] text-sm text-[color:var(--cq-ink-soft)]">{message ?? ""}</p>
           <button
             onClick={onClose}
