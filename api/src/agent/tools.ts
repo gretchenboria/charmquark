@@ -272,6 +272,46 @@ export const AGENT_TOOLS: AgentTool[] = [
       return call;
     },
   },
+  {
+    name: "export_config", title: "Export the configuration",
+    description:
+      "The deployment's configuration as one bundle: records (labs, robots, missions, …) with id and version, settings, and workflows. " +
+      "Edit it, then plan_config. Leave id out of a record to create it; keep version so a stale edit is refused.",
+    inputSchema: obj({}),
+    mutates: false, uiPath: "/settings (Configuration bundle)", inApp: false,
+    plan: () => ({ method: "GET", path: "/config/export" }),
+  },
+  {
+    name: "plan_config", title: "Plan a configuration bundle",
+    description:
+      "What applying a bundle would change: per-record diffs, setting and workflow changes, every problem, and a digest. Writes nothing. " +
+      "Records missing from the bundle are kept unless prune is true.",
+    inputSchema: obj({
+      bundle: { type: "object", description: "A bundle from export_config, edited." },
+      prune: { type: "boolean", description: "Also delete records and workflows the bundle leaves out." },
+    }, ["bundle"]),
+    mutates: false, uiPath: "/settings (Configuration bundle)", inApp: false,
+    plan: (a) => {
+      if (!a["bundle"] || typeof a["bundle"] !== "object") throw new ToolArgError("bundle must be an object");
+      return { method: "POST", path: "/config/plan", body: { bundle: a["bundle"], prune: a["prune"] === true } };
+    },
+  },
+  {
+    name: "apply_config", title: "Apply a configuration bundle",
+    description:
+      "Apply a bundle you planned, as you. Send the digest plan_config returned: the apply is refused if anything changed since. " +
+      "Records apply atomically; settings, then workflows, follow.",
+    inputSchema: obj({
+      bundle: { type: "object", description: "The same bundle you planned." },
+      prune: { type: "boolean", description: "The same prune you planned with." },
+      digest: S("The digest plan_config returned."),
+    }, ["bundle", "digest"]),
+    mutates: true, uiPath: "/settings (Configuration bundle)", inApp: false,
+    plan: (a) => {
+      if (!a["bundle"] || typeof a["bundle"] !== "object") throw new ToolArgError("bundle must be an object");
+      return { method: "POST", path: "/config/apply", body: { bundle: a["bundle"], prune: a["prune"] === true, digest: need(a, "digest") } };
+    },
+  },
 ];
 
 export const toolByName = (name: string): AgentTool | undefined => AGENT_TOOLS.find((t) => t.name === name);

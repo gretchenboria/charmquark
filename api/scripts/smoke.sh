@@ -315,6 +315,77 @@ mcp "$WRITE_TOKEN" ping '{}'
 expect "MCP back on" 200 "$CODE"
 req PATCH "/labs/$LAB" '{"capacity":4}' "${PM[@]}"
 
+echo "== config as code"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# body OUT JS: {bundle} from $TMP/bundle.json after running JS (which may edit b and return extra body fields)
+body() {
+  node -e '
+    const fs = require("fs");
+    const b = JSON.parse(fs.readFileSync(process.env.BUNDLE, "utf8"));
+    const extra = new Function("b", "env", process.argv[2])(b, process.env) || {};
+    fs.writeFileSync(process.argv[1], JSON.stringify({ bundle: b, ...extra }));
+  ' "$1" "$2"
+}
+req GET /config/export "" "${PM[@]}"
+expect "export" "charmquark.config/1" "$(jget format)"
+cp "$TMP/body" "$TMP/bundle.json"
+export BUNDLE="$TMP/bundle.json"
+body "$TMP/same.json" ''
+req POST /config/plan "" "${PM[@]}" --data-binary @"$TMP/same.json"
+expect "an unchanged export plans nothing" "0/0/0" "$(jget summary.create)/$(jget summary.update)/$(jget summary.delete)"
+req GET /config/schema/records/labs.json "" "${OP[@]}"
+expect "schemas follow the registry" "integer" "$(jget items.properties.capacity.type)"
+
+LAB="$LAB" body "$TMP/edit.json" '
+  b.records.labs.find((l) => l.id === env.LAB).capacity = 7;
+  b.records.labs.push({ ref: "yard", name: "Smoke Config Yard", type: "OUTDOORS", capacity: 2 });
+  b.records["lab-blackouts"].push({ ref: "yardday", lab_id: "$ref:yard", blackout_date: "2031-03-03" });'
+req POST /config/plan "" "${PM[@]}" --data-binary @"$TMP/edit.json"
+expect "plan: 2 creates and 1 update" "true 2/1" "$(jget ok) $(jget summary.create)/$(jget summary.update)"
+DIGEST=$(jget digest)
+req GET "/labs/$LAB" "" "${PM[@]}"
+expect "plan writes nothing" "4" "$(jget capacity)"
+req POST /config/plan "" "${OP[@]}" --data-binary @"$TMP/edit.json"
+expect "operators cannot plan config" 403 "$CODE"
+node -e 'const fs=require("fs");const f=process.argv[1];const o=JSON.parse(fs.readFileSync(f,"utf8"));o.digest="0000";fs.writeFileSync(process.argv[2],JSON.stringify(o))' "$TMP/edit.json" "$TMP/stale-digest.json"
+req POST /config/apply "" "${PM[@]}" --data-binary @"$TMP/stale-digest.json"
+expect "a digest that no longer matches is refused" 409 "$CODE"
+node -e 'const fs=require("fs");const o=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));o.digest=process.argv[3];fs.writeFileSync(process.argv[2],JSON.stringify(o))' "$TMP/edit.json" "$TMP/apply.json" "$DIGEST"
+req POST /config/apply "" "${PM[@]}" --data-binary @"$TMP/apply.json"
+expect "apply the planned bundle" "APPLIED" "$(jget status)"
+YARD=$(jget created.yard); YARD_DAY=$(jget created.yardday)
+req GET "/labs/$LAB" "" "${PM[@]}"
+expect "the update landed" "7" "$(jget capacity)"
+req GET "/labs/$YARD/blackouts" "" "${PM[@]}"
+expect "refs wired the new blackout to the new lab" "1" "$(jget length)"
+req POST /config/apply "" "${PM[@]}" --data-binary @"$TMP/edit.json"
+expect "applying the same bundle again is refused" 422 "$CODE"
+expect "because the new lab already exists" "yes" "$(grep -q 'already exists' "$TMP/body" && echo yes)"
+req GET "/audit?resource=labs&entity_id=$LAB&limit=1" "" "${OP[@]}"
+expect "config changes are audited" "update" "$(jget 0.action)"
+body "$TMP/settings.json" 'b.settings["scheduling.run_effort_budget"] = 6;'
+req POST /config/plan "" "${PM[@]}" --data-binary @"$TMP/settings.json"
+expect "a PM cannot change settings through a bundle" "false" "$(jget ok)"
+
+echo "== cq CLI (templates/customer-config)"
+CFG="$TMP/cfg"; mkdir -p "$CFG"
+cq() { (cd "$CFG" && CHARMQUARK_URL="${BASE%/api}" CHARMQUARK_TOKEN="$WRITE_TOKEN" node "$ROOT/templates/customer-config/cq.mjs" "$@") > "$TMP/cq.log" 2>&1; }
+cq pull; expect "cq pull" 0 $?
+expect "pull writes one file per record type" "yes" "$([ -f "$CFG/records/labs.json" ] && [ -f "$CFG/schemas/records/labs.json" ] && echo yes)"
+LAB="$LAB" node -e 'const fs=require("fs");const f=process.argv[1];const l=JSON.parse(fs.readFileSync(f,"utf8"));l.find(x=>x.id===process.env.LAB).capacity=6;fs.writeFileSync(f,JSON.stringify(l,null,2))' "$CFG/records/labs.json"
+cq plan; expect "cq plan" 0 $?
+expect "cq plan shows the field change" "yes" "$(grep -q 'capacity: 7 → 6' "$TMP/cq.log" && echo yes)"
+cq apply; expect "cq apply" 0 $?
+req GET "/labs/$LAB" "" "${PM[@]}"
+expect "cq apply landed" "6" "$(jget capacity)"
+LAB="$LAB" node -e 'const fs=require("fs");const f=process.argv[1];const l=JSON.parse(fs.readFileSync(f,"utf8"));l[0].type="BASEMENT";fs.writeFileSync(f,JSON.stringify(l))' "$CFG/records/labs.json"
+cq validate; expect "cq validate rejects a bad value without the network" 1 $?
+
+req DELETE "/lab-blackouts/$YARD_DAY" "" "${PM[@]}"
+req DELETE "/labs/$YARD" "" "${LEAD[@]}"
+expect "clean up the config lab" 204 "$CODE"
+req PATCH "/labs/$LAB" '{"capacity":4}' "${PM[@]}"
+
 echo
 echo "smoke: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

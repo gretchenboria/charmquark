@@ -323,6 +323,43 @@ export interface WorkflowVersionSummary {
   created_at: string;
   xml_chars: number;
 }
+// ---- configuration bundle (POST /config/plan and /config/apply) ----
+export interface ConfigRecordPreview {
+  index: number;
+  resource: string;
+  op: "create" | "update" | "delete";
+  id: string | null;
+  ref: string | null;
+  ok: boolean;
+  problems: string[];
+  diff: Record<string, { from: unknown; to: unknown }>;
+}
+export interface ConfigPlanSummary {
+  create: number;
+  update: number;
+  delete: number;
+  settings: number;
+  workflows: number;
+}
+export interface ConfigPlanReport {
+  ok: boolean;
+  digest: string;
+  problem_count: number;
+  summary: ConfigPlanSummary;
+  problems: string[];
+  records: ConfigRecordPreview[];
+  settings: { key: string; from: unknown; to: unknown }[];
+  workflows: { op: "create" | "update" | "delete"; id: string | null; name: string; xml_changed: boolean; name_changed: boolean }[];
+}
+export interface ConfigApplyResult {
+  status: "APPLIED" | "PARTIAL";
+  digest: string;
+  summary: ConfigPlanSummary;
+  changeset_id: string | null;
+  created: Record<string, string>;
+  workflows: { op: string; id: string | null; name: string; status: number; detail?: unknown }[];
+}
+
 export interface WorkflowVersion {
   workflow_id: string;
   version: number;

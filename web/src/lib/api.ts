@@ -44,7 +44,8 @@ import type {
   WorkflowVersion,
   WorkflowVersionSummary,
 } from "./types";
-import type { BpmnReport, WorkflowGraph } from "@contracts";
+import type { BpmnReport, ConfigBundle, WorkflowGraph } from "@contracts";
+import type { ConfigApplyResult, ConfigPlanReport } from "./types";
 
 const BASE = "/api";
 
@@ -365,6 +366,12 @@ export const api = {
   getWorkflowVersion: (id: string, version: number) => req<WorkflowVersion>(`/workflows/${id}/versions/${version}`),
   validateWorkflow: (id: string) => req<BpmnReport>(`/workflows/${id}/validate`),
   validateWorkflowXml: (xml: string) => post<BpmnReport>("/workflows/validate", { xml }),
+  // Configuration bundle: the same export/plan/apply the cq CLI and agents use.
+  exportConfig: () => req<ConfigBundle>("/config/export"),
+  planConfig: (bundle: unknown, prune: boolean) => post<ConfigPlanReport>("/config/plan", { bundle, prune }),
+  applyConfig: (bundle: unknown, prune: boolean, digest: string) =>
+    post<ConfigApplyResult>("/config/apply", { bundle, prune, digest }),
+
   /** Build a diagram from a graph (templates) or a description (the deployment's model). */
   generateWorkflow: (b: { graph?: WorkflowGraph; description?: string; name?: string }) =>
     post<{ workflow: WorkflowContent; report: BpmnReport; graph: WorkflowGraph }>("/workflows/generate", b),
