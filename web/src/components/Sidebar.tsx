@@ -131,6 +131,15 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
       { href: "/users", label: "Users & Roles", icon: IconRobot },
     ],
   },
+  {
+    title: "Resources",
+    items: [
+      { href: "/", label: "Documentation", icon: IconReport },
+      { href: "/home", label: "Tutorial", icon: IconWorkflow },
+      { href: "/llms.txt", label: "API Reference", icon: IconLab },
+      { href: "https://github.com/gretchenboria/charmquark", label: "README", icon: IconMission },
+    ],
+  },
 ];
 
 function UtcClock() {
@@ -171,15 +180,9 @@ export function Sidebar() {
             priority
           />
         </div>
-        <span
-          className="cq-display text-[17px] font-bold uppercase tracking-[0.22em] text-white/90"
-          style={{ textShadow: "0 1px 10px rgba(155,111,212,0.35)" }}
-        >
-          CharmQuark
-        </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-2">
+      <div className="flex-1 overflow-y-auto px-3 py-4">
         {sections.map((section) => (
           <div key={section.title} className="mb-3">
             <div className="cq-eyebrow px-4 pb-1.5 text-white/35">{section.title}</div>

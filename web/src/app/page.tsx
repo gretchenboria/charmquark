@@ -14,9 +14,6 @@ export default function LandingPage() {
     <main className="mx-auto max-w-5xl px-6 py-16 sm:py-24">
       <header className="flex flex-col items-center text-center">
         <Image src="/cq-logo.png" alt="CharmQuark" width={132} height={132} priority />
-        <h1 className="cq-display mt-6 text-4xl font-bold tracking-tight sm:text-6xl">
-          CharmQuark
-        </h1>
         <p className="mt-5 max-w-3xl text-[17px] leading-relaxed text-[color:var(--cq-ink-soft)]">
           Inspired by enterprise compliance systems like Veeva Vault, CharmQuark brings strict ontology, state-driven lifecycles, and zero-trust security to robotic fleet operations.
         </p>

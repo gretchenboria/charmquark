@@ -48,9 +48,6 @@ export function Login() {
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <div className="flex flex-col items-center gap-4">
             <Image src="/cq-logo.png" alt="" width={160} height={160} priority />
-            <span className="cq-display text-3xl font-bold uppercase tracking-[0.22em] text-[color:var(--cq-iris)]">
-              CharmQuark
-            </span>
           </div>
           <p className="mt-2 text-[15px] font-medium text-[color:var(--cq-ink-soft)]">
             Enterprise Fleet Orchestration
