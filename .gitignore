@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.local.example
 *.pem
 *.key
 .dev.vars
@@ -23,7 +24,10 @@ build/
 .turbo/
 
 # --- test / coverage ---
-coverage/
+# Anchored on purpose: a bare `coverage/` also matched web/src/app/coverage/,
+# the Coverage page itself, which is how it went uncommitted.
+/api/coverage/
+/web/coverage/
 playwright-report/
 test-results/
 .playwright/
@@ -39,6 +43,10 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# --- merge / patch leftovers ---
+*.orig
+*.rej
 
 # --- logs ---
 *.log

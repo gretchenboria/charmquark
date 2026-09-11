@@ -24,7 +24,9 @@
 import { Hono } from "hono";
 import type { Env, Vars } from "../types";
 import { jsonCol, str, strOrNull, uuid, requireVault, type Row } from "../db";
-import { annotationUnavailable, badRequest, conflict, notFound } from "../errors";
+import { annotationUnavailable, badRequest, conflict, forbidden, notFound } from "../errors";
+import { isPlanner } from "../auth";
+import { hasIntegration, integrationKey } from "./integrations";
 import * as S from "../serialize";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
@@ -41,22 +43,14 @@ const MAX_IMAGES_PER_EXPORT = 25;
 type Split = "train" | "valid" | "test";
 const isSplit = (v: string): v is Split => v === "train" || v === "valid" || v === "test";
 
-import type { Context } from "hono";
-
-/** Narrow the optional key, or fail with the 503 that says which secret is absent. */
-async function resolveKey(c: Context<{ Bindings: Env; Variables: any }>): Promise<string> {
-  const p = c.get("principal");
-  
-  // BYOK Multi-Tenant Check
-  const row = await c.env.DB.prepare(`SELECT api_key FROM integration_keys WHERE subject = ? AND provider = 'roboflow'`)
-    .bind(p.name).first<{ api_key: string }>();
-    
-  if (row?.api_key) return row.api_key;
-  
-  // Global Internal Tool Fallback
-  if (c.env.ROBOFLOW_API_KEY) return c.env.ROBOFLOW_API_KEY;
-  
-  throw new HTTPException(503, { message: "Roboflow integration not configured. Please add your API key in Settings." });
+/**
+ * The key for an export: the one saved on the Integrations page, else the
+ * ROBOFLOW_API_KEY Worker secret. Neither -> the 503 that says so.
+ */
+async function resolveKey(env: Env): Promise<string> {
+  const key = (await integrationKey(env, "roboflow")) ?? env.ROBOFLOW_API_KEY;
+  if (!key) throw annotationUnavailable();
+  return key;
 }
 
 /** One image's fate, as Roboflow reported it. Stored verbatim as the export receipt. */
@@ -141,8 +135,7 @@ export function mountRoboflow(app: App): void {
       .prepare(`SELECT * FROM roboflow_exports WHERE run_id = ? ORDER BY created_at DESC`)
       .bind(runId).all<Row>();
       
-    const hasKey = await c.env.DB.prepare(`SELECT 1 FROM integration_keys WHERE subject = ? AND provider = 'roboflow'`)
-      .bind(p.name).first();
+    const hasKey = await hasIntegration(c.env, "roboflow");
 
     return c.json({
       annotation_configured: Boolean(hasKey || c.env.ROBOFLOW_API_KEY),
@@ -161,10 +154,17 @@ export function mountRoboflow(app: App): void {
    * recorded in the note rather than hidden.
    */
   app.post("/runs/:id/roboflow/export", async (c) => {
-    const apiKey = await resolveKey(c);
+    const apiKey = await resolveKey(c.env);
     const runId = c.req.param("id");
     const b = await c.req.json<{ project?: string; workspace?: string; batch?: string; split?: string; force?: boolean }>()
       .catch(() => ({} as Record<string, never>));
+
+    // Overriding QA spends annotation budget on data nobody has passed, which is
+    // a planning decision rather than a field action. Checked before any lookup
+    // so the answer never depends on whether the run exists.
+    if (b.force && !isPlanner(c.get("principal").role)) {
+      throw forbidden(`role ${c.get("principal").role} may not override the QA gate (requires: FLEET_LEAD, PM)`);
+    }
 
     const project = (b.project ?? "").trim();
     if (!project) throw badRequest("project is required (the Roboflow project id or url slug)");
@@ -266,7 +266,7 @@ export function mountRoboflow(app: App): void {
    * browser ever holding the API key.
    */
   app.get("/roboflow/projects/:project", async (c) => {
-    const apiKey = await resolveKey(c);
+    const apiKey = await resolveKey(c.env);
     const workspace = c.req.query("workspace") ?? c.env.ROBOFLOW_WORKSPACE;
     if (!workspace) throw badRequest("workspace is required (set ROBOFLOW_WORKSPACE or pass ?workspace=)");
     const res = await fetch(

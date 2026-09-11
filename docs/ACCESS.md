@@ -1,104 +1,97 @@
-# Cloudflare Access
+# Authentication and access
 
-**Enforcing as of 2026-09-10.** charmquark.app is behind Access; an unauthenticated
-request is redirected to the team login instead of being served.
+How the API decides who is calling. The code is `api/src/auth.ts` (resolution
+and policy) and `api/src/identity.ts` (token verification).
 
-| | |
-|---|---|
-| Team domain | `blue-frost-0444.cloudflareaccess.com` |
-| App "CharmQuark" | `charmquark.app` — Allow policy on the team's emails |
-| App "CharmQuark — Stripe webhook (public)" | `charmquark.app/api/billing/webhook` — **Bypass** |
+> History: an earlier version verified Cloudflare Access assertions in the
+> Worker. Commit `a995caa` removed that check without replacing it, which left
+> the API trusting a forgeable `X-CharmQuark-Role` header in production. Firebase
+> ID-token verification replaced it. `api/src/access.ts` remains only for a
+> deployment that wants to verify an Access assertion in front of the Worker.
 
-### Why the bypass exists, and why it is safe
+## Two modes, chosen by configuration
 
-Stripe cannot authenticate through Access, so a webhook delivery to a protected
-path would be bounced to a login page and the payment would never grant credits.
-Access matches the most specific path first, so the bypass app carves that single
-endpoint out of the protected app.
+| Mode | When | Identity comes from |
+|---|---|---|
+| **firebase** | `Authorization: Bearer <Firebase ID token>` is sent and `FIREBASE_PROJECT_ID` is set | the verified token, matched to an active `users` row |
+| **dev-shim** | `ENVIRONMENT=development` and no token | the `X-CharmQuark-Role` / `X-CharmQuark-User` headers — authenticates nobody |
 
-That endpoint is not unprotected — its credential is the Stripe signature. The
-Worker verifies the HMAC with `constructEventAsync` before trusting anything in
-the body, and rejects a bad or missing signature with 400. Verified live.
+Outside development the headers are **ignored**. A request with no token is a
+401. A token that doesn't verify is a 401, with no fallback. If
+`FIREBASE_PROJECT_ID` is missing in production, every request is a 503 that
+names it (fail closed). `GET /api/cloud/status` reports the mode in `auth`.
 
-If you add more machine-to-machine endpoints, they need the same treatment: a
-bypass app **and** their own cryptographic check. A bypass without one is just a
-hole.
-
-## Two modes, chosen by configuration alone
-
-`api/src/auth.ts` resolves a caller one of two ways:
-
-- **ENFORCED** — both `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` are set. The
-  signed Access assertion is the *sole* source of identity: verified
-  cryptographically, its email matched to an active `users` row. The
-  `X-CharmQuark-*` headers are ignored entirely. A bad assertion is a hard 403 —
-  there is deliberately **no fallback**, because falling back on a bad token
-  would make the check theatre.
-- **SHIM** — either value missing. The `X-CharmQuark-*` headers are trusted,
-  which authenticates nobody. Development default.
-
-Flipping modes is a config change, not a code change.
-
-## What is verified
-
-`api/src/access.ts`, and each check earns its place:
+## What is verified (`identity.ts`)
 
 | Check | Why |
 |---|---|
-| RS256 signature against the team JWKS | authenticity |
-| `iss` equals the team domain | a token from someone else's Access org must not work |
-| `aud` contains this app's AUD tag | **the one people forget** — a token minted for a *different app in the same org* must not work here, which is why AUD is required config rather than optional |
-| `exp` / `nbf`, 60s skew | freshness |
+| RS256 signature against Google's securetoken JWKS | authenticity |
+| `alg` pinned to RS256 | stops `alg: none` and key-confusion forgeries |
+| `iss` = `https://securetoken.google.com/<project>` | a token from another Firebase project must not work |
+| `aud` = the project id | same reason; the check people forget |
+| `exp` (required), `iat`/`auth_time` not in the future, 60s skew | freshness |
+| `sub` non-empty | it is the uid |
 
-JWKS is cached in KV for an hour; an unknown `kid` forces one refetch, so key
-rotation does not lock everyone out until the TTL expires. Service tokens
-(`common_name` instead of `email`) are accepted, so machine callers work.
+The JWKS is cached in KV for an hour. An unknown `kid` forces one refetch, so key
+rotation doesn't lock anyone out. All of this is unit-tested with a throwaway
+RSA key (`api/test/identity.test.ts`).
 
-## Enabling it
+## Identity → role (`auth.ts`)
 
-1. **Dashboard → Zero Trust → Enable Access.** Choose a team name; that becomes
-   `<team>.cloudflareaccess.com`.
-2. Add an identity provider (Google, GitHub, or One-time PIN to start).
-3. **Add an Access application**, self-hosted:
-   - Application domain: `charmquark.app`
-   - Add a policy — e.g. Allow / Emails / your team's addresses. Start narrow.
-4. Copy the application's **AUD tag** from its Overview tab.
-5. Set both values as Worker secrets and redeploy:
+Firebase proves *who*. The `users` table decides *what they may do*.
+
+1. **The email must be verified** (`email_verified: true`). Otherwise anyone
+   could sign up with a colleague's address and inherit their row. The login
+   page sends the verification email and asks the person to sign in again after
+   verifying. Google sign-in emails arrive already verified.
+2. **Matching:** an active `users` row whose `subject` equals the Firebase uid,
+   or whose lowercased `email` matches. No match gives a 403 naming the email,
+   telling the person to ask a Fleet Lead to add them.
+3. **The role comes from that row.** The web app reads it from `GET /api/me` and
+   never decides a role itself.
+
+**First admin on a fresh deployment:** set the `BOOTSTRAP_ADMIN_EMAILS` secret.
+A listed, verified email with **no** users row at all is created as
+`FLEET_LEAD` on first sign-in. A deactivated row is never revived this way.
+Remove the secret once the roster exists.
+
+## Going live checklist
 
 ```bash
 cd api
-wrangler secret put CF_ACCESS_TEAM_DOMAIN   # e.g. yourteam.cloudflareaccess.com
-wrangler secret put CF_ACCESS_AUD           # the AUD tag from step 4
-wrangler deploy
+# 1. var (already in wrangler.jsonc): FIREBASE_PROJECT_ID
+# 2. secrets
+openssl rand -base64 32 | wrangler secret put INTEGRATION_KEY_SECRET
+wrangler secret put BOOTSTRAP_ADMIN_EMAILS      # your email, comma-separated for more
 ```
 
-6. **Add the users.** Access proves *who* someone is; the `users` table decides
-   *what they may do*. Match on `users.email` (lowercased) or `users.subject`. An
-   email that authenticates but has no active row gets a 403 naming itself, which
-   is the correct failure — it tells you to add them rather than silently
-   granting a default role.
+3. **GitHub repository variables** (not secrets; they're public in the bundle)
+   for the web build in `deploy.yml`: `NEXT_PUBLIC_FIREBASE_API_KEY`, `_AUTH_DOMAIN`,
+   `_PROJECT_ID`, `_STORAGE_BUCKET`, `_MESSAGING_SENDER_ID`, `_APP_ID`.
+   Without them the login page refuses to sign anyone in.
+4. **Firebase console → Authentication:**
+   - enable Google and Email/Password
+   - add `charmquark.app` to *Authorized domains*
+5. **Users page:** every person needs a row **with their email**.
 
 ## Verifying it took
 
 ```bash
-# Direct to the Worker, no Access in front: must be 403, not 200.
-curl -s -o /dev/null -w '%{http_code}\n' \
-  -H 'X-CharmQuark-Role: PM' https://charmquark.app/api/labs
+# A forged role header must NOT authenticate: expect 401.
+curl -s -o /dev/null -w '%{http_code}\n' -H 'X-CharmQuark-Role: FLEET_LEAD' https://charmquark.app/api/labs
+# cloud/status (signed in) reports "auth": "firebase".
 ```
 
-If that still returns 200 with a forged role header, Access is not enforcing —
-check that **both** secrets are set on the deployed Worker.
+## Cloudflare Access at the edge
 
-## A caveat worth understanding
+As of 2026-09-10 an Access application also gates `charmquark.app` to the
+team's emails, with a **Bypass** app for `/api/billing/webhook`. That's a
+separate outer layer: it stops strangers reaching the site at all, and the
+Worker no longer depends on it.
 
-Access protects requests that arrive **through** it. Both are needed:
+- **While the product is internal**, keeping it is reasonable defence in depth.
+- **Before customers sign in with Firebase**, remove it or widen its policy, or
+  they will hit the Access login instead of the app.
 
-- the Access application must cover `charmquark.app` (including `/api/*`), and
-- the Worker must verify the assertion, which is what `access.ts` does.
-
-The second is what stops someone bypassing the first. Together they close the
-gap; either alone does not.
-
-Until this is enabled, treat the API as public. `docs/BILLING.md` and
-`docs/HANDOFF.md` say the same thing: the credit meter is a billing control, not
-a security boundary.
+Any machine-to-machine endpoint still needs its own cryptographic check (as the
+Stripe webhook verifies its signature). A bypass without one is just a hole.

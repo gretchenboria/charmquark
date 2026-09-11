@@ -4,6 +4,7 @@ import type { Env, Vars } from "../types";
 import { jsonCol, num, parseJson, str, strOrNull, uuid, requireVault, type Row } from "../db";
 import { badRequest, notFound } from "../errors";
 import * as S from "../serialize";
+import { authMode } from "../auth";
 import {
   DEFAULT_ROBOTICS_PROFILE,
   autocheck,
@@ -383,6 +384,7 @@ export function mountMisc(app: App): void {
         provider: "Cloudflare D1",
         reachable: true,
         detail: `D1 reachable — ${num(r ?? {}, "n")} program(s)`,
+        auth: authMode(c.env),
       });
     } catch (e) {
       return c.json({
@@ -390,6 +392,7 @@ export function mountMisc(app: App): void {
         provider: "Cloudflare D1",
         reachable: false,
         detail: e instanceof Error ? e.message : "unreachable",
+        auth: authMode(c.env),
       });
     }
   });

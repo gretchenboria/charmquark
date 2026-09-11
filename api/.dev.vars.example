@@ -1,3 +1,17 @@
+# --- Authentication ------------------------------------------------------
+# Leave FIREBASE_PROJECT_ID unset locally to use the development header shim
+# (the e2e suite relies on it). Set it to test real Firebase sign-in locally.
+# FIREBASE_PROJECT_ID=your-firebase-project-id
+# Emails that may self-provision as FLEET_LEAD on first sign-in.
+# BOOTSTRAP_ADMIN_EMAILS=you@example.com
+
+# Seals integration keys at rest. Any random value locally: openssl rand -base64 32
+INTEGRATION_KEY_SECRET=replace-with-random-base64
+
+# Charmy (in-app assistant).
+# GEMINI_API_KEY=
+
+# --- Stripe --------------------------------------------------------------
 # Local-only Stripe credentials for `wrangler dev`. Copy to `.dev.vars` and fill
 # in your TEST-mode values; `.dev.vars` is gitignored and must never be committed.
 # In production these are Worker secrets, not vars:

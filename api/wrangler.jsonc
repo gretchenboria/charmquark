@@ -45,7 +45,13 @@
   // can never silently re-expose /dev/seed/* (those endpoints wipe the database).
   // Local development opts DOWN via the dev script's --var, never the reverse.
   "vars": {
-    "ENVIRONMENT": "production"
+    "ENVIRONMENT": "production",
+    // The Firebase project whose ID tokens are accepted. Public (it is in the
+    // web bundle); required outside development or every request is a 503.
+    "FIREBASE_PROJECT_ID": "cq-app-1789098182"
+    // Secrets, set out of band (never here):
+    //   wrangler secret put INTEGRATION_KEY_SECRET   # openssl rand -base64 32
+    //   wrangler secret put BOOTSTRAP_ADMIN_EMAILS   # first admin(s), comma-separated
     // Optional: pin where Stripe returns a buyer when the web app and the API
     // do not share an origin. Unset, the request's Origin header is used.
     // "APP_ORIGIN": "https://charmquark.app"

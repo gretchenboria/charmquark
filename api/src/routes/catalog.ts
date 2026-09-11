@@ -6,7 +6,7 @@ import { Hono } from "hono";
 import type { Env, Vars } from "../types";
 import { buildUpdate, fromBool, jsonCol, num, parseJson, str, uuid, requireVault, type Row } from "../db";
 import { badRequest, notFound } from "../errors";
-import { requireLegalReviewer } from "../auth";
+import { CLEARANCE_FIELDS, requireClearanceAuthority, requireLegalReviewer } from "../auth";
 import { assessRisk, taskChecklist } from "../domain";
 import * as S from "../serialize";
 
@@ -25,6 +25,14 @@ const MISSION_TRANSFORM = {
   inventory_item_ids: (v: unknown) => jsonCol(v ?? []),
   instructions: (v: unknown) => jsonCol(v ?? []),
 };
+
+/** Clearance fields a new mission would start with other than the uncleared defaults. */
+function clearanceOnCreate(b: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  if (b.risk_level !== undefined && b.risk_level !== "" && b.risk_level !== "UNKNOWN") out.push("risk_level");
+  if (b.legal_approval !== undefined && b.legal_approval !== "" && b.legal_approval !== "NONE") out.push("legal_approval");
+  return out;
+}
 
 // ---------------------------------------------------------------- CSV helpers
 /** Minimal RFC4180-ish parser: handles quoted fields, embedded commas and "" escapes. */
@@ -153,6 +161,7 @@ export function mountCatalog(app: App): void {
   app.post("/missions", async (c) => {
     const b = await c.req.json<Record<string, unknown>>();
     if (!b.campaign_id || !b.mission_code || !b.name) throw badRequest("campaign_id, mission_code and name are required");
+    requireClearanceAuthority(c.get("principal"), clearanceOnCreate(b));
     const id = uuid();
     // Accept the same fields PATCH does, so a mission can be created ready-to-schedule
     // in one call rather than create-then-update.
@@ -176,6 +185,13 @@ export function mountCatalog(app: App): void {
   app.patch("/missions/:id", async (c) => {
     const id = c.req.param("id");
     const b = await c.req.json<Record<string, unknown>>();
+    const touched = CLEARANCE_FIELDS.filter((f) => f in b);
+    if (touched.length) {
+      // Compare against what is stored, so a client echoing back unchanged values is fine.
+      const current = await c.env.DB.prepare(`SELECT risk_level, legal_approval FROM missions WHERE id = ?`).bind(id).first<Row>();
+      if (!current) throw notFound("mission");
+      requireClearanceAuthority(c.get("principal"), touched.filter((f) => String(b[f]) !== str(current, f)));
+    }
     const upd = buildUpdate("missions", id, b, MISSION_UPDATE_COLS, MISSION_TRANSFORM);
     if (upd) await c.env.DB.prepare(upd.sql).bind(...upd.params).run();
     const row = await c.env.DB.prepare(`SELECT * FROM missions WHERE id = ?`).bind(id).first<Row>();
@@ -408,6 +424,10 @@ Focus on realistic robotic failures (lighting, grip, occlusion, safety stops). R
     const { csv_text } = await c.req.json<{ csv_text: string }>();
     const diff = await diffCatalog(c.env.DB, campaignId, csv_text);
     if (diff.errors.length) throw badRequest(diff.errors.join("; "));
+    const clearance = new Set<string>();
+    for (const row of diff.createRows) clearanceOnCreate(row).forEach((f) => clearance.add(f));
+    for (const u of diff.updateRows) CLEARANCE_FIELDS.filter((f) => f in u.changes).forEach((f) => clearance.add(f));
+    requireClearanceAuthority(c.get("principal"), [...clearance]);
 
     const stmts: D1PreparedStatement[] = [];
     let autoSeq = diff.maxCodeSeq;

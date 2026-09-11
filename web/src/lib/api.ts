@@ -303,6 +303,9 @@ export const api = {
     req<CheckoutClaim>(`/billing/claim?session_id=${encodeURIComponent(sessionId)}`),
 
   // users (RBAC admin)
+  /** The signed-in caller as the server resolved them — the source of truth for role. */
+  me: () =>
+    req<{ name: string; role: "PM" | "FLEET_LEAD" | "ROBOT_OPERATOR"; subject: string; email: string | null; auth: string }>("/me"),
   listUsers: () => req<User[]>("/users"),
   createUser: (b: { subject: string; name: string; email?: string; role: string }) => post<User>("/users", b),
   updateUser: (id: string, b: Record<string, unknown>) => patch<User>(`/users/${id}`, b),

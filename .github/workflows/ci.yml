@@ -1,0 +1,72 @@
+name: CI
+
+# The gate every change passes before it can reach production: deploy.yml calls
+# this workflow and only deploys when every job here is green.
+on:
+  pull_request:
+  workflow_call:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Brand — no cyan or teal (docs/BRAND.md)
+        run: |
+          if grep -rnE '(bg|text|border|ring)-(teal|cyan|sky)-' web/src; then
+            echo "::error::cyan/teal/sky utility classes are not allowed (docs/BRAND.md)"
+            exit 1
+          fi
+
+      - name: Migrations are append-only
+        # D1 records applied migrations by filename. Editing or deleting one that
+        # has shipped leaves every existing database silently out of step with
+        # the code — add a new migration instead.
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.base_ref }}"
+          else
+            base="HEAD~1"
+          fi
+          changed=$(git diff --name-only --diff-filter=MDR "$base" HEAD -- db/migrations || true)
+          if [ -n "$changed" ]; then
+            echo "::error::existing migrations were modified, renamed or deleted:"
+            echo "$changed"
+            exit 1
+          fi

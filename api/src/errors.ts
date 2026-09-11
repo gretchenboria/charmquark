@@ -14,6 +14,21 @@ export const conflict = (msg: string): HTTPException =>
 export const forbidden = (msg: string): HTTPException =>
   new HTTPException(403, { message: msg });
 
+/** 401 — no credential, or one that did not verify. */
+export const unauthorized = (msg: string): HTTPException =>
+  new HTTPException(401, { message: msg });
+
+/**
+ * Authentication is not configured outside development. Fail closed and say
+ * which variable is missing, rather than letting anyone in.
+ */
+export const authUnavailable = (): HTTPException =>
+  new HTTPException(503, {
+    message:
+      "Authentication is not configured: set FIREBASE_PROJECT_ID on the API Worker " +
+      "(api/wrangler.jsonc vars) and redeploy.",
+  });
+
 /**
  * Object storage is not configured (R2 not enabled on the account). Returned by
  * the vault-backed routes so the UI shows a cause rather than a 500.
@@ -54,6 +69,6 @@ export const billingUnavailable = (): HTTPException =>
 export const annotationUnavailable = (): HTTPException =>
   new HTTPException(503, {
     message:
-      "Annotation export is not configured: this Worker has no Roboflow API key. " +
-      "Set it with `wrangler secret put ROBOFLOW_API_KEY` (see docs/ROBOFLOW.md).",
+      "Annotation export is not configured: add a Roboflow API key on the Integrations " +
+      "page, or set `wrangler secret put ROBOFLOW_API_KEY` (see docs/ROBOFLOW.md).",
   });
