@@ -23,6 +23,7 @@ import {
   IconCampaign,
   IconMission,
   IconWorkflow,
+  IconSettings,
 } from "./icons";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
