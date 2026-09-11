@@ -1,12 +1,11 @@
-/** QA runs, the document vault, BPMN workflows, cloud status, and dev seeding. */
+/** QA runs, the document vault, cloud status, and dev seeding. Workflows live in workflows.ts. */
 import { Hono } from "hono";
-import type { Context } from "hono";
 import type { Env, Vars } from "../types";
 import { jsonCol, num, parseJson, str, strOrNull, uuid, requireVault, type Row } from "../db";
 import { badRequest, notFound } from "../errors";
 import * as S from "../serialize";
 import { authMode } from "../auth";
-import { audit, versionedDelete, versionedUpdate } from "../changes";
+import { audit, versionedUpdate } from "../changes";
 import { RESOURCES, assertValid, writableFields } from "../contracts";
 import {
   DEFAULT_ROBOTICS_PROFILE,
@@ -22,11 +21,6 @@ import {
 } from "../qaAutocheck";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
-
-/** Audit snapshots of a workflow carry its size, not the whole diagram. */
-const workflowSummary = (r: Row) => ({
-  id: str(r, "id"), name: str(r, "name"), version: num(r, "version", 1), xml_chars: str(r, "xml").length,
-});
 
 /**
  * The fallback QA gate set: what a human ticks when there is nothing for the
@@ -363,90 +357,6 @@ export function mountMisc(app: App): void {
     return c.body(null, 204);
   });
 
-  // ------------------------------------------------------------ workflows (BPMN)
-  app.get("/workflows", async (c) => {
-    const { results } = await c.env.DB.prepare(`SELECT id, name FROM workflows ORDER BY name`).all<Row>();
-    return c.json(results.map((r) => ({ id: str(r, "id"), name: str(r, "name") })));
-  });
-
-  app.get("/workflows/:id", async (c) => {
-    const row = await c.env.DB.prepare(`SELECT * FROM workflows WHERE id = ?`)
-      .bind(c.req.param("id")).first<Row>();
-    if (!row) throw notFound("workflow");
-    return c.json(S.workflow(row));
-  });
-
-  app.post("/workflows", async (c) => {
-    const b = await c.req.json<{ name: string; xml?: string }>();
-    assertValid(RESOURCES.workflows, b, "create");
-    const id = uuid();
-    await c.env.DB.prepare(`INSERT INTO workflows (id, name, xml) VALUES (?, ?, ?)`)
-      .bind(id, b.name, b.xml || EMPTY_BPMN).run();
-    const row = await c.env.DB.prepare(`SELECT * FROM workflows WHERE id = ?`).bind(id).first<Row>();
-    await audit(c, { resource: "workflows", entityId: id, action: "create", after: workflowSummary(row!) });
-    return c.json(S.workflow(row!), 201);
-  });
-
-  /**
-   * Save a workflow's name and/or diagram, honouring If-Match. The diagram it
-   * replaces is kept in workflow_versions, so an edit — by hand or by an agent —
-   * can always be compared and rolled back.
-   */
-  const saveWorkflow = async (c: Context<{ Bindings: Env; Variables: Vars }>, id: string, body: Record<string, unknown>) => {
-    assertValid(RESOURCES.workflows, body, "update");
-    const { before, after } = await versionedUpdate(c, {
-      table: "workflows", label: "workflow", id, body,
-      columns: writableFields(RESOURCES.workflows.fields, "update"), serialize: S.workflow,
-    });
-    if (num(before, "version", 1) !== num(after, "version", 1)) {
-      await c.env.DB.prepare(
-        `INSERT OR IGNORE INTO workflow_versions (id, workflow_id, version, name, xml, saved_by) VALUES (?, ?, ?, ?, ?, ?)`,
-      ).bind(uuid(), id, num(before, "version", 1), str(before, "name"), str(before, "xml"), c.get("principal").subject).run();
-    }
-    await audit(c, { resource: "workflows", entityId: id, action: "update", before: workflowSummary(before), after: workflowSummary(after) });
-    return c.json(S.workflow(after));
-  };
-
-  /** The designer's save: the whole diagram. */
-  app.put("/workflows/:id", async (c) => {
-    const b = await c.req.json<{ xml?: string }>();
-    return saveWorkflow(c, c.req.param("id"), { xml: b.xml ?? "" });
-  });
-
-  /** Rename and/or replace the diagram. */
-  app.patch("/workflows/:id", async (c) => {
-    return saveWorkflow(c, c.req.param("id"), await c.req.json<Record<string, unknown>>());
-  });
-
-  app.delete("/workflows/:id", async (c) => {
-    const id = c.req.param("id");
-    const before = await versionedDelete(c, { table: "workflows", label: "workflow", id, serialize: S.workflow });
-    await audit(c, { resource: "workflows", entityId: id, action: "delete", before: workflowSummary(before) });
-    return c.body(null, 204);
-  });
-
-  /** Earlier diagrams, newest first (without the XML — fetch one version for that). */
-  app.get("/workflows/:id/versions", async (c) => {
-    const { results } = await c.env.DB.prepare(
-      `SELECT id, version, name, saved_by, created_at, length(xml) AS xml_chars
-       FROM workflow_versions WHERE workflow_id = ? ORDER BY version DESC`,
-    ).bind(c.req.param("id")).all<Row>();
-    return c.json(results.map((r) => ({
-      id: str(r, "id"), version: num(r, "version"), name: str(r, "name"),
-      saved_by: strOrNull(r, "saved_by"), created_at: str(r, "created_at"), xml_chars: num(r, "xml_chars"),
-    })));
-  });
-
-  app.get("/workflows/:id/versions/:version", async (c) => {
-    const row = await c.env.DB.prepare(`SELECT * FROM workflow_versions WHERE workflow_id = ? AND version = ?`)
-      .bind(c.req.param("id"), Number(c.req.param("version"))).first<Row>();
-    if (!row) throw notFound("workflow version");
-    return c.json({
-      workflow_id: str(row, "workflow_id"), version: num(row, "version"), name: str(row, "name"),
-      xml: str(row, "xml"), saved_by: strOrNull(row, "saved_by"), created_at: str(row, "created_at"),
-    });
-  });
-
   // ------------------------------------------------------------ cloud status
   /** Backing-store health, surfaced as a connectivity chip in the sidebar. */
   app.get("/cloud/status", async (c) => {
@@ -471,19 +381,3 @@ export function mountMisc(app: App): void {
   });
 }
 
-const EMPTY_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                  id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:process id="Process_1" isExecutable="false">
-    <bpmn:startEvent id="StartEvent_1" name="Start"/>
-  </bpmn:process>
-  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
-      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
-        <dc:Bounds x="180" y="100" width="36" height="36"/>
-      </bpmndi:BPMNShape>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
-</bpmn:definitions>`;

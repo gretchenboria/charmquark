@@ -8,30 +8,15 @@
  * diff the person applies or discards.
  */
 import { Hono } from "hono";
-import type { Context } from "hono";
 import type { Env, Vars } from "../types";
 import { AGENT_TOOLS, type ToolCall } from "../agent/tools";
-import { anthropicProvider, geminiProvider, runChat, type LlmProvider, type Transcript } from "../agent/llm";
-import { integrationKey } from "./integrations";
+import { runChat, type Transcript } from "../agent/llm";
+import { providerFor } from "../llmProvider";
 import { loadSettings } from "../settings";
-
-type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
 
 export const chat = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 const FORWARDED = ["Authorization", "X-CharmQuark-Role", "X-CharmQuark-User"];
-
-async function providerFor(c: Ctx): Promise<LlmProvider | string> {
-  const name = (await loadSettings(c.env.DB))["agents.llm_provider"];
-  if (name === "anthropic") {
-    const key = (await integrationKey(c.env, "anthropic").catch(() => null)) ?? c.env.ANTHROPIC_API_KEY;
-    if (!key) return "No Anthropic API key: add one on the Integrations page or set ANTHROPIC_API_KEY.";
-    return anthropicProvider(key, c.env.ANTHROPIC_MODEL || "claude-sonnet-5");
-  }
-  const key = (await integrationKey(c.env, "gemini").catch(() => null)) ?? c.env.GEMINI_API_KEY;
-  if (!key) return "No Gemini API key: add one on the Integrations page or set GEMINI_API_KEY.";
-  return geminiProvider(key, c.env.GEMINI_MODEL || "gemini-3.8-flash");
-}
 
 /** Accept the neutral {role, text} shape, and the older Gemini {role, parts} shape. */
 function toTranscript(raw: unknown): Transcript[] {
@@ -57,7 +42,7 @@ chat.post("/", async (c) => {
   const transcript = toTranscript(b.messages);
   if (!transcript.length) return c.json({ detail: "send at least one user message" }, 400);
 
-  const provider = await providerFor(c);
+  const provider = await providerFor(c.env);
   if (typeof provider === "string") return c.json({ text: provider, changeset: null, tool_calls: [] });
 
   const p = c.get("principal");

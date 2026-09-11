@@ -41,7 +41,10 @@ import type {
   User,
   WorkflowContent,
   WorkflowSummary,
+  WorkflowVersion,
+  WorkflowVersionSummary,
 } from "./types";
+import type { BpmnReport, WorkflowGraph } from "@contracts";
 
 const BASE = "/api";
 
@@ -174,6 +177,8 @@ const post = <T>(p: string, body: unknown) => req<T>(p, { method: "POST", body: 
 const patch = <T>(p: string, body: unknown) => req<T>(p, { method: "PATCH", body: JSON.stringify(body) });
 const put = <T>(p: string, body: unknown) => req<T>(p, { method: "PUT", body: JSON.stringify(body) });
 const del = (p: string) => req<void>(p, { method: "DELETE" });
+/** Optimistic locking: send the version you loaded so a newer save is a 409, not an overwrite. */
+const ifMatch = (version?: number) => (version ? { "If-Match": String(version) } : undefined);
 
 export const api = {
   // campaigns
@@ -346,11 +351,23 @@ export const api = {
   // cloud connectivity (database backing + reachability)
   getCloudStatus: () => req<CloudStatus>("/cloud/status"),
 
-  // BPMN workflow diagrams (Docs/workflows/*.bpmn) — read/edit in the designer
+  // BPMN workflow diagrams, edited in the designer. Saves send If-Match; each
+  // replaced diagram is kept as a version.
   listWorkflows: () => req<WorkflowSummary[]>("/workflows"),
   getWorkflow: (id: string) => req<WorkflowContent>(`/workflows/${id}`),
-  saveWorkflow: (id: string, xml: string) => put<WorkflowContent>(`/workflows/${id}`, { xml }),
+  saveWorkflow: (id: string, xml: string, version?: number) =>
+    req<WorkflowContent>(`/workflows/${id}`, { method: "PUT", body: JSON.stringify({ xml }), headers: ifMatch(version) }),
+  renameWorkflow: (id: string, name: string, version?: number) =>
+    req<WorkflowContent>(`/workflows/${id}`, { method: "PATCH", body: JSON.stringify({ name }), headers: ifMatch(version) }),
   createWorkflow: (name: string) => post<WorkflowContent>("/workflows", { name }),
+  deleteWorkflow: (id: string) => del(`/workflows/${id}`),
+  listWorkflowVersions: (id: string) => req<WorkflowVersionSummary[]>(`/workflows/${id}/versions`),
+  getWorkflowVersion: (id: string, version: number) => req<WorkflowVersion>(`/workflows/${id}/versions/${version}`),
+  validateWorkflow: (id: string) => req<BpmnReport>(`/workflows/${id}/validate`),
+  validateWorkflowXml: (xml: string) => post<BpmnReport>("/workflows/validate", { xml }),
+  /** Build a diagram from a graph (templates) or a description (the deployment's model). */
+  generateWorkflow: (b: { graph?: WorkflowGraph; description?: string; name?: string }) =>
+    post<{ workflow: WorkflowContent; report: BpmnReport; graph: WorkflowGraph }>("/workflows/generate", b),
 
   // billing — metered run credits. One credit is spent when a run is confirmed.
   getBillingAccount: () => req<BillingAccount>("/billing/account"),

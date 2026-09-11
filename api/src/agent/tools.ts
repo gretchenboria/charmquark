@@ -9,7 +9,10 @@
  *
  * Pure (no Worker APIs) so it is unit-tested directly.
  */
-import { RESOURCES, SETTING_DEFAULTS, SETTING_SPECS, type SettingKey } from "../../../packages/contracts/src/index.ts";
+import {
+  CQ_BPMN_NAMESPACE, RESOURCES, SETTING_DEFAULTS, SETTING_SPECS, WORKFLOW_GRAPH_SCHEMA, WORKFLOW_NODE_TYPES, WORKFLOW_SERVICES,
+  type SettingKey,
+} from "../../../packages/contracts/src/index.ts";
 
 export interface ToolCall {
   method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -199,7 +202,9 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: "save_workflow", title: "Create or update a workflow",
-    description: "Without id: create {name, xml?}. With id: rename and/or replace the BPMN XML; send if_match. The replaced diagram is kept as a version.",
+    description:
+      "Without id: create {name, xml?}. With id: rename and/or replace the BPMN XML; send if_match. The replaced diagram is kept as a version. " +
+      "XML that is not BPMN, or that binds an unknown cq:service, is refused; run validate_bpmn for the full check.",
     inputSchema: obj({ id: S("Omit to create."), name: S("Workflow name."), xml: S("BPMN 2.0 XML."), if_match: { type: "integer" } }),
     mutates: true, uiPath: "/workflows/designer", inApp: false,
     plan: (a) => {
@@ -213,6 +218,58 @@ export const AGENT_TOOLS: AgentTool[] = [
       if (!Object.keys(body).length) throw new ToolArgError("send name and/or xml to change");
       const headers = typeof a["if_match"] === "number" ? { "If-Match": String(a["if_match"]) } : undefined;
       return { method: "PATCH", path: `/workflows/${need(a, "id")}`, body, headers };
+    },
+  },
+  {
+    name: "list_service_tasks", title: "Workflow service catalogue",
+    description:
+      "The CharmQuark services a workflow task can be bound to (cq:service on a serviceTask for system steps, a userTask for human steps), " +
+      "the graph node types, and the graph schema generate_workflow accepts.",
+    inputSchema: obj({}),
+    mutates: false, uiPath: "/workflows/designer", inApp: true,
+    plan: () => ({
+      local: {
+        binding: `<bpmn:serviceTask id="confirm" cq:service="confirm_run"/>, with xmlns:cq="${CQ_BPMN_NAMESPACE}" on bpmn:definitions`,
+        services: WORKFLOW_SERVICES,
+        node_types: WORKFLOW_NODE_TYPES,
+        graph_schema: WORKFLOW_GRAPH_SCHEMA,
+      },
+    }),
+  },
+  {
+    name: "validate_bpmn", title: "Check a workflow diagram",
+    description:
+      "Check BPMN against CharmQuark's rules: supported elements only, every cq:service known, every node reachable from a start. " +
+      "Send id for a saved workflow or xml for a draft. Returns errors, warnings and the service bindings.",
+    inputSchema: obj({ id: S("A saved workflow's id."), xml: S("BPMN 2.0 XML to check instead.") }),
+    mutates: false, uiPath: "/workflows/designer", inApp: true,
+    plan: (a) => {
+      if (typeof a["xml"] === "string") return { method: "POST", path: "/workflows/validate", body: { xml: a["xml"] } };
+      if (a["id"] !== undefined) return { method: "GET", path: `/workflows/${need(a, "id")}/validate` };
+      throw new ToolArgError("send id or xml");
+    },
+  },
+  {
+    name: "generate_workflow", title: "Generate a workflow diagram",
+    description:
+      "Build a laid-out BPMN diagram and save it. Send graph (nodes and flows; design it yourself using list_service_tasks) " +
+      "or description (the deployment's model designs it). Without workflow_id it creates a workflow; with workflow_id it saves " +
+      "a new version, so send if_match. Returns the workflow and its validation report.",
+    inputSchema: obj({
+      graph: { ...WORKFLOW_GRAPH_SCHEMA, description: "The workflow as nodes and flows." },
+      description: S("What the workflow should do, in words."),
+      name: S("Workflow name."),
+      workflow_id: S("Replace this workflow's diagram instead of creating one."),
+      if_match: { type: "integer" },
+    }),
+    mutates: true, uiPath: "/workflows/designer", inApp: false,
+    plan: (a) => {
+      if ((a["graph"] === undefined) === (typeof a["description"] !== "string")) throw new ToolArgError("send either graph or description");
+      const body: Record<string, unknown> = {};
+      for (const k of ["graph", "description", "name", "workflow_id"]) if (a[k] !== undefined) body[k] = a[k];
+      const call: ToolCall = { method: "POST", path: "/workflows/generate", body };
+      if (typeof a["if_match"] === "number") call.headers = { "If-Match": String(a["if_match"]) };
+      return call;
     },
   },
 ];
