@@ -2,6 +2,7 @@
 // proxies to FastAPI. The logged-in user's role/name are sent as headers so the
 // backend enforces role-group permissions.
 import { getUser } from "./session";
+import { auth } from "./firebase";
 import type {
   AcceptProposalResult,
   BillingAccount,
@@ -67,14 +68,25 @@ export class ApiError extends Error {
 /** Fired when any API call comes back 402; BillingProvider listens for it. */
 export const OUT_OF_CREDITS_EVENT = "charmquark-out-of-credits";
 
-function authHeaders(): Record<string, string> {
+async function authHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {};
+  if (auth.currentUser) {
+    const token = await auth.currentUser.getIdToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  }
   const u = getUser();
-  return u ? { "X-CharmQuark-Role": u.role, "X-CharmQuark-User": u.name } : {};
+  if (u) {
+    headers["X-CharmQuark-Role"] = u.role;
+    headers["X-CharmQuark-User"] = u.name;
+  }
+  return headers;
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json", ...await authHeaders() },
     cache: "no-store",
     credentials: "same-origin",
     ...init,

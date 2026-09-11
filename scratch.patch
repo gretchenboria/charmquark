@@ -1,18 +1,10 @@
---- web/src/components/AppShell.tsx
-+++ web/src/components/AppShell.tsx
-@@ -7,6 +7,7 @@
- import { Login } from "./Login";
- import { Onboarding } from "./Onboarding";
- import { Sidebar } from "./Sidebar";
-+import { Charmy } from "./Charmy";
- 
- /**
-  * Routes served without the app chrome or a login gate.
-@@ -37,6 +38,7 @@
-       <Sidebar />
-       <main className="flex-1 overflow-hidden">{children}</main>
-       {showOnboard && <Onboarding user={user} onDone={() => setShowOnboard(false)} />}
-+      <Charmy />
-     </div>
-   );
- }
+--- web/src/lib/api.ts
++++ web/src/lib/api.ts
+@@ -2,6 +2,7 @@
+ // proxies to FastAPI. The logged-in user's role/name are sent as headers so the
+ // backend enforces role-group permissions.
+ import { getUser } from "./session";
++import { auth } from "./firebase";
+ import type {
+   AcceptProposalResult,
+   BillingAccount,
