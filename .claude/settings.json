@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./api/.dev.vars)",
+      "Read(./web/.env.local)",
+      "Bash(wrangler deploy:*)",
+      "Bash(npx wrangler deploy:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(npm run cf:deploy:*)",
+      "Bash(npm --prefix api run deploy:*)",
+      "Bash(npm --prefix web run cf:deploy:*)",
+      "Bash(npm run db:migrate)",
+      "Bash(npm run db:seed)",
+      "Bash(npm --prefix api run db:migrate)",
+      "Bash(npm --prefix api run db:seed)",
+      "Bash(wrangler d1 migrations apply charmquark --remote:*)",
+      "Bash(npx wrangler d1 migrations apply charmquark --remote:*)",
+      "Bash(wrangler d1 execute charmquark --remote:*)",
+      "Bash(npx wrangler d1 execute charmquark --remote:*)",
+      "Bash(wrangler secret put:*)",
+      "Bash(npx wrangler secret put:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push origin main:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-core.sh\"" }
+        ]
+      }
+    ]
+  }
+}

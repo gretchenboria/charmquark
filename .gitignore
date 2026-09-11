@@ -44,6 +44,11 @@ Thumbs.db
 .vscode/
 *.swp
 
+# --- agent guardrails: local-only ---
+# Deliberate unlock of protected files for one task; see AGENTS.md.
+.claude/core-unlock
+.claude/settings.local.json
+
 # --- merge / patch leftovers ---
 *.orig
 *.rej

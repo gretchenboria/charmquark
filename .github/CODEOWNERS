@@ -1,0 +1,25 @@
+# Protected core — changes here need the code owner's review.
+# Mirrors "Protected zones" in AGENTS.md and .claude/hooks/guard-core.sh.
+
+/api/src/auth.ts                  @gretchenboria
+/api/src/identity.ts              @gretchenboria
+/api/src/access.ts                @gretchenboria
+/api/src/jwt.ts                   @gretchenboria
+/api/src/tokens.ts                @gretchenboria
+/api/src/secrets.ts               @gretchenboria
+/api/src/billing.ts               @gretchenboria
+/api/src/routes/billing.ts        @gretchenboria
+/api/src/changes.ts               @gretchenboria
+/api/src/changesets.ts            @gretchenboria
+/api/src/domain.ts                @gretchenboria
+/packages/contracts/src/enums.ts  @gretchenboria
+/db/migrations/                   @gretchenboria
+/db/seed/                         @gretchenboria
+/.github/                         @gretchenboria
+/api/wrangler.jsonc               @gretchenboria
+/web/wrangler.jsonc               @gretchenboria
+/.claude/                         @gretchenboria
+/.gemini/                         @gretchenboria
+/AGENTS.md                        @gretchenboria
+/CLAUDE.md                        @gretchenboria
+/GEMINI.md                        @gretchenboria
