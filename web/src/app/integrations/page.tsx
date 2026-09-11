@@ -13,7 +13,7 @@ export default function IntegrationsPage() {
   const [savingRf, setSavingRf] = useState(false);
 
   useEffect(() => {
-    api.get<{ configured: string[], has_global_roboflow: boolean }>("/integrations")
+    api.getIntegrations()
       .then(res => {
         setConfigured(res.configured);
       })
@@ -24,7 +24,7 @@ export default function IntegrationsPage() {
     if (!rfKey.trim()) return;
     setSavingRf(true);
     try {
-      await api.post("/integrations", { provider: "roboflow", api_key: rfKey.trim() });
+      await api.saveIntegration("roboflow", rfKey.trim());
       setConfigured(prev => prev.includes("roboflow") ? prev : [...prev, "roboflow"]);
       setRfKey("");
     } catch (e: any) {
@@ -37,7 +37,7 @@ export default function IntegrationsPage() {
   const removeRoboflow = async () => {
     if (!confirm("Remove Roboflow integration?")) return;
     try {
-      await api.delete("/integrations/roboflow");
+      await api.deleteIntegration("roboflow");
       setConfigured(prev => prev.filter(p => p !== "roboflow"));
     } catch (e: any) {
       alert(e.friendly || e.message);
@@ -45,7 +45,7 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <AppShell title="Integrations (BYOK)">
+    <AppShell>
       <div className="mx-auto max-w-3xl py-10 px-8">
         <h1 className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">Bring Your Own Key (BYOK)</h1>
         <p className="mt-4 text-[15px] text-[color:var(--cq-ink-soft)]">

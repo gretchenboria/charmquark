@@ -7,6 +7,7 @@ import { useUser } from "@/lib/useUser";
 import { Login } from "./Login";
 import { Onboarding } from "./Onboarding";
 import { Sidebar } from "./Sidebar";
+import { Charmy } from "./Charmy";
 
 /**
  * Routes served without the app chrome or a login gate.
@@ -41,6 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar />
       <main className="flex-1 overflow-hidden">{children}</main>
       {showOnboard && <Onboarding user={user} onDone={() => setShowOnboard(false)} />}
+      <Charmy />
     </div>
   );
 }

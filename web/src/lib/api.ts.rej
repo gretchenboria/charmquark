@@ -1,5 +1,3 @@
---- web/src/lib/api.ts
-+++ web/src/lib/api.ts
 @@ -254,6 +254,11 @@
    // chat
    chat: (messages: { role: string; content: string }[]) => 
@@ -10,3 +8,5 @@
 +  saveIntegration: (provider: string, api_key: string) => post<{ success: boolean }>("/integrations", { provider, api_key }),
 +  deleteIntegration: (provider: string) => del(`/integrations/${provider}`),
  };
+ 
+ 

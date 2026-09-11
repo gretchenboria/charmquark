@@ -310,9 +310,4 @@ export const api = {
 
   chat: (messages: { role: "user" | "model"; parts: { text: string }[] }[]) =>
     post<{ text: string }>("/chat", { messages }),
-
-  // integrations
-  getIntegrations: () => req<{ configured: string[], has_global_roboflow: boolean }>("/integrations"),
-  saveIntegration: (provider: string, api_key: string) => post<{ success: boolean }>("/integrations", { provider, api_key }),
-  deleteIntegration: (provider: string) => del(`/integrations/${provider}`),
 };
