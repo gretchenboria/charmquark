@@ -31,6 +31,8 @@ export default function SensorDetail() {
   const [form, setForm] = useState({
     asset_name: "",
     sensor_type: SENSOR_TYPES[0] as string,
+    serial_number: "",
+    firmware_version: "",
     status: "OPERATIONAL",
   });
 
@@ -42,6 +44,8 @@ export default function SensorDetail() {
         setForm({
           asset_name: d.asset_name,
           sensor_type: d.sensor_type,
+          serial_number: d.serial_number ?? "",
+          firmware_version: d.firmware_version ?? "",
           status: d.status,
         });
         setFleets(allFleets.filter((f) => f.sensor_ids.includes(id)));
@@ -60,6 +64,8 @@ export default function SensorDetail() {
       await api.updateSensor(sensor.id, {
         asset_name: form.asset_name.trim(),
         sensor_type: form.sensor_type,
+        serial_number: form.serial_number.trim() || null,
+        firmware_version: form.firmware_version.trim() || null,
         status: form.status,
       });
       toast("success", "Sensor saved");
@@ -106,6 +112,8 @@ export default function SensorDetail() {
       }
       fields={[
         { label: "Type", value: sensor.sensor_type },
+        { label: "Serial", value: sensor.serial_number ?? "—" },
+        { label: "Firmware", value: sensor.firmware_version ?? "—" },
         { label: "Status", value: sensor.status },
       ]}
     >
@@ -116,6 +124,16 @@ export default function SensorDetail() {
               <span className={labelCls}>Asset name</span>
               <input className={inputCls} value={form.asset_name}
                 onChange={(e) => setForm({ ...form, asset_name: e.target.value })} />
+            </label>
+            <label>
+              <span className={labelCls}>Serial number</span>
+              <input className={inputCls} value={form.serial_number}
+                onChange={(e) => setForm({ ...form, serial_number: e.target.value })} />
+            </label>
+            <label>
+              <span className={labelCls}>Firmware version</span>
+              <input className={inputCls} value={form.firmware_version}
+                onChange={(e) => setForm({ ...form, firmware_version: e.target.value })} />
             </label>
             <label>
               <span className={labelCls}>Type</span>

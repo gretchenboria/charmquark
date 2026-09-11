@@ -178,6 +178,8 @@ export const RESOURCES = {
       id: SERVER_ID,
       asset_name: { type: "string", label: "Asset name", required: true },
       sensor_type: { type: "string", label: "Type", required: true, suggestions: SENSOR_TYPES },
+      serial_number: { type: "string", label: "Serial number", nullable: true },
+      firmware_version: { type: "string", label: "Firmware version", nullable: true },
       status: { type: "enum", label: "Status", values: SENSOR_STATUSES },
       current_campaign_id: { type: "id", label: "Current campaign", nullable: true },
       version: VERSION,

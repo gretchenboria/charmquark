@@ -159,6 +159,8 @@ export interface Sensor {
   id: string;
   asset_name: string;
   sensor_type: string;
+  serial_number?: string | null;
+  firmware_version?: string | null;
   status: string;
 }
 
