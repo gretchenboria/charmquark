@@ -5,6 +5,7 @@
  * decide what counts as safe and ready.
  */
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { Env, Vars } from "../types";
 import { badRequest } from "../errors";
@@ -46,36 +47,44 @@ export function mountSettings(app: App): void {
     if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length === 0) {
       throw badRequest("send an object of setting keys to new values (null resets a key)");
     }
-    const unknown = Object.keys(body).filter((k) => !isSettingKey(k));
-    if (unknown.length) throw badRequest(`unknown settings: ${unknown.join(", ")} (see GET /api/settings)`);
-
-    const before = await loadSettings(c.env.DB);
-    const merged: Settings = structuredClone(before);
-    for (const [key, value] of Object.entries(body)) {
-      (merged as unknown as Record<string, unknown>)[key] = value === null ? SETTING_DEFAULTS[key as keyof Settings] : value;
-    }
-    const errors = validateSettings(merged);
-    if (errors.length) {
-      throw new HTTPException(400, { message: `invalid settings: ${errors.map((e) => `${e.field} ${e.message}`).join("; ")}` });
-    }
-
-    const subject = c.get("principal").subject;
-    const stmts = Object.entries(body).map(([key, value]) =>
-      value === null
-        ? c.env.DB.prepare(`DELETE FROM settings WHERE key = ?`).bind(key)
-        : c.env.DB.prepare(
-            `INSERT INTO settings (key, value, updated_by) VALUES (?, ?, ?)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = datetime('now')`,
-          ).bind(key, JSON.stringify(value), subject),
-    );
-    await c.env.DB.batch(stmts);
-
-    for (const key of Object.keys(body) as (keyof Settings)[]) {
-      await audit(c, {
-        resource: "settings", entityId: key, action: body[key] === null ? "reset" : "update",
-        before: before[key], after: merged[key],
-      });
-    }
+    await applySettings(c, body);
     return c.json(await describe(c.env.DB));
   });
+}
+
+/**
+ * Validate and store setting changes, audited: the one write path for the
+ * settings page, agents and config bundles. `null` resets a key. Throws 400.
+ */
+export async function applySettings(c: Context<{ Bindings: Env; Variables: Vars }>, body: Record<string, unknown>): Promise<void> {
+  const unknown = Object.keys(body).filter((k) => !isSettingKey(k));
+  if (unknown.length) throw badRequest(`unknown settings: ${unknown.join(", ")} (see GET /api/settings)`);
+
+  const before = await loadSettings(c.env.DB);
+  const merged: Settings = structuredClone(before);
+  for (const [key, value] of Object.entries(body)) {
+    (merged as unknown as Record<string, unknown>)[key] = value === null ? SETTING_DEFAULTS[key as keyof Settings] : value;
+  }
+  const errors = validateSettings(merged);
+  if (errors.length) {
+    throw new HTTPException(400, { message: `invalid settings: ${errors.map((e) => `${e.field} ${e.message}`).join("; ")}` });
+  }
+
+  const subject = c.get("principal").subject;
+  const stmts = Object.entries(body).map(([key, value]) =>
+    value === null
+      ? c.env.DB.prepare(`DELETE FROM settings WHERE key = ?`).bind(key)
+      : c.env.DB.prepare(
+          `INSERT INTO settings (key, value, updated_by) VALUES (?, ?, ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = datetime('now')`,
+        ).bind(key, JSON.stringify(value), subject),
+  );
+  await c.env.DB.batch(stmts);
+
+  for (const key of Object.keys(body) as (keyof Settings)[]) {
+    await audit(c, {
+      resource: "settings", entityId: key, action: body[key] === null ? "reset" : "update",
+      before: before[key], after: merged[key],
+    });
+  }
 }

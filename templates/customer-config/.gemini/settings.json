@@ -1,0 +1,13 @@
+{
+  "context": {
+    "fileName": ["AGENTS.md"]
+  },
+  "mcpServers": {
+    "charmquark": {
+      "httpUrl": "${CHARMQUARK_URL}/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CHARMQUARK_TOKEN}"
+      }
+    }
+  }
+}

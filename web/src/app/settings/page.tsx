@@ -13,6 +13,8 @@ import { ApiError, api, type ApiToken, type SettingView } from "@/lib/api";
 import { useUser } from "@/lib/useUser";
 import { useToast } from "@/components/Toast";
 import { Section } from "@/components/DetailPage";
+import { ConfigBundlePanel } from "@/components/ConfigBundlePanel";
+import { canCreate } from "@/lib/session";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -218,6 +220,12 @@ export default function SettingsPage() {
         ))}
         <Section title="API tokens">
           <Tokens />
+        </Section>
+        <Section title="Configuration bundle">
+          <ConfigBundlePanel
+            canPlan={canCreate(user?.role)}
+            onApplied={() => { api.getSettings().then(setSettings).catch(() => undefined); }}
+          />
         </Section>
       </div>
     </div>

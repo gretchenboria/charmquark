@@ -189,7 +189,10 @@ Phase 5 makes workflows meaningful:
 - Diagrams can be generated from a graph or a description.
 - W1–W4 are seeded as diagrams.
 
-Running diagrams is a separate follow-up. After that come customer config-as-code and the central store.
+Phase 6 is customer config-as-code: export, plan and apply bundles, schemas, the
+`cq` CLI and a starter repo in `templates/customer-config/`, plus Settings →
+Configuration bundle. Still to come are running diagrams, and the central store
+with per-customer provisioning.
 
 ## 10. Map
 
@@ -209,6 +212,8 @@ Running diagrams is a separate follow-up. After that come customer config-as-cod
 | `packages/contracts/src/workflows.ts` | Workflow service catalogue, the `cq:` BPMN extension, the JSON graph schema, the graph → laid-out BPMN builder, and the W1–W4 templates. |
 | `api/src/workflow.ts` + `api/src/routes/workflows.ts` | Server-side BPMN validation (bpmn-moddle) and the workflow routes: CRUD, versions, validate, generate. See `docs/ACCESS.md`. |
 | `api/src/agent/` | The agent tool registry (`tools.ts`), MCP protocol (`mcp.ts`), model-neutral assistant loop (`llm.ts`) and workflow generation (`workflowGen.ts`). |
+| `packages/contracts/src/config.ts` + `api/src/config.ts` + `api/src/routes/config.ts` | Config bundles: format, natural keys and JSON Schemas; the pure bundle planner; export/plan/apply routes. See `docs/ACCESS.md`. |
+| `templates/customer-config/` | The customer starter repo: `cq.mjs` CLI, `AGENTS.md`, MCP configs, CI example. Tested by `api/test/cli.test.ts` and smoke. |
 | `web/src/components/BpmnDesigner.tsx` | bpmn-js designer: restricted palette, service binding panel, live checks, If-Match saves, version history. |
 | `api/scripts/smoke.sh` | End-to-end API checks against a local Worker; CI runs it on every PR. `npm --prefix api run smoke`. |
 | `web/src/lib/api.ts` | Typed API client — the wire contract. |

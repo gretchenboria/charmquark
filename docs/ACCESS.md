@@ -128,6 +128,36 @@ lists, and export and coverage limits. A Fleet Lead changes them with
 Changes are validated together (a floor above the budget is refused) and
 audited.
 
+## Configuration as code
+
+A deployment's configuration is exported as one bundle. It holds records (with `id` and `version`), settings and workflows.
+
+| Route | Who | What |
+|---|---|---|
+| `GET /api/config/export` | everyone | The bundle (`format: "charmquark.config/1"`) |
+| `POST /api/config/plan {bundle, prune?}` | PM, Fleet Lead | Every change (per-field diffs), every problem, and a `digest`. Writes nothing |
+| `POST /api/config/apply {bundle, prune?, digest?}` | PM, Fleet Lead | Apply. A `digest` from plan makes it refuse (409) if anything changed since |
+| `GET /api/config/schema[/<file>]` | everyone | JSON Schemas for `settings.json`, `records/<type>.json`, `workflows/index.json` and `bundle.json`, generated from the registry |
+
+| Rule | How |
+|---|---|
+| Updates | Only changed fields, pinned to the bundle's `version`. A stale export is refused, not applied over a newer edit |
+| Creates | A record without `id`. `ref` and `"$ref:<name>"` link new records. A new record whose natural key (name or code) already exists is refused, so re-applying cannot duplicate |
+| Deletes | Only with `prune: true`, and only for record types the bundle includes. Children are deleted first |
+| Records | Through the change-set engine: validation, per-edit permissions and role-gated fields, one atomic batch, audited, and listed in `GET /api/changesets` |
+| Settings, workflows | Applied after the records, through the settings write path and the workflow routes as the caller. A workflow failure returns `status: "PARTIAL"` |
+| Size | At most 100 record changes per apply (the change-set limit); apply larger bundles in parts |
+
+`templates/customer-config/` is the starter repository customers edit with Claude
+Code or Gemini CLI:
+- `cq.mjs`: dependency-free `pull | validate | plan | apply` commands.
+- `AGENTS.md`, plus `CLAUDE.md` and `GEMINI.md` pointing to it.
+- `.mcp.json` and `.gemini/settings.json`.
+- A GitHub Actions workflow that plans on PRs, and applies on merge then commits ids back.
+
+The same flow is on **Settings → Configuration bundle**, and for agents as the
+tools `export_config`, `plan_config` and `apply_config` (apply requires the digest).
+
 ## Workflows (BPMN)
 
 A workflow task is bound to a CharmQuark service with `cq:service` on a

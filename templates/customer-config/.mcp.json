@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "charmquark": {
+      "type": "http",
+      "url": "${CHARMQUARK_URL}/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CHARMQUARK_TOKEN}"
+      }
+    }
+  }
+}

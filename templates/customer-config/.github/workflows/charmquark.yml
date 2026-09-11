@@ -1,0 +1,47 @@
+# Plan CharmQuark configuration changes on every pull request; apply them when
+# they merge to main, then commit the fresh ids and versions back so the next
+# change starts from what is live.
+#
+# Repository variable CHARMQUARK_URL; secret CHARMQUARK_TOKEN (a token that can make changes).
+name: CharmQuark config
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  CHARMQUARK_URL: ${{ vars.CHARMQUARK_URL }}
+  CHARMQUARK_TOKEN: ${{ secrets.CHARMQUARK_TOKEN }}
+
+jobs:
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node cq.mjs plan
+
+  apply:
+    # The sync commit below must not apply again.
+    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[cq sync]')
+    runs-on: ubuntu-latest
+    concurrency: charmquark-apply
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node cq.mjs plan
+      - run: node cq.mjs apply
+      - name: Commit fresh ids and versions
+        run: |
+          git config user.name "charmquark-config"
+          git config user.email "charmquark-config@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || { git commit -m "Sync ids and versions after apply [cq sync]" && git push; }
