@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 const TAGLINE = "Enterprise Fleet Orchestration & Resource Management";
-const SUMMARY = "CharmQuark is the central platform for RoboOps, applying rigid ontology and lifecycles to hardware management and field execution.";
+const SUMMARY = "CharmQuark is the central platform for RoboOps, applying rigid structure and lifecycles to hardware management and field execution.";
 
 export const metadata = {
   title: `CharmQuark — ${TAGLINE}`,
@@ -34,12 +34,12 @@ export default function LandingPage() {
         </div>
         
         <h1 className="text-5xl sm:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent">
-          Rigid Ontology for <br className="hidden sm:block" />
+          rigid structure for <br className="hidden sm:block" />
           Physical Execution.
         </h1>
         
         <p className="max-w-2xl text-lg sm:text-xl text-zinc-400 leading-relaxed mb-10">
-          The ultimate platform for Robot Operations. We bring strict ontology, state-driven lifecycles, and zero-trust security to your physical assets.
+          The ultimate platform for Robot Operations. We bring strict data models, state-driven lifecycles, and zero-trust security to your physical assets.
         </p>
         
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 relative z-20">
@@ -133,14 +133,14 @@ export default function LandingPage() {
         {/* Feature List: The Solution */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight mb-6">Ontology & Lifecycles</h2>
+            <h2 className="text-3xl font-bold tracking-tight mb-6">Data Architecture Ontology & Lifecycles Lifecycles</h2>
             <p className="text-zinc-400 text-lg mb-8">
               CharmQuark solves this by treating every physical asset and field operation as a rigidly versioned entity with strict lifecycles.
             </p>
             <div className="space-y-6">
               {[
                 { title: "Complete Resource Management", desc: "Track exact state, location, and health of your physical assets all in one place." },
-                { title: "Strong Ontology", desc: "A 'Mission' is a structured object linked relationally to Inventory and Variants." },
+                { title: "Relational Architecture", desc: "A 'Mission' is a structured object linked relationally to Inventory and Variants." },
                 { title: "State-Driven QA Gates", desc: "Rigid transitions from SCHEDULED to CONFIRMED and EXPORTED with approvals." },
                 { title: "Agentic Variant Generation", desc: "Built-in AI autonomously forces operators to collect ML failure edge cases." }
               ].map((item, i) => (
@@ -279,7 +279,7 @@ export default function LandingPage() {
               Ready to scale your robotic fleet?
             </h2>
             <p className="text-xl text-zinc-400 mb-10 leading-relaxed">
-              Stop wasting thousands of engineering hours training models on bad data. Implement strict ontology, automated QA gates, and seamless Roboflow exports today.
+              Stop wasting thousands of engineering hours training models on bad data. Implement strict data models, automated QA gates, and seamless Roboflow exports today.
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
               <Link 
