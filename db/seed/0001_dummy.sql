@@ -6,8 +6,10 @@
 -- Every value here is fictional. Loading this replaces all existing rows.
 -- No explicit transaction: D1 supplies one and rejects BEGIN/COMMIT.
 
+DELETE FROM audit_events;
+DELETE FROM personal_access_tokens;
+DELETE FROM workflow_versions;
 DELETE FROM qa_pipeline_runs;
-DELETE FROM mission_executions;
 DELETE FROM runs;
 DELETE FROM mission_instruction_versions;
 DELETE FROM missions;

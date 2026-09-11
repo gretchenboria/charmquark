@@ -85,6 +85,9 @@ const WRITABLE_ON_UPDATE: Record<string, string[]> = {
   users: ["subject", "name", "email", "role", "is_active"],
   runs: ["slot_date", "slot_time", "mission_scope", "mission_group_id", "mission_ids", "robot_id",
     "operator_id", "lab_id", "sensor_rig_id", "notes", "payload", "run_lab"],
+  "lab-blackouts": ["blackout_date", "slot_time", "reason"],
+  documents: ["filename", "vault_category", "status", "linked_entity_type", "linked_entity_id"],
+  workflows: ["name", "xml"],
 };
 
 test("writable fields per resource are pinned", () => {
@@ -103,6 +106,13 @@ test("parent ids are accepted on create but never on update", () => {
   }
 });
 
+test("every resource exposes a read-only version for If-Match", () => {
+  for (const spec of Object.values(RESOURCES)) {
+    const v = (spec.fields as Record<string, { type: string; readonly?: string }>)["version"];
+    assert.ok(v && v.type === "integer" && v.readonly, `${spec.path} has no version field`);
+  }
+});
+
 test("every read-only field says why", () => {
   for (const spec of Object.values(RESOURCES)) {
     for (const [name, f] of Object.entries(spec.fields)) {
@@ -117,7 +127,9 @@ test("role policy per resource is pinned", () => {
     campaigns: [A, P, L], "mission-groups": [A, P, P], missions: [A, P, P],
     robots: [A, P, L], operators: [A, P, L], labs: [A, P, L], sensors: [A, P, L],
     "sensor-rigs": [A, P, L], "inventory-items": [A, P, P], users: [A, L, L], runs: [A, A, P],
+    "lab-blackouts": [A, P, P], documents: [A, A, P], workflows: [A, P, P],
   };
+  assert.deepEqual(Object.keys(expected).sort(), Object.keys(RESOURCES).sort());
   for (const [path, [read, write, del]] of Object.entries(expected)) {
     const r = RESOURCES[path as keyof typeof RESOURCES].roles;
     assert.deepEqual([[...r.read].sort(), [...r.write].sort(), [...r.delete].sort()], [read, write, del], path);

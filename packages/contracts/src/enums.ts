@@ -62,6 +62,9 @@ export const DOCUMENT_STATUSES = ["DRAFT", "FINAL", "ARCHIVED"] as const;
 export const ROBOFLOW_SPLITS = ["train", "valid", "test"] as const;
 export const ROBOFLOW_EXPORT_STATUSES = ["PENDING", "COMPLETE", "PARTIAL", "FAILED"] as const;
 
+/** How the actor behind an audit event authenticated. */
+export const AUDIT_VIA = ["firebase", "pat", "dev-shim", "system"] as const;
+
 export const LEDGER_REASONS = ["PURCHASE", "GRANT", "DEBIT", "REFUND", "ADJUSTMENT"] as const;
 export const CHECKOUT_STATUSES = ["PENDING", "COMPLETED"] as const;
 
@@ -115,6 +118,7 @@ export const DB_ENUMS: Record<string, readonly string[]> = {
   "roboflow_exports.split": ROBOFLOW_SPLITS,
   "roboflow_exports.status": ROBOFLOW_EXPORT_STATUSES,
   "credit_ledger.reason": LEDGER_REASONS,
+  "audit_events.via": AUDIT_VIA,
   "billing_checkout_sessions.status": CHECKOUT_STATUSES,
 };
 

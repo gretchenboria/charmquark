@@ -11,6 +11,9 @@ import {
   type MissionLike,
 } from "./domain";
 
+/** Every editable record carries its version; clients send it back as If-Match. */
+const version = (r: Row): number => num(r, "version", 1);
+
 export const campaign = (r: Row) => ({
   id: str(r, "id"),
   name: str(r, "name"),
@@ -18,6 +21,7 @@ export const campaign = (r: Row) => ({
   target_n: num(r, "target_n"),
   status: str(r, "status"),
   default_sensor_rig_id: strOrNull(r, "default_sensor_rig_id"),
+  version: version(r),
 });
 
 export const missionGroup = (r: Row) => ({
@@ -25,6 +29,7 @@ export const missionGroup = (r: Row) => ({
   campaign_id: str(r, "campaign_id"),
   name: str(r, "name"),
   order: num(r, "order"),
+  version: version(r),
 });
 
 /** The structural shape the pure readiness engine needs, built from a DB row. */
@@ -71,6 +76,7 @@ export function mission(r: Row) {
     is_ready: isMissionReady(t),
     is_schedulable: isSchedulable(t),
     inventory_item_ids: parseJson<string[]>(r["inventory_item_ids"], []),
+    version: version(r),
   };
 }
 
@@ -104,6 +110,7 @@ export const robot = (r: Row) => {
     /** Assignable when safety, calibration and commissioning all hold. */
     is_cleared: safety && calib && comm,
     is_standby: toBool(r["is_standby"]),
+    version: version(r),
   };
 };
 
@@ -114,6 +121,7 @@ export const operator = (r: Row) => ({
   role: str(r, "role"),
   is_active: toBool(r["is_active"]),
   code_number: numOrNull(r, "code_number"),
+  version: version(r),
 });
 
 export const lab = (r: Row) => ({
@@ -123,6 +131,16 @@ export const lab = (r: Row) => ({
   is_available: toBool(r["is_available"]),
   capacity: num(r, "capacity"),
   code_number: numOrNull(r, "code_number"),
+  version: version(r),
+});
+
+export const labBlackout = (r: Row) => ({
+  id: str(r, "id"),
+  lab_id: str(r, "lab_id"),
+  blackout_date: str(r, "blackout_date"),
+  slot_time: strOrNull(r, "slot_time"),
+  reason: strOrNull(r, "reason"),
+  version: version(r),
 });
 
 export const sensor = (r: Row) => ({
@@ -131,6 +149,7 @@ export const sensor = (r: Row) => ({
   sensor_type: str(r, "sensor_type"),
   status: str(r, "status"),
   current_campaign_id: strOrNull(r, "current_campaign_id"),
+  version: version(r),
 });
 
 export const sensorRig = (r: Row) => ({
@@ -138,6 +157,7 @@ export const sensorRig = (r: Row) => ({
   campaign_id: str(r, "campaign_id"),
   name: str(r, "name"),
   sensor_ids: parseJson<string[]>(r["sensor_ids"], []),
+  version: version(r),
 });
 
 export const inventoryItem = (r: Row) => ({
@@ -149,6 +169,7 @@ export const inventoryItem = (r: Row) => ({
   unit: str(r, "unit"),
   status: str(r, "status"),
   is_available: str(r, "status") === "AVAILABLE",
+  version: version(r),
 });
 
 export const run = (r: Row) => ({
@@ -174,6 +195,7 @@ export const run = (r: Row) => ({
   payload: strOrNull(r, "payload"),
   run_lab: strOrNull(r, "run_lab"),
   notes: strOrNull(r, "notes"),
+  version: version(r),
 });
 
 export const qaRun = (r: Row) => ({
@@ -219,6 +241,7 @@ export const doc = (r: Row) => ({
   linked_entity_type: strOrNull(r, "linked_entity_type"),
   linked_entity_id: strOrNull(r, "linked_entity_id"),
   doc_metadata: parseJson<unknown[]>(r["doc_metadata"], []),
+  version: version(r),
 });
 
 export const user = (r: Row) => ({
@@ -228,10 +251,37 @@ export const user = (r: Row) => ({
   email: strOrNull(r, "email"),
   role: str(r, "role"),
   is_active: toBool(r["is_active"]),
+  version: version(r),
 });
 
 export const workflow = (r: Row) => ({
   id: str(r, "id"),
   name: str(r, "name"),
   xml: str(r, "xml"),
+  version: version(r),
+});
+
+export const auditEvent = (r: Row) => ({
+  id: str(r, "id"),
+  at: str(r, "at"),
+  actor_subject: str(r, "actor_subject"),
+  actor_name: strOrNull(r, "actor_name"),
+  via: str(r, "via"),
+  resource: str(r, "resource"),
+  entity_id: strOrNull(r, "entity_id"),
+  action: str(r, "action"),
+  before: parseJson<unknown>(r["before_json"], null),
+  after: parseJson<unknown>(r["after_json"], null),
+});
+
+export const apiToken = (r: Row) => ({
+  id: str(r, "id"),
+  user_subject: str(r, "user_subject"),
+  name: str(r, "name"),
+  token_prefix: str(r, "token_prefix"),
+  scopes: parseJson<string[]>(r["scopes"], []),
+  created_at: str(r, "created_at"),
+  last_used_at: strOrNull(r, "last_used_at"),
+  expires_at: strOrNull(r, "expires_at"),
+  revoked_at: strOrNull(r, "revoked_at"),
 });

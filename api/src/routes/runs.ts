@@ -24,6 +24,7 @@ import { debitRunCredit } from "./billing";
 import * as S from "../serialize";
 import { requirePlanner, requireRunConfirmer } from "../auth";
 import { RESOURCES, RUN_PIPELINE, assertValid, writableFields } from "../contracts";
+import { audit, versionedDelete, versionedUpdate } from "../changes";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
@@ -227,10 +228,10 @@ export function mountRuns(app: App): void {
     if ("slot_time" in b && !isValidSlotTime(b.slot_time as string | null)) {
       throw badRequest(`invalid slot_time: ${b.slot_time}`);
     }
-    const upd = buildUpdate("runs", id, b, ASSIGN_COLS, {
-      mission_ids: (v) => jsonCol(v ?? []),
+    const { before } = await versionedUpdate(c, {
+      table: "runs", label: "run", id, body: b, columns: ASSIGN_COLS,
+      transform: { mission_ids: (v) => jsonCol(v ?? []) }, serialize: S.run,
     });
-    if (upd) await c.env.DB.prepare(upd.sql).bind(...upd.params).run();
 
     let row = await getRun(c.env.DB, id);
     // Keep the provisional code in step with the date while still assembling.
@@ -246,12 +247,17 @@ export function mountRuns(app: App): void {
         .bind(next, id).run();
       row = await getRun(c.env.DB, id);
     }
-    return c.json(S.run(row));
+    const after = S.run(row);
+    await audit(c, { resource: "runs", entityId: id, action: "update", before: S.run(before), after });
+    // The re-derived state and provisional code bump the version again; hand back the final one.
+    c.header("ETag", `"${after.version}"`);
+    return c.json(after);
   });
 
   app.delete("/runs/:id", async (c) => {
-    const res = await c.env.DB.prepare(`DELETE FROM runs WHERE id = ?`).bind(c.req.param("id")).run();
-    if (!res.meta.changes) throw notFound("run");
+    const id = c.req.param("id");
+    const before = await versionedDelete(c, { table: "runs", label: "run", id, serialize: S.run });
+    await audit(c, { resource: "runs", entityId: id, action: "delete", before: S.run(before) });
     return c.body(null, 204);
   });
 
@@ -321,7 +327,9 @@ export function mountRuns(app: App): void {
       `UPDATE runs SET state = 'CONFIRMED', run_seq = ?, encoded_code = ?,
                            updated_at = datetime('now') WHERE id = ?`,
     ).bind(seq, code, id).run();
-    return c.json(S.run(await getRun(c.env.DB, id)));
+    const after = S.run(await getRun(c.env.DB, id));
+    await audit(c, { resource: "runs", entityId: id, action: "confirm", before: s, after });
+    return c.json(after);
   });
 
   // ------------------------------------------------------------ pipeline
@@ -336,7 +344,9 @@ export function mountRuns(app: App): void {
     const next = PIPELINE[idx + 1]!;
     await c.env.DB.prepare(`UPDATE runs SET state = ?, updated_at = datetime('now') WHERE id = ?`)
       .bind(next, id).run();
-    return c.json(S.run(await getRun(c.env.DB, id)));
+    const after = S.run(await getRun(c.env.DB, id));
+    await audit(c, { resource: "runs", entityId: id, action: "advance", before: S.run(row), after });
+    return c.json(after);
   });
 
   // ------------------------------------------------------------ robot cancellation

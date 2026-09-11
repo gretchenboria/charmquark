@@ -38,6 +38,8 @@ export const numOrNull = (r: Row, k: string): number | null =>
 /**
  * Build a partial UPDATE from a whitelist of columns present in `body`.
  * Returns null when the body touches none of them, so callers can skip the write.
+ * With `expectedVersion`, the write only lands if the row is still at that
+ * version — check `meta.changes` to detect a concurrent edit.
  */
 export function buildUpdate(
   table: string,
@@ -45,6 +47,7 @@ export function buildUpdate(
   body: Record<string, unknown>,
   columns: readonly string[],
   transform: Record<string, (v: unknown) => unknown> = {},
+  expectedVersion: number | null = null,
 ): { sql: string; params: unknown[] } | null {
   const sets: string[] = [];
   const params: unknown[] = [];
@@ -57,7 +60,9 @@ export function buildUpdate(
   if (sets.length === 0) return null;
   sets.push(`updated_at = datetime('now')`);
   params.push(id);
-  return { sql: `UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`, params };
+  if (expectedVersion === null) return { sql: `UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`, params };
+  params.push(expectedVersion);
+  return { sql: `UPDATE ${table} SET ${sets.join(", ")} WHERE id = ? AND version = ?`, params };
 }
 
 /** Narrow the optional VAULT binding, or fail with a 503 that says why. */
