@@ -11,6 +11,7 @@ import { assessRisk, taskChecklist } from "../domain";
 import * as S from "../serialize";
 import { RESOURCES, assertValid, writableFields } from "../contracts";
 import { audit, versionedDelete, versionedUpdate } from "../changes";
+import { loadSettings } from "../settings";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
@@ -218,7 +219,7 @@ export function mountCatalog(app: App): void {
       if (!["LOW", "POTENTIAL", "HIGH"].includes(result.risk_level)) result.risk_level = "UNKNOWN";
     } catch (e) {
       // Fallback to legacy heuristic if AI fails
-      result = assessRisk(missionObj);
+      result = assessRisk(missionObj, await loadSettings(c.env.DB));
     }
     // Record the suggestion and route it to review; never auto-approve.
     const legal = result.needs_legal_review ? "PENDING" : "NONE";

@@ -24,6 +24,8 @@ import { chat } from "./routes/chat";
 import { mountIntegrations } from "./routes/integrations";
 import { mountTokens } from "./routes/tokens";
 import { mountAudit } from "./routes/audit";
+import { mountSettings } from "./routes/settings";
+import { mountChangesets } from "./routes/changesets";
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -73,6 +75,8 @@ mountRoboflow(api);
 mountIntegrations(api);
 mountTokens(api);
 mountAudit(api);
+mountSettings(api);
+mountChangesets(api);
 mountDev(api);
 api.route("/chat", chat);
 

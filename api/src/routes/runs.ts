@@ -25,6 +25,7 @@ import * as S from "../serialize";
 import { requirePlanner, requireRunConfirmer } from "../auth";
 import { RESOURCES, RUN_PIPELINE, assertValid, writableFields } from "../contracts";
 import { audit, versionedDelete, versionedUpdate } from "../changes";
+import { loadSettings } from "../settings";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
@@ -131,6 +132,7 @@ async function readinessFor(db: D1Database, sessionRow: Row): Promise<ReadinessI
   }
 
   return sessionReadiness({
+    rules: await loadSettings(db),
     missions,
     robot: robotRow ? S.robot(robotRow) : null,
     operator: opRow ? S.operator(opRow) : null,
@@ -211,7 +213,7 @@ export function mountRuns(app: App): void {
     assertValid(RESOURCES.runs, b, "create");
     const slotDate = (b.slot_date as string | null) ?? null;
     const slotTime = (b.slot_time as string | null) ?? null;
-    if (!isValidSlotTime(slotTime)) throw badRequest(`invalid slot_time: ${slotTime}`);
+    if (!isValidSlotTime(slotTime, await loadSettings(c.env.DB))) throw badRequest(`invalid slot_time: ${slotTime} (outside the working window or off the start-time grid — see settings)`);
     const id = uuid();
     await c.env.DB.prepare(
       `INSERT INTO runs (id, campaign_id, slot_date, slot_time, state, provisional_code)
@@ -225,7 +227,7 @@ export function mountRuns(app: App): void {
     const id = c.req.param("id");
     const b = await c.req.json<Record<string, unknown>>();
     assertValid(RESOURCES.runs, b, "update");
-    if ("slot_time" in b && !isValidSlotTime(b.slot_time as string | null)) {
+    if ("slot_time" in b && !isValidSlotTime(b.slot_time as string | null, await loadSettings(c.env.DB))) {
       throw badRequest(`invalid slot_time: ${b.slot_time}`);
     }
     const { before } = await versionedUpdate(c, {

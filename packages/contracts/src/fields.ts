@@ -39,6 +39,8 @@ export interface FieldSpec {
   readonly?: string;
   /** Writable on create even though `readonly` blocks update (e.g. a parent id). */
   createOnly?: boolean;
+  /** The database default, where a rule depends on whether a create departs from it. */
+  default?: string | number | boolean | null;
   /** Only these roles may change the value; others must use the named action. */
   writeRoles?: readonly Role[];
   /** Why `writeRoles` exists, for the UI and agents. */

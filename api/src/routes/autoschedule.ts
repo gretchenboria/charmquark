@@ -11,14 +11,14 @@ import type { Env, Vars } from "../types";
 import { jsonCol, num, parseJson, str, uuid, requireVault, type Row } from "../db";
 import { badRequest, conflict, notFound } from "../errors";
 import {
-  DEFAULT_SLOTS,
-  RUN_EFFORT_BUDGET,
   effortUnits,
   isSchedulable,
-  isWeekday,
+  isWorkDay,
   provisionalCode,
   repsGap,
+  type Settings,
 } from "../domain";
+import { loadSettings } from "../settings";
 import * as S from "../serialize";
 import { parseCsv } from "./catalog";
 import { recordCoverage } from "./coverage";
@@ -45,21 +45,22 @@ interface Allocation { mission: MissionRec; reps: number }
  */
 function packMissions(
   missions: MissionRec[],
+  rules: Settings,
   opts: { budget?: number; excludeIds?: Set<string>; remaining?: Record<string, number> } = {},
 ): { allocations: Allocation[]; used: number } {
-  const budget = opts.budget ?? RUN_EFFORT_BUDGET;
+  const budget = opts.budget ?? rules["scheduling.run_effort_budget"];
   const exclude = opts.excludeIds ?? new Set<string>();
   const remaining = opts.remaining;
 
   const eligible = missions
     .filter((t) => (remaining ? (remaining[t.id] ?? 0) > 0 : isSchedulable(t)) && !exclude.has(t.id))
-    .sort((a, b) => effortUnits(b.duration_type) - effortUnits(a.duration_type)
+    .sort((a, b) => effortUnits(b.duration_type, rules) - effortUnits(a.duration_type, rules)
       || a.mission_code.localeCompare(b.mission_code));
 
   const allocations: Allocation[] = [];
   let used = 0;
   for (const t of eligible) {
-    const u = effortUnits(t.duration_type);
+    const u = effortUnits(t.duration_type, rules);
     if (u <= 0) continue;
     const room = Math.floor((budget - used) / u); // how many reps still fit
     if (room <= 0) continue;
@@ -167,6 +168,7 @@ const proposalPayload = (
   allocations: Allocation[],
   used: number,
   budget: number,
+  rules: Settings,
 ) => ({
   run_id: runId,
   missions: allocations.map(({ mission, reps }) => ({
@@ -175,15 +177,15 @@ const proposalPayload = (
     name: mission.name,
     group: mission.group,
     duration_type: mission.duration_type,
-    effort_units: effortUnits(mission.duration_type),
+    effort_units: effortUnits(mission.duration_type, rules),
     reps_gap: repsGap(mission),
     reps,
-    row_units: effortUnits(mission.duration_type) * reps,
+    row_units: effortUnits(mission.duration_type, rules) * reps,
   })),
   total_units: used,
   total_reps: allocations.reduce((n, a) => n + a.reps, 0),
   budget,
-  meets_floor: used >= 2,
+  meets_floor: used >= rules["scheduling.run_effort_floor"],
   fully_packed: used === budget,
 });
 
@@ -193,10 +195,11 @@ export function mountAutoschedule(app: App): void {
   app.post("/run-proposals", async (c) => {
     const b = await c.req.json<{ campaign_id: string; slot_date?: string | null; slot_time?: string | null; budget?: number }>();
     if (!b.campaign_id) throw badRequest("campaign_id is required");
-    const budget = b.budget ?? RUN_EFFORT_BUDGET;
+    const rules = await loadSettings(c.env.DB);
+    const budget = b.budget ?? rules["scheduling.run_effort_budget"];
 
     const missions = await loadMissions(c.env.DB, b.campaign_id);
-    const { allocations, used } = packMissions(missions, { budget });
+    const { allocations, used } = packMissions(missions, rules, { budget });
     if (allocations.length === 0) {
       throw conflict("no schedulable missions: every mission is either not ready, unavailable, or has met its repetition goal");
     }
@@ -212,7 +215,7 @@ export function mountAutoschedule(app: App): void {
       jsonCol(allocations.map((a) => a.mission.id)), jsonCol(taskReps), provisionalCode(slotDate),
     ).run();
 
-    return c.json(proposalPayload(id, allocations, used, budget), 201);
+    return c.json(proposalPayload(id, allocations, used, budget, rules), 201);
   });
 
   /** Re-roll: propose a different set, excluding whatever was just rejected. */
@@ -222,14 +225,15 @@ export function mountAutoschedule(app: App): void {
     if (!row) throw notFound("run");
     const s = S.run(row);
 
+    const rules = await loadSettings(c.env.DB);
     const missions = await loadMissions(c.env.DB, s.campaign_id);
-    const { allocations, used } = packMissions(missions, { excludeIds: new Set(s.mission_ids) });
+    const { allocations, used } = packMissions(missions, rules, { excludeIds: new Set(s.mission_ids) });
     const taskReps = Object.fromEntries(allocations.map((a) => [a.mission.id, a.reps]));
     await c.env.DB.prepare(
       `UPDATE runs SET mission_ids = ?, mission_reps = ?, updated_at = datetime('now') WHERE id = ?`,
     ).bind(jsonCol(allocations.map((a) => a.mission.id)), jsonCol(taskReps), id).run();
 
-    return c.json(proposalPayload(id, allocations, used, RUN_EFFORT_BUDGET));
+    return c.json(proposalPayload(id, allocations, used, rules["scheduling.run_effort_budget"], rules));
   });
 
   // ------------------------------------------------------------ accept
@@ -378,7 +382,8 @@ export function mountAutoschedule(app: App): void {
     const campaignId = c.req.param("id");
     const b = await c.req.json<{ start: string; end: string; budget?: number }>();
     if (!b.start || !b.end) throw badRequest("start and end are required");
-    const budget = b.budget ?? RUN_EFFORT_BUDGET;
+    const rules = await loadSettings(c.env.DB);
+    const budget = b.budget ?? rules["scheduling.run_effort_budget"];
 
     const missions = await loadMissions(c.env.DB, campaignId);
     const remaining: Record<string, number> = {};
@@ -386,12 +391,12 @@ export function mountAutoschedule(app: App): void {
       if (isSchedulable(t)) remaining[t.id] = repsGap(t);
     }
 
-    // Enumerate the weekday slot grid across the range.
+    // Enumerate the working-day slot grid across the range (both from settings).
     const slots: { date: string; time: string }[] = [];
     for (let d = new Date(`${b.start}T00:00:00Z`); d <= new Date(`${b.end}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
       const iso = d.toISOString().slice(0, 10);
-      if (!isWeekday(iso)) continue;
-      for (const time of DEFAULT_SLOTS) slots.push({ date: iso, time });
+      if (!isWorkDay(iso, rules)) continue;
+      for (const time of rules["scheduling.default_slots"]) slots.push({ date: iso, time });
     }
 
     const runIds: string[] = [];
@@ -400,7 +405,7 @@ export function mountAutoschedule(app: App): void {
 
     for (const slot of slots) {
       if (Object.values(remaining).every((n) => n <= 0)) break;
-      const { allocations } = packMissions(missions, { budget, remaining });
+      const { allocations } = packMissions(missions, rules, { budget, remaining });
       if (allocations.length === 0) break;
 
       const id = uuid();

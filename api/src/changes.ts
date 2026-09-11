@@ -11,8 +11,9 @@
  */
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import type { Env, Vars } from "./types";
-import { buildUpdate, num, uuid, type Row } from "./db";
+import type { Env, Principal, Vars } from "./types";
+import { buildUpdate, fromBool, jsonCol, num, uuid, type Row } from "./db";
+import type { FieldSpec } from "./contracts";
 import { badRequest, notFound } from "./errors";
 
 type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
@@ -109,23 +110,37 @@ export interface AuditEvent {
   after?: unknown;
 }
 
+/** The audit INSERT as a statement, for callers that batch it with the change itself. */
+export function auditStatement(db: D1Database, p: Principal, e: AuditEvent): D1PreparedStatement {
+  return db.prepare(
+    `INSERT INTO audit_events (id, actor_subject, actor_name, via, resource, entity_id, action, before_json, after_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(
+    uuid(), p.subject, p.name, p.via, e.resource, e.entityId, e.action,
+    e.before === undefined ? null : JSON.stringify(e.before),
+    e.after === undefined ? null : JSON.stringify(e.after),
+  );
+}
+
 /**
  * Record who changed what. Written after the change; a failure is logged, not
  * thrown, because the change has already happened and reporting it as failed
  * would be the worse lie.
  */
 export async function audit(c: Ctx, e: AuditEvent): Promise<void> {
-  const p = c.get("principal");
   try {
-    await c.env.DB.prepare(
-      `INSERT INTO audit_events (id, actor_subject, actor_name, via, resource, entity_id, action, before_json, after_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(
-      uuid(), p.subject, p.name, p.via, e.resource, e.entityId, e.action,
-      e.before === undefined ? null : JSON.stringify(e.before),
-      e.after === undefined ? null : JSON.stringify(e.after),
-    ).run();
+    await auditStatement(c.env.DB, c.get("principal"), e).run();
   } catch (err) {
     console.error("audit write failed", e.resource, e.entityId, e.action, err);
   }
+}
+
+/** How a field's value is stored: SQLite has no boolean, lists and objects are JSON text. */
+export function storageTransforms(fields: Record<string, FieldSpec>): Record<string, (v: unknown) => unknown> {
+  const out: Record<string, (v: unknown) => unknown> = {};
+  for (const [name, f] of Object.entries(fields)) {
+    if (f.type === "boolean") out[name] = (v) => fromBool(v);
+    else if (f.type === "id[]" || f.type === "json") out[name] = (v) => jsonCol(v ?? []);
+  }
+  return out;
 }

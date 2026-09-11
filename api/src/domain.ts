@@ -4,56 +4,56 @@
  * Everything here is PURE: functions take already-resolved records and return
  * plain data, so they are trivially unit-testable and there is exactly one
  * definition of "eligible", evaluated per slot.
+ *
+ * The tunable numbers (effort units, run budget and floor, the working window,
+ * the hazard lexicon) are deployment settings (packages/contracts/src/settings.ts).
+ * Functions take them as an argument and default to the stock values, so a
+ * caller that passes nothing gets exactly the original behaviour.
  */
+import type { MissionDuration, RiskLevel, Settings } from "../../packages/contracts/src/index.ts";
+import { SETTING_DEFAULTS } from "../../packages/contracts/src/settings.ts";
 
-// Type-only: erased at runtime, so the seed generator (plain node) is unaffected.
-import type { MissionDuration, RiskLevel } from "../../packages/contracts/src/index.ts";
-export type { MissionDuration, RiskLevel };
+export type { MissionDuration, RiskLevel, Settings };
 
 // ---------------------------------------------------------------- effort budget
-
 /**
- * Effort weight in run-budget units. UNSPECIFIED defaults to 1 so un-sized
+ * Stock effort weights in run-budget units. UNSPECIFIED defaults to 1 so un-sized
  * legacy missions are never retroactively blocked.
  */
-export const EFFORT_UNITS: Record<MissionDuration, number> = {
-  SHORT: 1,
-  MEDIUM: 2,
-  LONG: 4,
-  UNSPECIFIED: 1,
-};
+export const EFFORT_UNITS: Record<MissionDuration, number> = SETTING_DEFAULTS["scheduling.effort_units"];
 
-/** A run holds 4 effort units: 1 long = 2 medium = 4 short (~1 hour). */
-export const RUN_EFFORT_BUDGET = 4;
+/** Stock budget: a run holds 4 effort units — 1 long = 2 medium = 4 short (~1 hour). */
+export const RUN_EFFORT_BUDGET = SETTING_DEFAULTS["scheduling.run_effort_budget"];
 
-export const effortUnits = (d: string | null | undefined): number =>
-  EFFORT_UNITS[(d ?? "UNSPECIFIED") as MissionDuration] ?? 1;
+export const effortUnits = (d: string | null | undefined, rules: Settings = SETTING_DEFAULTS): number =>
+  rules["scheduling.effort_units"][(d ?? "UNSPECIFIED") as MissionDuration] ?? 1;
 
 // ---------------------------------------------------------------- time slots
-/** Default slot starts (one-hour runs). */
-export const DEFAULT_SLOTS = ["09:00", "11:00", "13:00", "15:00"] as const;
+/** Stock slot starts (one-hour runs). */
+export const DEFAULT_SLOTS = SETTING_DEFAULTS["scheduling.default_slots"];
 
 /** The pre-generated grid: hourly starts across the weekday working window. */
 export const HOURLY_SLOTS = Array.from({ length: 10 }, (_, i) => `${String(i + 8).padStart(2, "0")}:00`);
 
-const MIN_MINUTES = 8 * 60;  // 08:00
-const MAX_MINUTES = 18 * 60; // 18:00 (last start)
+const toMinutes = (t: string): number => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 
-/** True Mon–Fri. `d` is an ISO yyyy-mm-dd date. */
-export function isWeekday(d: string): boolean {
-  const day = new Date(`${d}T00:00:00Z`).getUTCDay();
-  return day >= 1 && day <= 5;
+/** True when `d` (ISO yyyy-mm-dd) falls on a configured working day, in UTC. */
+export function isWorkDay(d: string, rules: Settings = SETTING_DEFAULTS): boolean {
+  const iso = new Date(`${d}T00:00:00Z`).getUTCDay() || 7; // Mon=1 … Sun=7
+  return rules["scheduling.work_days"].includes(iso);
 }
 
-/** True if t is null (unscheduled) or a valid HH:MM on the 30-min grid in-window. */
-export function isValidSlotTime(t: string | null | undefined): boolean {
+/** True Mon–Fri. Kept for callers that mean the calendar week, not the configured one. */
+export const isWeekday = (d: string): boolean => isWorkDay(d, SETTING_DEFAULTS);
+
+/** True if t is null (unscheduled) or a valid HH:MM on the configured grid, inside the working window. */
+export function isValidSlotTime(t: string | null | undefined, rules: Settings = SETTING_DEFAULTS): boolean {
   if (t === null || t === undefined) return true;
-  const m = /^(\d{2}):(\d{2})$/.exec(t);
-  if (!m) return false;
-  const [, hh, mm] = m;
-  if (mm !== "00" && mm !== "30") return false;
-  const minutes = Number(hh) * 60 + Number(mm);
-  return minutes >= MIN_MINUTES && minutes <= MAX_MINUTES;
+  if (!/^\d{2}:\d{2}$/.test(t)) return false;
+  const minutes = toMinutes(t);
+  if (Number(t.slice(3, 5)) > 59) return false;
+  if (minutes % rules["scheduling.slot_step_minutes"] !== 0) return false;
+  return minutes >= toMinutes(rules["scheduling.first_start"]) && minutes <= toMinutes(rules["scheduling.last_start"]);
 }
 
 // ---------------------------------------------------------------- run codes
@@ -98,21 +98,9 @@ export function encodedCode(args: {
  * RiskLevel with a human-readable rationale. POTENTIAL/HIGH route to Fleet-Lead
  * legal review. It never auto-approves — a person always gives the verdict.
  *
- * Lexicons are tuned for robot field operations rather than a kitchen.
+ * The lexicons are deployment settings (risk.high_hazard_terms,
+ * risk.potential_hazard_terms), tuned by default for robot field operations.
  */
-const HIGH_HAZARD = [
-  "high voltage", "voltage", "electr", "lithium", "battery fire", "thermal runaway",
-  "laser", "class 3", "class 4", "radiation", "pinch point", "crush", "pinch",
-  "amputation", "hydraulic", "pneumatic", "pressurized", "chemical", "solvent",
-  "overhead load", "suspended load", "height", "ladder", "roof", "confined space",
-  "public road", "traffic", "moving vehicle", "forklift", "unguarded",
-];
-const POTENTIAL_HAZARD = [
-  "teleop", "autonomous", "untethered", "outdoor", "wet", "water", "slip", "incline",
-  "ramp", "stairs", "payload", "gripper", "manipulator", "arm", "actuator", "collision",
-  "obstacle", "crowd", "bystander", "human-in-the-loop", "handover", "lift", "carry",
-  "tool change", "spinning", "rotating", "heat", "hot",
-];
 
 /** Risk levels that require a Fleet-Lead legal approval before scheduling. */
 export const NEEDS_LEGAL_REVIEW: readonly RiskLevel[] = ["HIGH", "POTENTIAL", "UNKNOWN"];
@@ -124,7 +112,10 @@ export interface RiskAssessment {
   needs_legal_review: boolean;
 }
 
-export function assessRisk(mission: { name: string; instructions: unknown[] }): RiskAssessment {
+export function assessRisk(
+  mission: { name: string; instructions: unknown[] },
+  rules: Settings = SETTING_DEFAULTS,
+): RiskAssessment {
   const parts: string[] = [mission.name ?? ""];
   for (const step of mission.instructions ?? []) {
     if (step && typeof step === "object" && "text" in step) parts.push(String((step as { text: unknown }).text ?? ""));
@@ -132,7 +123,7 @@ export function assessRisk(mission: { name: string; instructions: unknown[] }): 
   }
   const text = parts.join(" ").toLowerCase();
 
-  const high = HIGH_HAZARD.filter((w) => text.includes(w));
+  const high = rules["risk.high_hazard_terms"].filter((w) => text.includes(w.toLowerCase()));
   if (high.length) {
     return {
       risk_level: "HIGH",
@@ -141,7 +132,7 @@ export function assessRisk(mission: { name: string; instructions: unknown[] }): 
       needs_legal_review: true,
     };
   }
-  const pot = POTENTIAL_HAZARD.filter((w) => text.includes(w));
+  const pot = rules["risk.potential_hazard_terms"].filter((w) => text.includes(w.toLowerCase()));
   if (pot.length) {
     return {
       risk_level: "POTENTIAL",
@@ -311,28 +302,24 @@ export function inventoryIssues(items: InventoryLike[]): ReadinessIssue[] {
 }
 
 /**
- * Effort-budget rule (1 long = 2 medium = 4 short):
+ * Effort-budget rule (stock: 1 long = 2 medium = 4 short):
  *   - an empty run fails;
- *   - FLOOR: a valid run needs at least 2 units ("two short missions or one long");
- *   - CEILING: at most RUN_EFFORT_BUDGET (4) units.
+ *   - FLOOR: a run with sized missions needs at least `run_effort_floor` units;
+ *   - CEILING: at most `run_effort_budget` units.
  * The floor is skipped when every mission is un-sized, so legacy/single-mission flows
  * are not retroactively blocked until an effort level is set.
  */
-export function sessionCompositionIssues(missions: MissionLike[]): ReadinessIssue[] {
+export function sessionCompositionIssues(missions: MissionLike[], rules: Settings = SETTING_DEFAULTS): ReadinessIssue[] {
   if (missions.length === 0) return [{ member: "mission", reason: "no missions assigned" }];
-  const units = missions.reduce((sum, t) => sum + effortUnits(t.duration_type), 0);
+  const budget = rules["scheduling.run_effort_budget"];
+  const floor = rules["scheduling.run_effort_floor"];
+  const units = missions.reduce((sum, t) => sum + effortUnits(t.duration_type, rules), 0);
   const sized = missions.some((t) => (t.duration_type ?? "UNSPECIFIED") !== "UNSPECIFIED");
-  if (units > RUN_EFFORT_BUDGET) {
-    return [{
-      member: "mission",
-      reason: `over effort budget: ${units}/${RUN_EFFORT_BUDGET} units (1 long = 2 medium = 4 short)`,
-    }];
+  if (units > budget) {
+    return [{ member: "mission", reason: `over effort budget: ${units}/${budget} units` }];
   }
-  if (sized && units < 2) {
-    return [{
-      member: "mission",
-      reason: `under minimum: needs at least 2 effort units (two short missions or one long); has ${units}`,
-    }];
+  if (sized && floor > 0 && units < floor) {
+    return [{ member: "mission", reason: `under minimum: needs at least ${floor} effort units; has ${units}` }];
   }
   return [];
 }
@@ -352,9 +339,10 @@ export function sessionReadiness(args: {
   labUsed?: number;
   operatorConflicts?: number;
   labBlackedOut?: boolean;
+  rules?: Settings;
 }): ReadinessIssue[] {
   const issues: ReadinessIssue[] = [];
-  issues.push(...sessionCompositionIssues(args.missions));
+  issues.push(...sessionCompositionIssues(args.missions, args.rules ?? SETTING_DEFAULTS));
   for (const t of args.missions) {
     const perMission = args.missionInventory == null ? null : (args.missionInventory[t.id] ?? []);
     issues.push(...taskIssues(t, perMission));

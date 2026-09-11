@@ -49,8 +49,11 @@ export const MAX_CELLS = 512;
 
 export interface SpaceProblem { field: string; reason: string }
 
-/** Validate a space before it is stored. Returns [] when it is usable. */
-export function validateSpace(space: CoverageSpace): SpaceProblem[] {
+/**
+ * Validate a space before it is stored. Returns [] when it is usable.
+ * `maxCells` is the deployment setting `limits.coverage_max_cells` (stock MAX_CELLS).
+ */
+export function validateSpace(space: CoverageSpace, maxCells: number = MAX_CELLS): SpaceProblem[] {
   const problems: SpaceProblem[] = [];
   const dims = space.dimensions ?? [];
 
@@ -78,10 +81,10 @@ export function validateSpace(space: CoverageSpace): SpaceProblem[] {
   }
 
   const total = countCells(space);
-  if (total > MAX_CELLS) {
+  if (total > maxCells) {
     problems.push({
       field: "dimensions",
-      reason: `${total} cells exceeds the ${MAX_CELLS} limit — bucket a dimension more coarsely, or split the campaign`,
+      reason: `${total} cells exceeds the ${maxCells} limit — bucket a dimension more coarsely, or split the campaign`,
     });
   }
   return problems;

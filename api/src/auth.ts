@@ -190,7 +190,7 @@ export const principal: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = 
  * Deletes are separated from writes deliberately: editing a robot and removing
  * it from the fleet are different-sized mistakes.
  */
-type Action = "read" | "write" | "delete";
+export type Action = "read" | "write" | "delete";
 
 const PM_UP: readonly Role[] = ["PM", "FLEET_LEAD"];
 const LEAD: readonly Role[] = ["FLEET_LEAD"];
@@ -213,6 +213,10 @@ const POLICY: Record<string, Partial<Record<Action, readonly Role[]>>> = {
   // Ownership (your own tokens; Fleet Lead any) is checked in the route.
   tokens:           { read: ROLES, write: ROLES, delete: ROLES },
   audit:            { read: ROLES, write: LEAD,  delete: LEAD },
+  // The hazard lexicon and effort budget decide what counts as safe and ready.
+  settings:         { read: ROLES, write: LEAD,  delete: LEAD },
+  // Each edit inside a change set is checked against its own resource's policy.
+  changesets:       { read: ROLES, write: ROLES, delete: LEAD },
   billing:          { read: ROLES, write: PM_UP, delete: LEAD },
   roboflow:         { read: ROLES, write: PM_UP, delete: PM_UP },
   integrations:     { read: ROLES, write: PM_UP, delete: PM_UP },
@@ -244,22 +248,24 @@ export function resourceOf(path: string): string {
  * unrecognised resource is governed by DEFAULT_POLICY rather than left open.
  */
 export const crudGuard: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = async (c, next) => {
-  const p = c.get("principal");
-  const action = actionFor(c.req.method);
-  const resource = resourceOf(c.req.path);
-  // A read-scoped API token can look but not touch, whatever its user's role.
-  if (p.via === "pat" && action !== "read" && !p.scopes?.includes("write")) {
-    throw forbidden("this API token is read-only (scope: read) — create one with the write scope to make changes");
-  }
-  const allowed = POLICY[resource]?.[action] ?? DEFAULT_POLICY[action];
-  if (!allowed.includes(p.role)) {
-    throw forbidden(
-      `role ${p.role} may not ${action} ${resource || "this resource"} ` +
-      `(allowed: ${[...allowed].sort().join(", ")})`,
-    );
-  }
+  const denied = canPerform(c.get("principal"), resourceOf(c.req.path), actionFor(c.req.method));
+  if (denied) throw forbidden(denied);
   await next();
 };
+
+/**
+ * The policy decision on its own: null when allowed, else the reason. Used by
+ * the router guard and by change sets, which check each edit individually.
+ */
+export function canPerform(p: Principal, resource: string, action: Action): string | null {
+  // A read-scoped API token can look but not touch, whatever its user's role.
+  if (p.via === "pat" && action !== "read" && !p.scopes?.includes("write")) {
+    return "this API token is read-only (scope: read) — create one with the write scope to make changes";
+  }
+  const allowed = POLICY[resource]?.[action] ?? DEFAULT_POLICY[action];
+  if (allowed.includes(p.role)) return null;
+  return `role ${p.role} may not ${action} ${resource || "this resource"} (allowed: ${[...allowed].sort().join(", ")})`;
+}
 
 /** PM or Fleet Lead — the roles that commit the fleet's plan. */
 export const isPlanner = (role: Role): boolean => PM_UP.includes(role);

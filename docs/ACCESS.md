@@ -90,6 +90,44 @@ as it is now) instead of silently overwriting their edit. Agents should always
 send it. Requests without `If-Match` keep last-write-wins, so existing screens
 keep working.
 
+## Change sets: preview, then apply
+
+Agents (and config imports) should change several records through a **change
+set** rather than many single calls:
+
+```bash
+# 1. Preview. Nothing is written; you get a per-field diff and every problem named.
+curl -X POST https://charmquark.app/api/changesets/preview -H "Authorization: Bearer cq_pat_…" \
+  -H 'Content-Type: application/json' -d '{
+    "summary": "Add outdoor bay with its first blackout",
+    "changes": [
+      {"resource":"labs","op":"create","ref":"bay","data":{"name":"Yard","type":"OUTDOORS","capacity":2}},
+      {"resource":"lab-blackouts","op":"create","data":{"lab_id":"$ref:bay","blackout_date":"2026-10-02"}}
+    ]}'
+# 2. Apply the previewed set by id (as yourself, or as a person reviewing it).
+curl -X POST https://charmquark.app/api/changesets/<id>/apply -H "Authorization: Bearer …"
+```
+
+| Guarantee | How |
+|---|---|
+| Strict | Unknown or read-only fields are listed as problems (with the reason), never silently dropped |
+| Permissions per edit | Each change is checked against its resource's policy, and fields like `legal_approval` against their role rule, as whoever applies |
+| All or nothing | One D1 batch (a transaction) |
+| No lost updates | Each update or delete is pinned to the version it was previewed against. If anyone changed that record since, the apply is refused and nothing lands |
+
+Resources: `campaigns`, `mission-groups`, `missions`, `robots`, `operators`,
+`labs`, `lab-blackouts`, `sensors`, `sensor-rigs`, `inventory-items`.
+
+## Settings
+
+`GET /api/settings` lists every tunable rule with its value, default,
+description and who last changed it. These rules cover the effort units and run
+budget and floor, the start-time window and grid, working days, the hazard word
+lists, and export and coverage limits. A Fleet Lead changes them with
+`PATCH /api/settings {"key": value}`, and `null` resets a key to its default.
+Changes are validated together (a floor above the budget is refused) and
+audited.
+
 ## Going live checklist
 
 ```bash
