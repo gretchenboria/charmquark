@@ -11,8 +11,9 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { DeleteButton } from "@/components/DeleteButton";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
+import { OPERATOR_ROLES } from "@contracts";
 
-const ROLES = ["ROBOT_OPERATOR", "QA_REVIEWER", "FIELD_LEAD", "DATA_ENGINEER"] as const;
+const ROLES = OPERATOR_ROLES;
 
 export default function OperatorDetail() {
   const { id } = useParams<{ id: string }>();

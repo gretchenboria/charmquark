@@ -1,26 +1,16 @@
-// Shared types mirroring the FastAPI backend schemas (app/schemas.py).
+// Wire types for the API (api/src/serialize.ts). Enumerated values come from the
+// shared contracts, so a dropdown or type here cannot drift from the database.
+import type {
+  CampaignType,
+  LegalApproval,
+  MissionDuration,
+  MissionScheduleStatus,
+  MissionScope,
+  RiskLevel,
+  RunState,
+} from "@contracts";
 
-export type RunState =
-  | "DRAFT"
-  | "ASSEMBLING"
-  | "READY"
-  | "CONFIRMED"
-  | "IN_EXECUTION"
-  | "COLLECTED"
-  | "EXTRACTED"
-  | "MANUAL_QA"
-  | "VALIDATED"
-  | "UPLOADED"
-  | "DONE"
-  | "BLOCKED"
-  | "CANCELLED";
-
-export type MissionScope = "GROUP" | "SINGLE";
-export type RiskLevel = "LOW" | "POTENTIAL" | "HIGH" | "UNKNOWN";
-export type LegalApproval = "NONE" | "PENDING" | "APPROVED";
-export type CampaignType = "PERCEPTION" | "MANIPULATION" | "NAVIGATION";
-export type MissionDuration = "SHORT" | "MEDIUM" | "LONG" | "UNSPECIFIED";
-export type MissionScheduleStatus = "AVAILABLE" | "IN_PROGRESS" | "RECORDED";
+export type { CampaignType, LegalApproval, MissionDuration, MissionScheduleStatus, MissionScope, RiskLevel, RunState };
 
 export interface Campaign {
   id: string;

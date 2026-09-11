@@ -11,11 +11,9 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { DeleteButton } from "@/components/DeleteButton";
 import { ReadinessChecklist } from "@/components/ReadinessChecklist";
 import { useToast } from "@/components/Toast";
+import { ROBOT_STATUSES } from "@contracts";
 
-const STATUSES = [
-  "POOL", "INVITED", "SURVEY_COMPLETED", "SELECTED", "EXCLUDED",
-  "ENROLLED", "SCHEDULED", "ACTIVE", "COLLECTED",
-] as const;
+const STATUSES = ROBOT_STATUSES;
 
 export default function RobotDetail() {
   const { id } = useParams<{ id: string }>();

@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  // packages/contracts lives outside web/ and is shared with the API Worker.
+  experimental: { externalDir: true },
+
   async rewrites() {
     // DEV ONLY. `next dev` proxies /api/* to the Worker API running on :8787.
     //

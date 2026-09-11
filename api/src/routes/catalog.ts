@@ -9,15 +9,11 @@ import { badRequest, notFound } from "../errors";
 import { CLEARANCE_FIELDS, requireClearanceAuthority, requireLegalReviewer } from "../auth";
 import { assessRisk, taskChecklist } from "../domain";
 import * as S from "../serialize";
+import { RESOURCES, assertValid, writableFields } from "../contracts";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
-const MISSION_UPDATE_COLS = [
-  "mission_group_id", "mission_code", "name", "group", "status", "review_status",
-  "duration_type", "reps_target", "reps_actual", "schedule_status",
-  "instructions_complete", "risk_level", "legal_approval",
-  "variants", "inventory_item_ids", "instructions",
-] as const;
+const MISSION_UPDATE_COLS = writableFields(RESOURCES.missions.fields, "update");
 
 const MISSION_TRANSFORM = {
   instructions_complete: (v: unknown) => fromBool(v),
@@ -84,8 +80,7 @@ export function mountCatalog(app: App): void {
 
   app.post("/campaigns", async (c) => {
     const b = await c.req.json<Record<string, unknown>>();
-    if (!b.name) throw badRequest("name is required");
-    if (!b.campaign_type) throw badRequest("campaign_type is required");
+    assertValid(RESOURCES.campaigns, b, "create");
     const id = uuid();
     await c.env.DB.prepare(
       `INSERT INTO campaigns (id, name, campaign_type, target_n, status) VALUES (?, ?, ?, ?, ?)`,
@@ -97,7 +92,8 @@ export function mountCatalog(app: App): void {
   app.patch("/campaigns/:id", async (c) => {
     const id = c.req.param("id");
     const b = await c.req.json<Record<string, unknown>>();
-    const upd = buildUpdate("campaigns", id, b, ["name", "status", "target_n", "campaign_type", "default_sensor_rig_id"]);
+    assertValid(RESOURCES.campaigns, b, "update");
+    const upd = buildUpdate("campaigns", id, b, writableFields(RESOURCES.campaigns.fields, "update"));
     if (upd) await c.env.DB.prepare(upd.sql).bind(...upd.params).run();
     const row = await c.env.DB.prepare(`SELECT * FROM campaigns WHERE id = ?`).bind(id).first<Row>();
     if (!row) throw notFound("campaign");
@@ -126,7 +122,7 @@ export function mountCatalog(app: App): void {
 
   app.post("/mission-groups", async (c) => {
     const b = await c.req.json<Record<string, unknown>>();
-    if (!b.campaign_id || !b.name) throw badRequest("campaign_id and name are required");
+    assertValid(RESOURCES["mission-groups"], b, "create");
     const id = uuid();
     await c.env.DB.prepare(`INSERT INTO mission_groups (id, campaign_id, name, "order") VALUES (?, ?, ?, ?)`)
       .bind(id, b.campaign_id, b.name, b.order ?? 0).run();
@@ -160,7 +156,7 @@ export function mountCatalog(app: App): void {
 
   app.post("/missions", async (c) => {
     const b = await c.req.json<Record<string, unknown>>();
-    if (!b.campaign_id || !b.mission_code || !b.name) throw badRequest("campaign_id, mission_code and name are required");
+    assertValid(RESOURCES.missions, b, "create");
     requireClearanceAuthority(c.get("principal"), clearanceOnCreate(b));
     const id = uuid();
     // Accept the same fields PATCH does, so a mission can be created ready-to-schedule
@@ -185,6 +181,7 @@ export function mountCatalog(app: App): void {
   app.patch("/missions/:id", async (c) => {
     const id = c.req.param("id");
     const b = await c.req.json<Record<string, unknown>>();
+    assertValid(RESOURCES.missions, b, "update");
     const touched = CLEARANCE_FIELDS.filter((f) => f in b);
     if (touched.length) {
       // Compare against what is stored, so a client echoing back unchanged values is fine.

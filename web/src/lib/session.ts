@@ -2,7 +2,8 @@
 // X-CharmQuark-User headers so the backend enforces role-group permissions.
 "use client";
 
-export type Role = "PM" | "FLEET_LEAD" | "ROBOT_OPERATOR";
+import type { Role } from "@contracts";
+export type { Role };
 
 export interface User {
   name: string;

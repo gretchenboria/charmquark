@@ -9,6 +9,7 @@ import { useUser } from "@/lib/useUser";
 import type { Sensor, SensorRig, Campaign } from "@/lib/types";
 import { ListPage, type Column } from "@/components/ListPage";
 import { NewButton } from "@/components/NewButton";
+import { SENSOR_TYPES, optionsFor } from "@contracts";
 
 const columns: Column[] = [
   { key: "asset", header: "Asset name" },
@@ -51,16 +52,8 @@ export default function SensorsPage() {
             name: "sensor_type",
             label: "Type",
             type: "select",
-            options: [
-              { value: "WATCH", label: "Watch" },
-              { value: "IPHONE", label: "iPhone" },
-              { value: "AIRPODS", label: "AirPods" },
-              { value: "INSTA360", label: "Insta360" },
-              { value: "SENSOR", label: "Sensor" },
-              { value: "CONTROL", label: "Control" },
-              { value: "VISION_PRO", label: "Vision Pro" },
-            ],
-            default: "IPHONE",
+            options: optionsFor(SENSOR_TYPES),
+            default: SENSOR_TYPES[0],
           },
         ]}
         onCreate={(v) => api.createSensor(v)}
@@ -106,15 +99,7 @@ export default function SensorsPage() {
             value: typeFilter,
             onChange: setTypeFilter,
             accessor: (d) => d.sensor_type,
-            options: [
-              { value: "WATCH", label: "Watch" },
-              { value: "IPHONE", label: "iPhone" },
-              { value: "AIRPODS", label: "AirPods" },
-              { value: "INSTA360", label: "Insta360" },
-              { value: "SENSOR", label: "Sensor" },
-              { value: "CONTROL", label: "Control" },
-              { value: "VISION_PRO", label: "Vision Pro" },
-            ],
+            options: optionsFor(SENSOR_TYPES),
           },
           {
             id: "status",

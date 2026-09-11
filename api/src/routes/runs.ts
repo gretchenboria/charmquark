@@ -23,6 +23,7 @@ import {
 import { debitRunCredit } from "./billing";
 import * as S from "../serialize";
 import { requirePlanner, requireRunConfirmer } from "../auth";
+import { RESOURCES, RUN_PIPELINE, assertValid, writableFields } from "../contracts";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
@@ -30,16 +31,10 @@ type App = Hono<{ Bindings: Env; Variables: Vars }>;
  * The canonical data pipeline. `advance` walks a run one step along it;
  * everything before COLLECTED is driven by assembly and confirmation instead.
  */
-const PIPELINE = [
-  "CONFIRMED", "IN_EXECUTION", "COLLECTED", "EXTRACTED",
-  "MANUAL_QA", "VALIDATED", "UPLOADED", "DONE",
-] as const;
+const PIPELINE = RUN_PIPELINE;
 
-const ASSIGN_COLS = [
-  "mission_scope", "mission_group_id", "mission_ids", "robot_id", "operator_id",
-  "lab_id", "sensor_rig_id", "slot_date", "slot_time", "notes",
-  "payload", "run_lab",
-] as const;
+/** Assignment columns a client may PATCH; everything else on a run is derived or minted. */
+const ASSIGN_COLS = writableFields(RESOURCES.runs.fields, "update");
 
 // ---------------------------------------------------------------- readiness assembly
 /**
@@ -212,7 +207,7 @@ export function mountRuns(app: App): void {
   // ------------------------------------------------------------ create / assign
   app.post("/runs", async (c) => {
     const b = await c.req.json<Record<string, unknown>>();
-    if (!b.campaign_id) throw badRequest("campaign_id is required");
+    assertValid(RESOURCES.runs, b, "create");
     const slotDate = (b.slot_date as string | null) ?? null;
     const slotTime = (b.slot_time as string | null) ?? null;
     if (!isValidSlotTime(slotTime)) throw badRequest(`invalid slot_time: ${slotTime}`);
@@ -228,6 +223,7 @@ export function mountRuns(app: App): void {
   app.patch("/runs/:id", async (c) => {
     const id = c.req.param("id");
     const b = await c.req.json<Record<string, unknown>>();
+    assertValid(RESOURCES.runs, b, "update");
     if ("slot_time" in b && !isValidSlotTime(b.slot_time as string | null)) {
       throw badRequest(`invalid slot_time: ${b.slot_time}`);
     }

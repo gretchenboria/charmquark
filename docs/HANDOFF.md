@@ -190,6 +190,8 @@ the MCP server and Charmy tool layer.
 | `api/src/auth.ts` | RBAC — the single wiring point for tightening policy. |
 | `api/src/seedData.ts` | The fictional dataset (generates the seed SQL). |
 | `db/migrations/` | D1 schema. |
+| `packages/contracts/src/` | **Single source of truth** for enums (`enums.ts`), field specs and validation (`fields.ts`), and the resource registry — writable fields, read-only reasons, roles (`resources.ts`). Used by API and web; pinned against the migrations by `api/test/contracts.test.ts`. |
+| `api/src/auth.ts` + `api/src/identity.ts` | Firebase token verification and the role policy. See `docs/ACCESS.md`. |
 | `web/src/lib/api.ts` | Typed API client — the wire contract. |
 | `web/src/app/globals.css` | Brand tokens. |
 | `docs/BRAND.md` | Design system. Read before touching UI. |

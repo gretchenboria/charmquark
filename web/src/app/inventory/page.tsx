@@ -9,6 +9,7 @@ import { useUser } from "@/lib/useUser";
 import type { InventoryItem, Campaign } from "@/lib/types";
 import { ListPage, type Column } from "@/components/ListPage";
 import { NewButton } from "@/components/NewButton";
+import { INVENTORY_KINDS, INVENTORY_STATUSES, optionsFor } from "@contracts";
 
 const columns: Column[] = [
   { key: "name", header: "Name" },
@@ -69,24 +70,14 @@ export default function InventoryPage() {
             name: "kind",
             label: "Kind",
             type: "select",
-            options: [
-              { value: "CONSUMABLE", label: "Consumable" },
-              { value: "TOOL", label: "Tool" },
-              { value: "PAYLOAD", label: "Payload" },
-            ],
+            options: optionsFor(INVENTORY_KINDS),
             default: "CONSUMABLE",
           },
           {
             name: "status",
             label: "Status",
             type: "select",
-            options: [
-              { value: "NEEDED", label: "Needed" },
-              { value: "ORDERED", label: "Ordered" },
-              { value: "PROCURED", label: "Procured" },
-              { value: "RECEIVED", label: "Received" },
-              { value: "AVAILABLE", label: "Available" },
-            ],
+            options: optionsFor(INVENTORY_STATUSES),
             default: "NEEDED",
           },
         ]}
@@ -112,11 +103,7 @@ export default function InventoryPage() {
           value: kindFilter,
           onChange: setKindFilter,
           accessor: (i) => i.kind,
-          options: [
-            { value: "CONSUMABLE", label: "Consumable" },
-            { value: "TOOL", label: "Tool" },
-            { value: "PAYLOAD", label: "Payload" },
-          ],
+          options: optionsFor(INVENTORY_KINDS),
         },
         {
           id: "status",
