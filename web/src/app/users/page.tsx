@@ -31,7 +31,7 @@ export default function UsersPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    api.listUsers().then(setRows).catch(() => setErr("Backend unreachable (start it on :8000)."));
+    api.listUsers().then(setRows).catch(() => setErr("Backend unreachable (start it on :8787)."));
   }, []);
   useEffect(load, [load]);
 

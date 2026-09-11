@@ -36,7 +36,7 @@ export default function MissionsPage() {
         setCampaigns(s);
         if (s.length > 0) setCampaignId(s[0].id);
       })
-      .catch(() => setErr("Backend unreachable (start it on :8000)."));
+      .catch(() => setErr("Backend unreachable (start it on :8787)."));
   }, []);
 
   const load = useCallback(() => {

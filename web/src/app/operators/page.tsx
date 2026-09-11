@@ -25,7 +25,7 @@ export default function OperatorsPage() {
   const [activeFilter, setActiveFilter] = useState("");
 
   const load = useCallback(() => {
-    api.listOperators().then(setRows).catch(() => setErr("Backend unreachable (start it on :8000)."));
+    api.listOperators().then(setRows).catch(() => setErr("Backend unreachable (start it on :8787)."));
   }, []);
   useEffect(load, [load]);
 

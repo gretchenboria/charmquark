@@ -73,7 +73,7 @@ export default function AutoSchedulePage() {
         setCampaigns(s);
         if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
-      .catch(() => setErr("Backend unreachable (start it on :8000)."));
+      .catch(() => setErr("Backend unreachable (start it on :8787)."));
     api.listRobots().then(setRobots).catch(() => undefined);
   }, []);
 

@@ -25,7 +25,7 @@ export default function CampaignsPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    api.listCampaigns().then(setRows).catch(() => setErr("Backend unreachable (start it on :8000)."));
+    api.listCampaigns().then(setRows).catch(() => setErr("Backend unreachable (start it on :8787)."));
   }, []);
   useEffect(load, [load]);
 

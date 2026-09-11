@@ -26,7 +26,7 @@ export default function LabsPage() {
   const [availFilter, setAvailFilter] = useState("");
 
   const load = useCallback(() => {
-    api.listLabs().then(setRows).catch(() => setErr("Backend unreachable (start it on :8000)."));
+    api.listLabs().then(setRows).catch(() => setErr("Backend unreachable (start it on :8787)."));
   }, []);
   useEffect(load, [load]);
 

@@ -29,7 +29,7 @@ export default function RobotsPage() {
   const [clearedFilter, setClearedFilter] = useState("");
 
   const load = useCallback(() => {
-    api.listRobots().then(setRows).catch(() => setErr("Backend unreachable (start it on :8000)."));
+    api.listRobots().then(setRows).catch(() => setErr("Backend unreachable (start it on :8787)."));
   }, []);
   useEffect(load, [load]);
 

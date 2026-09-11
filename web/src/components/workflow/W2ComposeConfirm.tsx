@@ -50,7 +50,7 @@ export function W2ComposeConfirm({
     api.listCampaigns().then((s) => {
       setCampaigns(s);
       if (s[0]) setCampaignId((c) => c || s[0].id);
-    }).catch(() => log("error", "Backend unreachable — start it on :8000."));
+    }).catch(() => log("error", "Backend unreachable — start it on :8787."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

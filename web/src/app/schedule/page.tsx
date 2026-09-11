@@ -41,7 +41,7 @@ export default function SchedulePage() {
         setCampaigns(s);
         if (s.length > 0) setCampaignId((cur) => cur ?? s[0].id);
       })
-      .catch(() => setError("Could not reach backend. Is it running on :8000?"));
+      .catch(() => setError("Could not reach backend. Is it running on :8787?"));
   }, []);
 
   const loadWeek = useCallback(async () => {

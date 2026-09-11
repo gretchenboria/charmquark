@@ -27,7 +27,7 @@ export default function SensorsPage() {
   const [statusFilter, setStatusFilter] = useState("");
 
   const load = useCallback(() => {
-    api.listSensors().then(setRows).catch(() => setErr("Backend unreachable (start it on :8000)."));
+    api.listSensors().then(setRows).catch(() => setErr("Backend unreachable (start it on :8787)."));
     api.listAllSensorRigs().then(setFleets).catch(() => undefined);
   }, []);
   useEffect(load, [load]);
