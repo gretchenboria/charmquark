@@ -15,7 +15,7 @@ export function Login() {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
+      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
         setUser(PRESET_USERS[0]);
         return;
       }
@@ -28,7 +28,7 @@ export function Login() {
 
   const handleGoogleLogin = async () => {
     try {
-      if (process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
+      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
         setUser(PRESET_USERS[0]);
         return;
       }
