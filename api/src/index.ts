@@ -21,6 +21,7 @@ import { mountDev } from "./routes/dev";
 import { mountBilling, mountBillingWebhook } from "./routes/billing";
 import { mountRoboflow } from "./routes/roboflow";
 import { chat } from "./routes/chat";
+import { mountIntegrations } from "./routes/integrations";
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -54,6 +55,7 @@ mountMisc(api);
 mountCoverage(api);
 mountBilling(api);
 mountRoboflow(api);
+mountIntegrations(api);
 mountDev(api);
 api.route("/chat", chat);
 

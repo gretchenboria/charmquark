@@ -1,5 +1,3 @@
---- api/src/index.ts
-+++ api/src/index.ts
 @@ -10,6 +10,7 @@
  import { mountBilling } from "./routes/billing";
  import { mountCloud } from "./routes/cloud";
