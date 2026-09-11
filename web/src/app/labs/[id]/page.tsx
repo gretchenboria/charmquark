@@ -8,6 +8,8 @@ import { canDelete, canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
 import type { Lab, Run } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
+import { FieldGrid } from "@/components/FieldGrid";
+import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
@@ -87,6 +89,7 @@ export default function LabDetail() {
 
   return (
     <DetailPage
+      editor={<FieldGrid resource="labs" record={l} onSaved={(u) => setL((prev) => (prev ? { ...prev, ...u } : u))} />}
       title={l.name}
       subtitle={`${l.type} · capacity ${l.capacity}`}
       backHref="/labs"
@@ -171,6 +174,9 @@ export default function LabDetail() {
           }))}
           empty="No runs here."
         />
+      </Section>
+      <Section title="Activity">
+        <ActivityPanel resource="labs" entityId={l.id} refreshKey={(l as { version?: number }).version} />
       </Section>
     </DetailPage>
   );

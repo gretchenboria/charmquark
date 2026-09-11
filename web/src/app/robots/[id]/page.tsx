@@ -8,6 +8,8 @@ import { canDelete, canUpdate, canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
 import type { Robot, Run } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
+import { FieldGrid } from "@/components/FieldGrid";
+import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
 import { ReadinessChecklist } from "@/components/ReadinessChecklist";
 import { useToast } from "@/components/Toast";
@@ -93,6 +95,7 @@ export default function RobotDetail() {
 
   return (
     <DetailPage
+      editor={<FieldGrid resource="robots" record={p} onSaved={(u) => setP((prev) => (prev ? { ...prev, ...u } : u))} />}
       title={p.robot_code}
       subtitle={p.is_cleared ? "Cleared to participate" : "Not cleared — mark items below"}
       backHref="/robots"
@@ -193,6 +196,9 @@ export default function RobotDetail() {
           }))}
           empty="Not assigned to any run."
         />
+      </Section>
+      <Section title="Activity">
+        <ActivityPanel resource="robots" entityId={p.id} refreshKey={(p as { version?: number }).version} />
       </Section>
     </DetailPage>
   );
