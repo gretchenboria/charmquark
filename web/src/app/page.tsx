@@ -19,8 +19,8 @@ export default function LandingPage() {
 
       <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-3">
-          <Image src="/cq-logo.png" alt="CharmQuark Logo" width={32} height={32} className="rounded-md" />
-          <span className="font-semibold text-lg tracking-tight">CharmQuark</span>
+          <Image src="/cq-logo.png" alt="CharmQuark Logo" width={48} height={48} className="rounded-md" />
+          <span className="font-bold text-2xl tracking-tight">CharmQuark</span>
         </div>
         <Link href="/home" className="text-sm font-medium text-zinc-300 hover:text-white transition-colors">
           Sign in
@@ -103,28 +103,28 @@ export default function LandingPage() {
               <div className="w-10 h-10 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
               </div>
-              <h3 className="font-semibold text-lg text-zinc-100">Unstructured Instructions</h3>
+              <h3 className="font-bold text-2xl text-zinc-100">Unstructured Instructions</h3>
               <p className="text-sm text-zinc-400">Operators use Slack or Docs, leading to missed steps and inconsistent data.</p>
             </div>
             <div className="p-6 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-4">
               <div className="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
               </div>
-              <h3 className="font-semibold text-lg text-zinc-100">Silent Failures</h3>
+              <h3 className="font-bold text-2xl text-zinc-100">Silent Failures</h3>
               <p className="text-sm text-zinc-400">A sensor gets unplugged, but the operator completes the run. Data becomes useless.</p>
             </div>
             <div className="p-6 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-4">
               <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
-              <h3 className="font-semibold text-lg text-zinc-100">Missing Negative Data</h3>
+              <h3 className="font-bold text-2xl text-zinc-100">Missing Negative Data</h3>
               <p className="text-sm text-zinc-400">ML models never learn what hardware faults look like because no one records them.</p>
             </div>
             <div className="p-6 rounded-2xl bg-white/5 border border-white/10 flex flex-col gap-4">
               <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
               </div>
-              <h3 className="font-semibold text-lg text-zinc-100">Lack of Lineage</h3>
+              <h3 className="font-bold text-2xl text-zinc-100">Lack of Lineage</h3>
               <p className="text-sm text-zinc-400">No audit trail tying datasets back to specific robot calibrations or operators.</p>
             </div>
           </div>
@@ -170,7 +170,7 @@ export default function LandingPage() {
                 </div>
                 <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 hover:bg-white/10 transition-colors">
                   <div className="flex justify-between items-center mb-1">
-                    <h4 className="text-white font-semibold text-lg">Campaign Planning</h4>
+                    <h4 className="text-white font-bold text-2xl">Campaign Planning</h4>
                     <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-mono border border-indigo-500/30">AI ASSISTED</span>
                   </div>
                   <p className="text-sm text-zinc-400">Agent autonomously breaks standard missions down and generates E1/E2 failure edge-case variants.</p>
@@ -183,7 +183,7 @@ export default function LandingPage() {
                   <svg className="w-8 h-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                 </div>
                 <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 hover:bg-white/10 transition-colors">
-                  <h4 className="text-white font-semibold text-lg mb-1">Safety & Legal Review</h4>
+                  <h4 className="text-white font-bold text-2xl mb-1">Safety & Legal Review</h4>
                   <p className="text-sm text-zinc-400">Strict gates prevent runs from advancing if High Risk until Fleet Lead grants multi-sig approval.</p>
                 </div>
               </div>
@@ -194,7 +194,7 @@ export default function LandingPage() {
                   <svg className="w-8 h-8 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </div>
                 <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 hover:bg-white/10 transition-colors">
-                  <h4 className="text-white font-semibold text-lg mb-1">Intelligent Scheduling</h4>
+                  <h4 className="text-white font-bold text-2xl mb-1">Intelligent Scheduling</h4>
                   <p className="text-sm text-zinc-400">Algorithm dynamically verifies robot calibration status and lab capacity before deploying the payload.</p>
                 </div>
               </div>
@@ -206,7 +206,7 @@ export default function LandingPage() {
                 </div>
                 <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 hover:bg-white/10 transition-colors flex justify-between items-center">
                   <div>
-                    <h4 className="text-white font-semibold text-lg mb-1">Field Execution</h4>
+                    <h4 className="text-white font-bold text-2xl mb-1">Field Execution</h4>
                     <p className="text-sm text-zinc-400">Operator completes the physical run and logs the exact outcome code directly via mobile.</p>
                   </div>
                   <span className="hidden md:flex px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-mono border border-amber-500/30">MOBILE APP</span>
