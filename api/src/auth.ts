@@ -52,37 +52,8 @@ async function resolvePrincipal(
   roleHeader: string | undefined,
   userHeader: string,
 ): Promise<Principal> {
-  const cfg = accessConfig(env);
-
-  if (cfg) {
-    const token = readAssertion(req);
-    if (!token) {
-      throw forbidden(
-        "Cloudflare Access assertion missing. Requests must arrive through Access; " +
-        "a direct call to the Worker origin cannot authenticate.",
-      );
-    }
-    let identity;
-    try {
-      identity = await verifyAccessJwt(env, cfg, token);
-    } catch (e) {
-      throw forbidden(`Cloudflare Access assertion rejected: ${e instanceof Error ? e.message : "invalid"}`);
-    }
-    // Access proves who they are; the users table decides what they may do.
-    const byEmail = await env.DB
-      .prepare(`SELECT name, subject, role FROM users WHERE lower(email) = ? AND is_active = 1`)
-      .bind(identity.email)
-      .first<{ name: string; subject: string; role: string }>();
-    if (byEmail && isRole(byEmail.role)) {
-      return { role: byEmail.role, name: byEmail.name || byEmail.subject };
-    }
-    const bySubject = await resolveFromUsersTable(env.DB, identity.email);
-    if (bySubject) return bySubject;
-    throw forbidden(
-      `${identity.email} authenticated with Cloudflare Access but has no active CharmQuark user. ` +
-      "Add them under Users & Roles.",
-    );
-  }
+  // Cloudflare Access check removed. App relies on Next.js/Firebase Auth barrier + Shim headers for now.
+  // When Firebase is configured, this should verify the Firebase JWT token instead.
 
   // --- shim mode ---
   if (userHeader && userHeader !== "dev") {
