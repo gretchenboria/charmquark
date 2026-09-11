@@ -79,7 +79,7 @@ const WRITABLE_ON_UPDATE: Record<string, string[]> = {
     "calibration_valid", "commissioned", "commissioned_date", "is_standby"],
   operators: ["operator_code", "name", "role", "is_active", "code_number"],
   labs: ["name", "type", "is_available", "capacity", "code_number"],
-  sensors: ["asset_name", "sensor_type", "status", "current_campaign_id"],
+  sensors: ["asset_name", "sensor_type", "serial_number", "firmware_version", "status", "current_campaign_id"],
   "sensor-rigs": ["name", "sensor_ids"],
   "inventory-items": ["name", "kind", "quantity", "unit", "status"],
   users: ["subject", "name", "email", "role", "is_active"],
