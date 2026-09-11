@@ -96,34 +96,12 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      <section className="mt-12" aria-labelledby="tech-stack">
-        <h2 id="tech-stack" className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">5. Tech Stack & Architecture</h2>
-        <div className="mt-4 text-[15px] leading-relaxed text-[color:var(--cq-ink-soft)] space-y-4">
-          <p>
-            CharmQuark is a serverless edge application deployed globally via <strong>Cloudflare</strong>.
-          </p>
-          <ul className="list-disc pl-5 space-y-2">
-            <li><strong>Frontend:</strong> Next.js (React 19), Tailwind CSS, deployed via OpenNext to Cloudflare Workers.</li>
-            <li><strong>Backend API:</strong> Hono.js on Cloudflare Workers (V8 Isolate runtime for 0ms cold starts).</li>
-            <li><strong>Database (D1):</strong> Distributed SQLite for strictly normalized, relational ontology.</li>
-            <li><strong>Blob Storage (R2):</strong> Vault for run sheets, telemetry, and media.</li>
-            <li><strong>AI:</strong> Native Cloudflare Workers AI (Llama 3 8B) for risk assessment and variant generation.</li>
-          </ul>
-        </div>
-      </section>
-
       <section className="mt-12" aria-labelledby="developer-api">
-        <h2 id="developer-api" className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">6. Developer Documentation (API)</h2>
+        <h2 id="developer-api" className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">5. Developer Integration</h2>
         <div className="mt-4 text-[15px] leading-relaxed text-[color:var(--cq-ink-soft)] space-y-4">
           <p>
-            The CharmQuark API is built for headless integration. Every UI action is backed by a RESTful endpoint accessible via <code>X-CharmQuark-Role</code> headers or Zero Trust tokens.
+            CharmQuark is built for headless enterprise integration. The platform provides a comprehensive, secure REST API that allows your internal tools to orchestrate fleets programmatically.
           </p>
-          <div className="rounded border border-[color:var(--cq-line)] bg-neutral-100 p-4 font-mono text-sm overflow-x-auto">
-            POST /api/missions/:id/generate-variants<br />
-            POST /api/missions/:id/assess-risk<br />
-            POST /api/runs/:id/roboflow/export<br />
-            GET  /api/campaigns/:id/coverage
-          </div>
           <p>
             The authorization matrix is centrally defined, meaning third-party service accounts can be safely granted <code>ROBOT_OPERATOR</code> rights to automatically log runs via webhooks without exposing planning rights.
           </p>
