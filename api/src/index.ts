@@ -17,6 +17,7 @@ import { mountRuns } from "./routes/runs";
 import { mountAutoschedule } from "./routes/autoschedule";
 import { mountMisc } from "./routes/misc";
 import { mountWorkflows } from "./routes/workflows";
+import { mountConfig } from "./routes/config";
 import { mountCoverage } from "./routes/coverage";
 import { mountDev } from "./routes/dev";
 import { mountBilling, mountBillingWebhook } from "./routes/billing";
@@ -53,6 +54,7 @@ app.use(
  * first. It carries no user credential — its credential is the
  * `stripe-signature` it is verified against.
  */
+// Also mounts POST /api/billing/grants (signed by the central store).
 mountBillingWebhook(app);
 
 /** Everything under /api is authenticated and policy-guarded. */
@@ -72,6 +74,7 @@ mountRuns(api);
 mountAutoschedule(api);
 mountMisc(api);
 mountWorkflows(api);
+mountConfig(api);
 mountCoverage(api);
 mountBilling(api);
 mountRoboflow(api);

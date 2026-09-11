@@ -9,3 +9,6 @@ export * from "./fields.ts";
 export * from "./resources.ts";
 export * from "./settings.ts";
 export * from "./workflows.ts";
+export * from "./config.ts";
+export * from "./billing.ts";
+export * from "./grants.ts";

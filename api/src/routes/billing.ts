@@ -19,7 +19,8 @@ import { HTTPException } from "hono/http-exception";
 import Stripe from "stripe";
 import type { Env, Vars } from "../types";
 import { num, str, strOrNull, uuid, type Row } from "../db";
-import { badRequest, billingUnavailable, notFound, paymentRequired } from "../errors";
+import { badRequest, billingUnavailable, grantsUnavailable, notFound, paymentRequired } from "../errors";
+import { verifyGrant, type CreditGrant } from "../../../packages/contracts/src/grants.ts";
 import {
   CREDIT_PACKS,
   DEFAULT_ACCOUNT_ID,
@@ -179,6 +180,61 @@ async function grantPurchase(
   }
 }
 
+// ---------------------------------------------------------------- signed grants
+/**
+ * Apply a grant the central store signed (already verified). One batch: the grant
+ * row (its primary key is the grant id, so a redelivery aborts the batch and
+ * credits nothing), the ledger row, and the balance. A grant that only changes
+ * `unlimited` writes an ADJUSTMENT row with delta 0, so that change is audited too.
+ */
+export async function acceptGrant(
+  db: D1Database,
+  grant: CreditGrant,
+  token: string,
+): Promise<{ applied: boolean; balance: number; unlimited: boolean }> {
+  const account = await loadAccount(db);
+  const unlimited = grant.unlimited === undefined ? null : grant.unlimited ? 1 : 0;
+  const reason = grant.credits > 0 ? grant.reason : "ADJUSTMENT";
+  const note = grant.unlimited === undefined ? grant.note : `${grant.note} (unlimited ${grant.unlimited ? "on" : "off"})`;
+  try {
+    await db.batch([
+      db
+        .prepare(
+          `INSERT INTO billing_grants (id, account_id, credits, unlimited, reason, note, token, issued_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(grant.id, account.id, grant.credits, unlimited, grant.reason, grant.note, token, grant.issued_at),
+      db
+        .prepare(
+          `INSERT INTO credit_ledger (id, account_id, delta, reason, balance_after, grant_id, actor, note)
+           SELECT ?, id, ?, ?, balance + ?, ?, 'store', ?
+           FROM billing_accounts WHERE id = ?`,
+        )
+        .bind(uuid(), grant.credits, reason, grant.credits, grant.id, note, account.id),
+      db
+        .prepare(
+          `UPDATE billing_accounts
+           SET balance = balance + ?, lifetime_granted = lifetime_granted + ?,
+               is_unlimited = COALESCE(?, is_unlimited), updated_at = datetime('now')
+           WHERE id = ?`,
+        )
+        .bind(grant.credits, grant.credits, unlimited, account.id),
+    ]);
+  } catch (e) {
+    if (!isUniqueViolation(e)) throw e;
+    const now = await loadAccount(db);
+    return { applied: false, balance: now.balance, unlimited: now.is_unlimited };
+  }
+  const now = await loadAccount(db);
+  return { applied: true, balance: now.balance, unlimited: now.is_unlimited };
+}
+
+/** Where this deployment's users buy credits, once the central store is live. */
+export const storeCreditsUrl = (env: Env): string | null =>
+  env.STORE_URL && env.DEPLOYMENT_ID
+    ? `${env.STORE_URL.replace(/\/+$/, "")}/credits?deployment=${encodeURIComponent(env.DEPLOYMENT_ID)}`
+    : null;
+
 // ---------------------------------------------------------------- Stripe client
 function stripeClient(env: Env): Stripe {
   if (!env.STRIPE_SECRET_KEY) throw billingUnavailable();
@@ -241,7 +297,10 @@ export function mountBilling(app: App): void {
       lifetime_granted: a.lifetime_granted,
       lifetime_spent: a.lifetime_spent,
       credit_cost_per_run: RUN_CREDIT_COST,
-      payments_configured: Boolean(c.env.STRIPE_SECRET_KEY),
+      payments_configured: Boolean(storeCreditsUrl(c.env) || c.env.STRIPE_SECRET_KEY),
+      // Set once the deployment buys through the central store; the web app then
+      // sends buyers there instead of starting a local checkout.
+      store_url: storeCreditsUrl(c.env),
       packs: packPayload(),
     });
   });
@@ -279,6 +338,9 @@ export function mountBilling(app: App): void {
    * is what the claim endpoint polls afterwards.
    */
   app.post("/billing/checkout", async (c) => {
+    // A deployment on the central store holds no payment path of its own.
+    const store = storeCreditsUrl(c.env);
+    if (store) return c.json({ detail: "Run credits are bought in the CharmQuark store.", store_url: store }, 410);
     const b = await c.req.json<{ pack_id?: string; return_path?: string }>();
     const pack = packById(String(b.pack_id ?? ""));
     if (!pack) throw badRequest(`unknown credit pack: ${b.pack_id}`);
@@ -359,7 +421,30 @@ export function mountBilling(app: App): void {
  * which is strictly stronger than the header shim it is skipping.
  */
 export function mountBillingWebhook(app: App): void {
+  /**
+   * A credit grant from the central store. Mounted on the root app like the
+   * webhook: the store is not a signed-in user. Its credential is the Ed25519
+   * signature, checked against STORE_PUBLIC_KEY, and the grant must name this
+   * deployment. Replays are harmless: `applied: false`, nothing moves.
+   */
+  app.post("/api/billing/grants", async (c) => {
+    if (!c.env.STORE_PUBLIC_KEY || !c.env.DEPLOYMENT_ID) throw grantsUnavailable();
+    const b = await c.req.json<{ grant?: unknown }>().catch(() => ({} as { grant?: unknown }));
+    let verdict: Awaited<ReturnType<typeof verifyGrant>>;
+    try {
+      verdict = await verifyGrant(b.grant, c.env.STORE_PUBLIC_KEY, c.env.DEPLOYMENT_ID);
+    } catch (e) {
+      console.error("grant verification misconfigured", e);
+      throw grantsUnavailable();
+    }
+    if (!verdict.ok) return c.json({ detail: verdict.error }, verdict.status);
+    const result = await acceptGrant(c.env.DB, verdict.grant, b.grant as string);
+    console.log(result.applied ? `applied grant ${verdict.grant.id}` : `grant ${verdict.grant.id} was already applied`);
+    return c.json({ grant_id: verdict.grant.id, ...result });
+  });
+
   app.post("/api/billing/webhook", async (c) => {
+    if (storeCreditsUrl(c.env)) return c.json({ detail: "this deployment buys credits through the CharmQuark store" }, 410);
     const secret = c.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) throw billingUnavailable();
 

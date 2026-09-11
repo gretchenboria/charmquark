@@ -5,7 +5,7 @@ import type { ChecklistItem } from "@/lib/types";
 /** Readiness checklist with provenance.
  *  - auto items: system-derived; checkbox is pre-populated (read-only here; toggle/override
  *    happens by changing the underlying data, e.g. inventory status).
- *  - manual items: external/not-integrated (consent, Ask survey, Bookable) — a PM/Robot Operator
+ *  - manual items: external/not-integrated (safety sign-off, calibration docs, QA check) — a PM/Robot Operator
  *    ticks them; `onToggle` fires the update. Disabled when the caller can't write. */
 export function ReadinessChecklist({
   items,

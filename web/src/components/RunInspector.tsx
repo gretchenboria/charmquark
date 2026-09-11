@@ -188,7 +188,7 @@ export function RunInspector({
           id: p.id,
           label: p.is_standby ? `${p.robot_code} · standby` : p.robot_code,
           eligible: p.is_cleared,
-          reason: p.is_cleared ? undefined : "not cleared (consent/booking/Ask)",
+          reason: p.is_cleared ? undefined : "not cleared (safety/calibration/commission)",
         }));
       case "operator":
         return operators.map((o) => ({

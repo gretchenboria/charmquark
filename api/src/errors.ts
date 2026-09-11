@@ -53,6 +53,14 @@ export const paymentRequired = (msg: string): HTTPException =>
  * Stripe is not configured (no STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET on the
  * Worker). Mirrors `storageUnavailable`: say what is missing rather than 500.
  */
+/** Signed grants need the store's public key and this deployment's id. */
+export const grantsUnavailable = (): HTTPException =>
+  new HTTPException(503, {
+    message:
+      "Credit grants are not configured: set STORE_PUBLIC_KEY and DEPLOYMENT_ID on the API Worker " +
+      "(deploy/customers/<name>.jsonc vars; see docs/BILLING.md).",
+  });
+
 export const billingUnavailable = (): HTTPException =>
   new HTTPException(503, {
     message:

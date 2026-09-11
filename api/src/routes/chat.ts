@@ -13,10 +13,9 @@ import { AGENT_TOOLS, type ToolCall } from "../agent/tools";
 import { runChat, type Transcript } from "../agent/llm";
 import { providerFor } from "../llmProvider";
 import { loadSettings } from "../settings";
+import { dispatchAs } from "../dispatch";
 
 export const chat = new Hono<{ Bindings: Env; Variables: Vars }>();
-
-const FORWARDED = ["Authorization", "X-CharmQuark-Role", "X-CharmQuark-User"];
 
 /** Accept the neutral {role, text} shape, and the older Gemini {role, parts} shape. */
 function toTranscript(raw: unknown): Transcript[] {
@@ -53,24 +52,7 @@ chat.post("/", async (c) => {
     `to review the diff and press Apply — you cannot apply changes and must never say a change is done. ` +
     `Everything you do is limited to what ${p.name}'s role allows. Be concise.`;
 
-  const execute = async (call: ToolCall) => {
-    const headers = new Headers({ "Content-Type": "application/json" });
-    for (const h of FORWARDED) {
-      const v = c.req.header(h);
-      if (v) headers.set(h, v);
-    }
-    for (const [k, v] of Object.entries(call.headers ?? {})) headers.set(k, v);
-    const { default: app } = await import("../index");
-    const res = await app.fetch(
-      new Request(new URL(`/api${call.path}`, c.req.url), { method: call.method, headers, body: call.body === undefined ? undefined : JSON.stringify(call.body) }),
-      c.env,
-      c.executionCtx,
-    );
-    const text = await res.text();
-    let body: unknown = text;
-    try { body = text ? JSON.parse(text) : null; } catch { /* keep text */ }
-    return { status: res.status, body };
-  };
+  const execute = (call: ToolCall) => dispatchAs(c, call);
 
   try {
     return c.json(await runChat({ provider, system, transcript, tools: AGENT_TOOLS, execute }));

@@ -14,6 +14,8 @@ import { SENSOR_TYPES, optionsFor } from "@contracts";
 const columns: Column[] = [
   { key: "asset", header: "Asset name" },
   { key: "type", header: "Type" },
+  { key: "serial", header: "Serial #" },
+  { key: "firmware", header: "Firmware" },
   { key: "status", header: "Status" },
 ];
 
@@ -48,6 +50,8 @@ export default function SensorsPage() {
         title="New sensor"
         fields={[
           { name: "asset_name", label: "Asset name", required: true },
+          { name: "serial_number", label: "Serial number" },
+          { name: "firmware_version", label: "Firmware version" },
           {
             name: "sensor_type",
             label: "Type",
@@ -121,6 +125,8 @@ export default function SensorsPage() {
             </Link>
           ),
           type: d.sensor_type,
+          serial: <span className="font-mono text-xs">{d.serial_number ?? "—"}</span>,
+          firmware: <span className="font-mono text-xs">{d.firmware_version ?? "—"}</span>,
           status: d.status,
         })}
         empty={err ?? "No sensors yet."}

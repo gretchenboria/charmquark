@@ -27,10 +27,10 @@ const STATE_FILL: Record<string, string> = {
 // Toggleable report sections (mirrors the desktop weekly-status report).
 const SECTIONS = [
   { key: "execution", label: "Execution Numbers" },
-  { key: "status", label: "Overall Status" },
-  { key: "daily", label: "Daily Execution" },
-  { key: "pipeline", label: "Pipeline Status" },
-  { key: "recruiting", label: "Recruiting & Readiness" },
+  { key: "status", label: "Overall Dataset Status" },
+  { key: "daily", label: "Daily ML Data Yield" },
+  { key: "pipeline", label: "Data QA Pipeline" },
+  { key: "recruiting", label: "Fleet & Readiness" },
   { key: "risk", label: "Risk & Mitigation" },
 ] as const;
 type SectionKey = (typeof SECTIONS)[number]["key"];
@@ -53,7 +53,7 @@ export default function ReportsPage() {
   const [scoped, setScoped] = useState(false);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-  // Daily Execution annotations (free-form, editable by the report author).
+  // Daily ML Data Yield annotations (free-form, editable by the report author).
   const [blocker, setBlocker] = useState("Not yet extracted due to memory constraints — currently being addressed.");
   const [expectedUpload, setExpectedUpload] = useState("2026-06-15");
 
@@ -154,7 +154,7 @@ export default function ReportsPage() {
               )}
 
               {enabled.status && (
-                <Section title="Overall Status">
+                <Section title="Overall Dataset Status">
                   <p className="mb-2 text-sm text-neutral-600">
                     {m.collectedPlus} of {m.targetN} target collected — <b>{m.progressPct}%</b> complete.
                   </p>
@@ -163,7 +163,7 @@ export default function ReportsPage() {
               )}
 
               {enabled.daily && (
-                <Section title="Daily Execution">
+                <Section title="Daily ML Data Yield">
                   <p className="mb-3 flex items-center gap-2 text-xs text-neutral-400">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-300" />
                     Auto-populated from run state (system-tracked). Not yet wired to the live
@@ -218,17 +218,17 @@ export default function ReportsPage() {
               )}
 
               {enabled.pipeline && (
-                <Section title="Pipeline Status">
+                <Section title="Data QA Pipeline">
                   <Funnel rows={funnel} />
                 </Section>
               )}
 
               {enabled.recruiting && (
-                <Section title="Recruiting & Readiness">
+                <Section title="Fleet & Readiness">
                   <table className="w-full text-sm">
                     <tbody>
                       <Row k="Robots (total)" v={m.robots.length} />
-                      <Row k="Cleared to participate" v={`${m.clearedRobots} (consent · booking · Ask)`} />
+                      <Row k="Cleared for collection" v={`${m.clearedRobots} (safety · calibration · commissioning)`} />
                       <Row k="Operators" v={m.operators.length} />
                       <Row k="Labs" v={m.labs.length} />
                       <Row k="Sensors operational" v={`${m.operationalSensors} of ${m.sensors.length}`} />
