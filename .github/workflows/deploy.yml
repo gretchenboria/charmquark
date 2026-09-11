@@ -17,8 +17,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies (Root)
-        run: npm install
 
       - name: Install Dependencies (API)
         run: cd api && npm install
