@@ -42,12 +42,18 @@ export default function LandingPage() {
           The ultimate platform for Robot Operations. We bring strict ontology, state-driven lifecycles, and zero-trust security to your physical assets.
         </p>
         
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <Link href="/home" className="w-full sm:w-auto px-8 py-3.5 rounded-lg bg-white text-black font-semibold text-sm hover:bg-zinc-200 transition-colors shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]">
-            Go to Workspace
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 relative z-20">
+          <Link 
+            href="/home" 
+            className="px-8 py-4 rounded-full bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-all shadow-[0_0_30px_rgba(79,70,229,0.4)] hover:scale-105 hover:shadow-[0_0_50px_rgba(79,70,229,0.6)]"
+          >
+            Start Orchestrating
           </Link>
-          <a href="#problem" className="w-full sm:w-auto px-8 py-3.5 rounded-lg bg-white/5 border border-white/10 text-white font-medium text-sm hover:bg-white/10 transition-colors backdrop-blur-sm">
-            Read the manifesto
+          <a 
+            href="#problem" 
+            className="px-8 py-4 rounded-full bg-zinc-900/80 backdrop-blur border border-white/10 text-white font-medium hover:bg-zinc-800 hover:scale-105 transition-all"
+          >
+            See how it works
           </a>
         </div>
       </header>
@@ -150,28 +156,75 @@ export default function LandingPage() {
               ))}
             </div>
           </div>
-          <div className="bg-zinc-900 rounded-2xl border border-white/10 p-6 shadow-xl relative overflow-hidden">
+          <div className="bg-zinc-900/80 rounded-3xl border border-white/10 p-8 shadow-2xl relative overflow-hidden backdrop-blur-sm">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-            <pre className="font-mono text-xs text-zinc-300 leading-loose overflow-x-auto">
-{`[ CAMPAIGN PLANNING ]
-      │
-      ├─> (AI Agent) Generates Mission Variants
-      │
-      ▼
-[ LEGAL & SAFETY ] ──> [ LEAD APPROVAL ]
-      │
-      ▼
-[ SCHEDULING ] ── (Checks Calibration)
-      │
-      ▼
-[ EXECUTION ] ── (Operator logs code)
-      │
-      ▼
-[ QA AUTO-CHECK ] ──> [ HUMAN ADJUDICATION ]
-      │
-      ▼
-[ ROBOFLOW EXPORT ]`}
-            </pre>
+            
+            <div className="flex flex-col space-y-4 relative">
+              {/* Vertical connecting line */}
+              <div className="absolute left-8 top-10 bottom-10 w-0.5 bg-gradient-to-b from-indigo-500/50 via-purple-500/50 to-pink-500/50 hidden sm:block"></div>
+
+              {/* Step 1 */}
+              <div className="flex items-center gap-6 relative z-10">
+                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center shadow-[0_0_20px_rgba(79,70,229,0.2)] shrink-0">
+                  <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                </div>
+                <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 hover:bg-white/10 transition-colors">
+                  <div className="flex justify-between items-center mb-1">
+                    <h4 className="text-white font-semibold text-lg">Campaign Planning</h4>
+                    <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-mono border border-indigo-500/30">AI ASSISTED</span>
+                  </div>
+                  <p className="text-sm text-zinc-400">Agent autonomously breaks standard missions down and generates E1/E2 failure edge-case variants.</p>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex items-center gap-6 relative z-10">
+                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.2)] shrink-0">
+                  <svg className="w-8 h-8 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                </div>
+                <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 hover:bg-white/10 transition-colors">
+                  <h4 className="text-white font-semibold text-lg mb-1">Safety & Legal Review</h4>
+                  <p className="text-sm text-zinc-400">Strict gates prevent runs from advancing if High Risk until Fleet Lead grants multi-sig approval.</p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex items-center gap-6 relative z-10">
+                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center shadow-[0_0_20px_rgba(236,72,153,0.2)] shrink-0">
+                  <svg className="w-8 h-8 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </div>
+                <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 hover:bg-white/10 transition-colors">
+                  <h4 className="text-white font-semibold text-lg mb-1">Intelligent Scheduling</h4>
+                  <p className="text-sm text-zinc-400">Algorithm dynamically verifies robot calibration status and lab capacity before deploying the payload.</p>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="flex items-center gap-6 relative z-10">
+                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.2)] shrink-0">
+                  <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-5 hover:bg-white/10 transition-colors flex justify-between items-center">
+                  <div>
+                    <h4 className="text-white font-semibold text-lg mb-1">Field Execution</h4>
+                    <p className="text-sm text-zinc-400">Operator completes the physical run and logs the exact outcome code directly via mobile.</p>
+                  </div>
+                  <span className="hidden md:flex px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-mono border border-amber-500/30">MOBILE APP</span>
+                </div>
+              </div>
+
+              {/* Step 5 */}
+              <div className="flex items-center gap-6 relative z-10 pt-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.5)] shrink-0 border border-white/20">
+                  <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                </div>
+                <div className="flex-1 bg-gradient-to-r from-indigo-500/20 to-transparent border border-indigo-500/30 rounded-xl p-5 backdrop-blur-md">
+                  <h4 className="text-white font-bold text-lg mb-1">Roboflow Dataset Export</h4>
+                  <p className="text-sm text-zinc-300">Once QA auto-checks and human adjudication pass, the pristine payload is pushed to ML engineers.</p>
+                </div>
+              </div>
+
+            </div>
           </div>
         </section>
 
@@ -214,6 +267,36 @@ export default function LandingPage() {
             <h3 className="text-2xl font-semibold text-white mb-4">Developer API</h3>
             <p className="text-zinc-400 mb-6">
               Built for headless enterprise integration. The platform provides a comprehensive, secure REST API that allows your internal tools to orchestrate fleets programmatically with granular authorization.
+            </p>
+          </div>
+        </section>
+
+        {/* Massive Call To Action Section */}
+        <section className="relative overflow-hidden rounded-[2.5rem] bg-zinc-900 border border-white/10 p-12 md:p-24 text-center mt-20">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-[600px] bg-gradient-to-tr from-indigo-500/30 to-purple-500/30 blur-[120px] rounded-full pointer-events-none"></div>
+          <div className="relative z-10 max-w-3xl mx-auto flex flex-col items-center">
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
+              Ready to scale your robotic fleet?
+            </h2>
+            <p className="text-xl text-zinc-400 mb-10 leading-relaxed">
+              Stop wasting thousands of engineering hours training models on bad data. Implement strict ontology, automated QA gates, and seamless Roboflow exports today.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+              <Link 
+                href="/home" 
+                className="w-full sm:w-auto px-8 py-4 bg-white text-black font-semibold rounded-full hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:scale-105"
+              >
+                Start Enterprise Trial
+              </Link>
+              <a 
+                href="mailto:sales@charmquark.app" 
+                className="w-full sm:w-auto px-8 py-4 bg-zinc-800 text-white font-medium rounded-full border border-white/10 hover:bg-zinc-700 transition-all hover:scale-105"
+              >
+                Contact Sales
+              </a>
+            </div>
+            <p className="mt-8 text-sm text-zinc-500">
+              Free 14-day trial for teams under 50 robots. No credit card required.
             </p>
           </div>
         </section>
