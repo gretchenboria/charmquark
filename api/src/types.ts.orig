@@ -13,7 +13,6 @@ export interface Env {
   FLEET_STATUS: KVNamespace;
   ENVIRONMENT: string;
   AI: any;
-  GEMINI_API_KEY?: string;
 
   /**
    * Cloudflare Access. Both must be set for Access to be enforced — a team

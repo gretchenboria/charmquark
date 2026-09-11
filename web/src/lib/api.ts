@@ -295,4 +295,7 @@ export const api = {
   createUser: (b: { subject: string; name: string; email?: string; role: string }) => post<User>("/users", b),
   updateUser: (id: string, b: Record<string, unknown>) => patch<User>(`/users/${id}`, b),
   deleteUser: (id: string) => del(`/users/${id}`),
+
+  chat: (messages: { role: "user" | "model"; parts: { text: string }[] }[]) =>
+    post<{ text: string }>("/chat", { messages }),
 };

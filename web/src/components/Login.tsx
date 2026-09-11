@@ -20,9 +20,7 @@ export function Login() {
         setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
       } else {
         // Fallback for development if Firebase is not yet configured by user
-        const found = PRESET_USERS.find(
-          (u) => u.email && u.email.toLowerCase() === email.toLowerCase()
-        ) || PRESET_USERS[0];
+        const found = PRESET_USERS[0];
         setUser(found);
       }
     } catch (err: any) {
