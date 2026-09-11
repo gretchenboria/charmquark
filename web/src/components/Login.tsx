@@ -2,27 +2,35 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { PRESET_USERS } from "@/lib/session";
 import { setUser } from "@/lib/session";
 
 export function Login() {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
         setUser(PRESET_USERS[0]);
         return;
       }
-      const cred = await signInWithEmailAndPassword(auth, email, password);
+      
+      let cred;
+      if (isSignUp) {
+        cred = await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        cred = await signInWithEmailAndPassword(auth, email, password);
+      }
+      
       setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
     } catch (err: any) {
-      setError(err.message || "Failed to sign in");
+      setError(err.message || `Failed to ${isSignUp ? "sign up" : "sign in"}`);
     }
   };
 
@@ -54,7 +62,7 @@ export function Login() {
 
         {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
 
-        <form onSubmit={handleEmailLogin} className="flex flex-col gap-4">
+        <form onSubmit={handleEmailAuth} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-[color:var(--cq-ink-faint)]">
               Work Email
@@ -86,9 +94,20 @@ export function Login() {
             type="submit"
             className="cq-btn-primary flex w-full items-center justify-center gap-2 mt-2"
           >
-            Sign in
+            {isSignUp ? "Create account" : "Sign in"}
           </button>
         </form>
+
+        <div className="mt-4 text-center text-sm text-neutral-500">
+          {isSignUp ? "Already have an account? " : "Don't have an account? "}
+          <button 
+            type="button" 
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="font-medium text-[color:var(--cq-azure-base)] hover:underline"
+          >
+            {isSignUp ? "Sign in" : "Sign up"}
+          </button>
+        </div>
 
         <div className="relative mt-6">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-neutral-200"></div></div>
