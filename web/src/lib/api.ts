@@ -70,7 +70,7 @@ export const OUT_OF_CREDITS_EVENT = "charmquark-out-of-credits";
 
 async function authHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {};
-  if (auth.currentUser) {
+  if (auth?.currentUser) {
     const token = await auth.currentUser.getIdToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;

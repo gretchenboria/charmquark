@@ -228,7 +228,7 @@ export function Sidebar() {
             </div>
             <button
               onClick={() => {
-                signOut(auth).catch(() => undefined);
+                if (auth) signOut(auth).catch(() => undefined);
                 clearUser();
               }}
               className="w-full rounded-lg border border-white/15 py-2.5 md:py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white"

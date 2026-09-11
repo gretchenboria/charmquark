@@ -11,7 +11,7 @@ import {
   signOut,
   type User as FirebaseUser,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { requireAuth } from "@/lib/firebase";
 import { ApiError, api } from "@/lib/api";
 import { PRESET_USERS, ROLE_LABEL, setUser } from "@/lib/session";
 
@@ -45,6 +45,7 @@ export function Login() {
    * authorizes against — never from the client.
    */
   const finishSignIn = async (fbUser: FirebaseUser) => {
+    const auth = requireAuth();
     if (!fbUser.emailVerified) {
       await sendEmailVerification(fbUser).catch(() => undefined);
       await signOut(auth);
@@ -69,6 +70,7 @@ export function Login() {
     setNotice(null);
     if (handledWithoutFirebase()) return;
     try {
+      const auth = requireAuth();
       const cred = isSignUp
         ? await createUserWithEmailAndPassword(auth, email, password)
         : await signInWithEmailAndPassword(auth, email, password);
@@ -83,7 +85,7 @@ export function Login() {
     setNotice(null);
     if (handledWithoutFirebase()) return;
     try {
-      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      const cred = await signInWithPopup(requireAuth(), new GoogleAuthProvider());
       await finishSignIn(cred.user);
     } catch (err) {
       fail(err, "Google sign in failed");
