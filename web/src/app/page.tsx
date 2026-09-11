@@ -90,7 +90,7 @@ export default function LandingPage() {
 [ QA AUTO-CHECK ] ── (Rejects missing files/desync) ──> [ HUMAN ADJUDICATION ]
       │
       ▼
-[ ML DATA EXPORT ] ── (Only pushes pristine, QA-passed data to pipeline)`}
+[ ROBOFLOW EXPORT ] ── (Pushes pristine, QA-passed data directly to Roboflow)`}
           </pre>
         </div>
       </section>
@@ -113,8 +113,17 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className="mt-20" aria-labelledby="roboflow">
+        <h2 id="roboflow" className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">5. Seamless Roboflow Integration</h2>
+        <div className="mt-6 text-[16px] leading-relaxed text-[color:var(--cq-ink-soft)] space-y-4 max-w-3xl">
+          <p>
+            CharmQuark acts as an elite gatekeeper for your ML pipeline. Built with a native <strong>Roboflow integration</strong>, the platform ensures that only pristine, fully-validated runs are exported to your Roboflow workspaces. By strictly blocking exports until all Legal and QA gates pass, teams eliminate the massive cost of annotating and training on garbage data.
+          </p>
+        </div>
+      </section>
+
       <section className="mt-20" aria-labelledby="developer-api">
-        <h2 id="developer-api" className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">5. Developer Integration</h2>
+        <h2 id="developer-api" className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">6. Developer Integration</h2>
         <div className="mt-6 text-[16px] leading-relaxed text-[color:var(--cq-ink-soft)] space-y-4 max-w-3xl">
           <p>
             CharmQuark is built for headless enterprise integration. The platform provides a comprehensive, secure REST API that allows your internal tools to orchestrate fleets programmatically.
