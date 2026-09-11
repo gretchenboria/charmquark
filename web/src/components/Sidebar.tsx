@@ -196,7 +196,7 @@ export function Sidebar() {
                   key={item.href}
                   href={item.href}
                   data-active={active}
-                  className="cq-rail-link relative mx-2 flex items-center gap-2.5 px-3 py-1.5 text-sm"
+                  className="cq-rail-link relative mx-2 flex items-center gap-2.5 px-3 py-2.5 md:py-1.5 text-sm"
                 >
                   <Icon className={active ? "text-white" : "text-white/45"} />
                   {item.label}
@@ -226,13 +226,13 @@ export function Sidebar() {
             </div>
             <button
               onClick={clearUser}
-              className="w-full rounded-lg border border-white/15 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              className="w-full rounded-lg border border-white/15 py-2.5 md:py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             >
               Log out
             </button>
             <button
               onClick={() => resetOnboarded(user)}
-              className="mt-1.5 w-full text-center text-[11px] text-white/35 transition-colors hover:text-white/70"
+              className="mt-1.5 w-full text-center py-2 text-[11px] text-white/35 transition-colors hover:text-white/70"
             >
               Show intro
             </button>

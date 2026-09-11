@@ -108,7 +108,7 @@ export default function SensorDetail() {
     >
       {editing && (
         <Section title="Edit sensor">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label>
               <span className={labelCls}>Asset name</span>
               <input className={inputCls} value={form.asset_name}

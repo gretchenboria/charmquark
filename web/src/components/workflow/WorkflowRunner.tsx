@@ -57,7 +57,7 @@ export function WorkflowRunner({ def, onExit }: { def: WorkflowDef; onExit: () =
         </div>
       </header>
 
-      <div className="grid flex-1 grid-cols-[220px_1fr_320px] overflow-hidden">
+      <div className="grid flex-1 grid-cols-1 lg:grid-cols-[220px_1fr_320px] overflow-y-auto lg:overflow-hidden">
         {/* Step list */}
         <div className="overflow-y-auto border-r border-neutral-200 bg-white p-3">
           <div className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Steps</div>

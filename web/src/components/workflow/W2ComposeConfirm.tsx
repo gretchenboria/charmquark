@@ -146,7 +146,7 @@ export function W2ComposeConfirm({
       <Panel title="Step 1 · Start a run">
         {!run ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Campaign">
                 <select value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className={selectClass()}>
                   {campaigns.length === 0 && <option value="">No campaigns</option>}

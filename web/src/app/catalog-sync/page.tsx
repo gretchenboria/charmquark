@@ -221,24 +221,26 @@ export default function CatalogSyncPage() {
             {diff.creates.length > 0 && (
               <div className="rounded-xl border border-neutral-200 bg-white p-4">
                 <h3 className="text-sm font-semibold text-neutral-800">New missions</h3>
-                <table className="mt-2 w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-neutral-400">
-                      <th className="py-1 font-medium">Code</th>
-                      <th className="py-1 font-medium">Name</th>
-                      <th className="py-1 font-medium">Group</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {diff.creates.map((c, i) => (
-                      <tr key={i}>
-                        <td className="py-1.5 font-mono text-neutral-500">{c.mission_code}</td>
-                        <td className="py-1.5 text-neutral-800">{c.name}</td>
-                        <td className="py-1.5 text-neutral-500">{c.group || "—"}</td>
+                <div className="overflow-x-auto">
+                  <table className="mt-2 w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-neutral-400">
+                        <th className="whitespace-nowrap py-1 font-medium">Code</th>
+                        <th className="whitespace-nowrap py-1 font-medium">Name</th>
+                        <th className="whitespace-nowrap py-1 font-medium">Group</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {diff.creates.map((c, i) => (
+                        <tr key={i}>
+                          <td className="whitespace-nowrap py-1.5 font-mono text-neutral-500">{c.mission_code}</td>
+                          <td className="whitespace-nowrap py-1.5 text-neutral-800">{c.name}</td>
+                          <td className="whitespace-nowrap py-1.5 text-neutral-500">{c.group || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

@@ -178,7 +178,7 @@ export default function AutoSchedulePage() {
               run (1 long, or 2 medium, or 4 short missions).
             </p>
 
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-neutral-500">Campaign</span>
                 <select
@@ -301,7 +301,7 @@ export default function AutoSchedulePage() {
                       ))}
                     </select>
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <label className="block">
                       <span className="mb-1 block text-xs font-medium text-neutral-500">Payload</span>
                       <input

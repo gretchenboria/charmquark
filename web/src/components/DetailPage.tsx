@@ -40,7 +40,7 @@ export function DetailPage({
       </header>
       <div className="flex-1 overflow-auto p-6">
         <Card className="mb-6 max-w-2xl">
-          <dl className="grid grid-cols-[160px_1fr] gap-y-2 text-sm">
+          <dl className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1 sm:gap-y-2 text-sm">
             {fields.map((f) => (
               <div key={f.label} className="contents">
                 <dt className="text-neutral-400">{f.label}</dt>

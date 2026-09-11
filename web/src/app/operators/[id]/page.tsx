@@ -111,7 +111,7 @@ export default function OperatorDetail() {
     >
       {editing && (
         <Section title="Edit operator">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label>
               <span className={labelCls}>Name</span>
               <input className={inputCls} value={form.name} placeholder="Leave blank to keep current"

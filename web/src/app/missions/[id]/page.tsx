@@ -155,7 +155,7 @@ export default function MissionDetailPage() {
       />
       {editing && (
         <Section title="Edit mission">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label>
               <span className={labelCls}>Code</span>
               <div className={`${inputCls} bg-neutral-50 text-neutral-500`}>{mission.mission_code}</div>
@@ -214,21 +214,23 @@ export default function MissionDetailPage() {
       </Section>
       <Section title="Audit History">
         <div className="rounded-lg border border-neutral-200 bg-white shadow-sm overflow-hidden text-sm">
-          <table className="w-full text-left">
-            <thead className="bg-neutral-50 text-xs uppercase text-neutral-500">
-              <tr><th className="px-4 py-2 font-medium">Timestamp (UTC)</th><th className="px-4 py-2 font-medium">Event</th></tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              <tr>
-                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{(mission as any).updated_at || "—"}</td>
-                <td className="px-4 py-3 text-neutral-800">Record modified / Lifecycle state evaluated</td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{(mission as any).created_at || "—"}</td>
-                <td className="px-4 py-3 text-neutral-800">Mission object instantiated</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-neutral-50 text-xs uppercase text-neutral-500">
+                <tr><th className="whitespace-nowrap px-4 py-2 font-medium">Timestamp (UTC)</th><th className="whitespace-nowrap px-4 py-2 font-medium">Event</th></tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                <tr>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-neutral-500">{(mission as any).updated_at || "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-neutral-800">Record modified / Lifecycle state evaluated</td>
+                </tr>
+                <tr>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-neutral-500">{(mission as any).created_at || "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-neutral-800">Mission object instantiated</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </Section>
     </DetailPage>

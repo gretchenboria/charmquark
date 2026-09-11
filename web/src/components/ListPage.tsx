@@ -188,28 +188,30 @@ export function ListPage<T>(props: ListPageProps<T>) {
           </Card>
         ) : (
           <Card bodyClassName="p-0">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-neutral-200 text-left text-neutral-500">
-                  {columns.map((c) => (
-                    <th key={c.key} className="px-4 py-2.5 font-medium">
-                      {c.header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={i} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-200 text-left text-neutral-500">
                     {columns.map((c) => (
-                      <td key={c.key} className="px-4 py-2.5 text-neutral-800">
-                        {r[c.key]}
-                      </td>
+                      <th key={c.key} className="whitespace-nowrap px-4 py-2.5 font-medium">
+                        {c.header}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={i} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
+                      {columns.map((c) => (
+                        <td key={c.key} className="whitespace-nowrap px-4 py-2.5 text-neutral-800">
+                          {r[c.key]}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
         )}
       </div>

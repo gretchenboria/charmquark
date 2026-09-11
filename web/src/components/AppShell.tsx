@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
           <span className="font-semibold text-sm tracking-widest">CHARMQUARK</span>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 -mr-2">
+        <button onClick={() => setIsMobileMenuOpen(true)} className="p-3 -mr-3" aria-label="Open menu">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
