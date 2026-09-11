@@ -1,13 +1,20 @@
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 
-const PM = { "X-CharmQuark-Role": "PM", "X-CharmQuark-User": "Sam Chen" };
 const PM_USER = { name: "Sam Chen", role: "PM", title: "Project Manager" };
 
 test("PM dashboard and campaign workflow", async ({ page, context }) => {
-  // Sign in as PM via UI
+  // Sign-in is Firebase in the real app; the e2e run uses the development session
+  // (the API runs with ENVIRONMENT=development), set before any page script runs.
+  await context.addInitScript(
+    ([user]) => {
+      window.sessionStorage.setItem("charmquark.user", JSON.stringify(user));
+      window.localStorage.setItem("charmquark.onboarded", JSON.stringify([`${(user as { role: string }).role}:${(user as { name: string }).name}`]));
+    },
+    [PM_USER],
+  );
+
   await page.goto("/home");
-  await page.getByRole("button", { name: /Sam Chen/i }).click();
-  await page.waitForSelector("nav"); // Wait for sidebar to appear
+  await page.waitForSelector("nav"); // sidebar = signed in
   await page.screenshot({ path: "screenshots/pm_1_dashboard.png", fullPage: true });
 
   await page.goto("/campaigns");

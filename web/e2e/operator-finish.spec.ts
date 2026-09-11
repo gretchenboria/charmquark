@@ -10,6 +10,8 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 // the point of the test.
 
 const PM = { "X-CharmQuark-Role": "PM", "X-CharmQuark-User": "Sam Chen" };
+// Only a Fleet Lead may create a mission already cleared for risk (the API enforces it).
+const FLEET_LEAD = { "X-CharmQuark-Role": "FLEET_LEAD", "X-CharmQuark-User": "Jordan Lee" };
 const ROBOT_OPERATOR = { name: "Alex Rivera", role: "ROBOT_OPERATOR", title: "Field Robot Operator" };
 
 // Build a CONFIRMED run with one ready mission, mirroring CharmQuarkApp/backend/tests/test_lifecycle.py.
@@ -28,14 +30,17 @@ async function setupConfirmedRun(request: APIRequestContext, uniq: string) {
   const campaign = await j(await post("/api/campaigns", { name: `E2E ${uniq}`, campaign_type: "MANIPULATION" }));
   const tg = await j(await post("/api/mission-groups", { campaign_id: campaign.id, name: "G" }));
   const inv = await j(await post("/api/inventory-items", { campaign_id: campaign.id, name: "Pan", kind: "TOOL", status: "AVAILABLE" }));
-  await post("/api/missions", {
-    campaign_id: campaign.id, mission_group_id: tg.id, mission_code: "T", name: "Compose",
-    instructions_complete: true, risk_level: "LOW", variants: [{ id: "v" }], inventory_item_ids: [inv.id],
-  });
+  await j(await request.post("/api/missions", {
+    headers: FLEET_LEAD,
+    data: {
+      campaign_id: campaign.id, mission_group_id: tg.id, mission_code: "T", name: "Compose",
+      instructions_complete: true, risk_level: "LOW", variants: [{ id: "v" }], inventory_item_ids: [inv.id],
+    },
+  }));
   const p = await j(await post("/api/robots", { robot_code: `P${uniq}`, safety_certified: true, calibration_valid: true, commissioned: true }));
   const o = await j(await post("/api/operators", { operator_code: `M${uniq}`, name: "Alex", code_number: 1 }));
   const loc = await j(await post("/api/labs", { name: `L${uniq}`, capacity: 4, code_number: 1 }));
-  const d = await j(await post("/api/sensors", { asset_name: `d${uniq}`, sensor_type: "IPHONE" }));
+  const d = await j(await post("/api/sensors", { asset_name: `d${uniq}`, sensor_type: "IMU" }));
   const fleet = await j(await post("/api/sensor-rigs", { campaign_id: campaign.id, name: "F", sensor_ids: [d.id] }));
 
   const run = await j(await post("/api/runs", { campaign_id: campaign.id, slot_date: "2026-04-20" }));
@@ -95,7 +100,9 @@ test("robot operator finishes a run end to end", async ({ page, request, context
   await card.locator("textarea").fill("clean run, recording confirmed");
   await page.waitForTimeout(500);
   await page.screenshot({ path: 'screenshots/operator_3_filled_form.png', fullPage: true });
-  await page.getByRole("heading", { name: "Execute run" }).click(); // blur -> immediate save
+  // Blur the note -> immediate save. Blurring the field itself, not clicking the
+  // heading, so a floating panel (e.g. the assistant bubble) cannot intercept it.
+  await card.locator("textarea").blur();
 
   // Sync chip (CQ-EXE-2): the entry persisted.
   await expect(card.getByText("saved")).toBeVisible();
