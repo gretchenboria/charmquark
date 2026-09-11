@@ -233,6 +233,54 @@ export function mountCatalog(app: App): void {
     return c.json(S.mission(row!));
   });
 
+  // ------------------------------------------------------------ AI Variant & Error Generation
+  // Generates negative examples and variations for RobotOps ML training.
+  app.post("/missions/:id/generate-variants", async (c) => {
+    const id = c.req.param("id");
+    const row = await c.env.DB.prepare(`SELECT * FROM missions WHERE id = ?`).bind(id).first<Row>();
+    if (!row) throw notFound("mission");
+    
+    const missionName = str(row, "name");
+    const instructions = parseJson<unknown[]>(row["instructions"], []);
+    
+    const prompt = `You are a RobotOps QA agent. We need to generate training data variations for a robot mission, including negative examples (errors).
+Mission Name: ${missionName}
+Instructions: ${JSON.stringify(instructions)}
+
+Return valid JSON only matching this schema:
+[
+  {
+    "id": "v1",
+    "name": "Standard Execution",
+    "correct": { "reps": 3 },
+    "errors": [
+      { "code": "E1", "label": "Hardware Fault (Gripper slips on object)" },
+      { "code": "E2", "label": "Environment Edge Case (Obstacle suddenly blocks path)" },
+      { "code": "E3", "label": "Sensor Failure (Camera glare washes out feed)" }
+    ]
+  }
+]
+Focus on realistic robotic failures (lighting, grip, occlusion, safety stops). Return ONLY the JSON array.`;
+
+    let generatedVariants: unknown[] = [];
+    try {
+      const aiResponse = await c.env.AI.run('@cf/meta/llama-3-8b-instruct', {
+        messages: [{ role: "user", content: prompt }]
+      });
+      const text = aiResponse.response.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
+      generatedVariants = JSON.parse(text);
+    } catch (e) {
+      return c.json({ error: "AI variant generation failed" }, 502);
+    }
+    
+    await c.env.DB
+      .prepare(`UPDATE missions SET variants = ?, updated_at = datetime('now') WHERE id = ?`)
+      .bind(JSON.stringify(generatedVariants), id).run();
+      
+    const updated = await c.env.DB.prepare(`SELECT * FROM missions WHERE id = ?`).bind(id).first<Row>();
+    return c.json(S.mission(updated!));
+  });
+
   // ------------------------------------------------------------ instructions
   app.get("/missions/:id/instructions", async (c) => {
     const missionId = c.req.param("id");
