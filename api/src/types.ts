@@ -83,7 +83,12 @@ export interface Principal {
   subject: string;
   /** Verified, lowercased email; null only under the development shim. */
   email: string | null;
-  via: "firebase" | "dev-shim";
+  /** How the caller authenticated: a browser sign-in, an API token, or the dev shim. */
+  via: "firebase" | "pat" | "dev-shim";
+  /** API tokens only: what the token may do on top of its user's role. */
+  scopes?: readonly ("read" | "write")[];
+  /** API tokens only: which token, so it can be revoked from the audit trail. */
+  tokenId?: string;
 }
 
 export type Vars = { principal: Principal };

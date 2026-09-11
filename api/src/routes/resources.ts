@@ -1,18 +1,21 @@
 /**
- * Resource CRUD — robots, operators, labs, sensors, sensor rigs, inventory, users.
+ * Resource CRUD — robots, operators, labs, lab blackouts, sensors, sensor rigs,
+ * inventory, mission groups, users.
  *
  * These are all the same shape (list / get / create / update / delete over one
  * table), so they are built from one factory driven by the contract registry
  * (packages/contracts/src/resources.ts): which columns are writable, which are
- * required, how each is validated and stored. Anything with real domain rules
- * lives in runs.ts or autoschedule.ts instead.
+ * required, how each is validated and stored. Every write honours If-Match and
+ * lands in the audit trail. Anything with real domain rules lives in runs.ts or
+ * autoschedule.ts instead.
  */
 import { Hono } from "hono";
 import type { Context } from "hono";
 import type { Env, Vars } from "../types";
-import { buildUpdate, fromBool, jsonCol, uuid, type Row } from "../db";
+import { fromBool, jsonCol, num, uuid, type Row } from "../db";
 import { notFound } from "../errors";
 import { requireUserAdmin } from "../auth";
+import { audit, versionedDelete, versionedUpdate } from "../changes";
 import { RESOURCES, assertValid, writableFields, type FieldSpec, type ResourceSpec } from "../contracts";
 import * as S from "../serialize";
 
@@ -58,6 +61,7 @@ function crud(app: App, spec: CrudSpec): void {
   app.get(`/${path}/:id`, async (c) => {
     const row = await c.env.DB.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(c.req.param("id")).first<Row>();
     if (!row) throw notFound(label);
+    c.header("ETag", `"${num(row, "version", 1)}"`);
     return c.json(serialize(row));
   });
 
@@ -80,8 +84,10 @@ function crud(app: App, spec: CrudSpec): void {
     await c.env.DB.prepare(
       `INSERT INTO ${table} (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`,
     ).bind(...vals).run();
-    const row = await c.env.DB.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(id).first<Row>();
-    return c.json(serialize(row!), 201);
+    const row = (await c.env.DB.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(id).first<Row>())!;
+    await audit(c, { resource: path, entityId: id, action: "create", after: serialize(row) });
+    c.header("ETag", `"${num(row, "version", 1)}"`);
+    return c.json(serialize(row), 201);
   });
 
   app.patch(`/${path}/:id`, async (c) => {
@@ -89,17 +95,18 @@ function crud(app: App, spec: CrudSpec): void {
     const id = c.req.param("id");
     const body = await c.req.json<Record<string, unknown>>();
     assertValid(resource, body, "update");
-    const upd = buildUpdate(table, id, body, updateColumns, transform);
-    if (upd) await c.env.DB.prepare(upd.sql).bind(...upd.params).run();
-    const row = await c.env.DB.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(id).first<Row>();
-    if (!row) throw notFound(label);
-    return c.json(serialize(row));
+    const { before, after } = await versionedUpdate(c, {
+      table, label, id, body, columns: updateColumns, transform, serialize,
+    });
+    await audit(c, { resource: path, entityId: id, action: "update", before: serialize(before), after: serialize(after) });
+    return c.json(serialize(after));
   });
 
   app.delete(`/${path}/:id`, async (c) => {
     await guard(c);
-    const res = await c.env.DB.prepare(`DELETE FROM ${table} WHERE id = ?`).bind(c.req.param("id")).run();
-    if (!res.meta.changes) throw notFound(label);
+    const id = c.req.param("id");
+    const before = await versionedDelete(c, { table, label, id, serialize });
+    await audit(c, { resource: path, entityId: id, action: "delete", before: serialize(before) });
     return c.body(null, 204);
   });
 }
@@ -108,12 +115,14 @@ export function mountResources(app: App): void {
   crud(app, { resource: RESOURCES.robots, serialize: S.robot, orderBy: "robot_code" });
   crud(app, { resource: RESOURCES.operators, serialize: S.operator, orderBy: "operator_code" });
   crud(app, { resource: RESOURCES.labs, serialize: S.lab, orderBy: "name" });
+  crud(app, { resource: RESOURCES["lab-blackouts"], serialize: S.labBlackout, orderBy: "blackout_date, slot_time" });
   crud(app, { resource: RESOURCES.sensors, serialize: S.sensor, orderBy: "asset_name" });
   crud(app, { resource: RESOURCES["sensor-rigs"], serialize: S.sensorRig, orderBy: "name" });
   crud(app, { resource: RESOURCES["inventory-items"], serialize: S.inventoryItem, orderBy: "name" });
+  crud(app, { resource: RESOURCES["mission-groups"], serialize: S.missionGroup, orderBy: `"order", name` });
   crud(app, { resource: RESOURCES.users, serialize: S.user, orderBy: "name", writeGuard: requireUserAdmin });
 
-  // --- campaign-scoped collection listings -------------------------------------
+  // --- scoped collection listings ----------------------------------------------
   app.get("/campaigns/:id/sensor-rigs", async (c) => {
     const { results } = await c.env.DB
       .prepare(`SELECT * FROM sensor_rigs WHERE campaign_id = ? ORDER BY name`)
@@ -126,5 +135,12 @@ export function mountResources(app: App): void {
       .prepare(`SELECT * FROM inventory_items WHERE campaign_id = ? ORDER BY name`)
       .bind(c.req.param("id")).all<Row>();
     return c.json(results.map(S.inventoryItem));
+  });
+
+  app.get("/labs/:id/blackouts", async (c) => {
+    const { results } = await c.env.DB
+      .prepare(`SELECT * FROM lab_blackouts WHERE lab_id = ? ORDER BY blackout_date, slot_time`)
+      .bind(c.req.param("id")).all<Row>();
+    return c.json(results.map(S.labBlackout));
   });
 }

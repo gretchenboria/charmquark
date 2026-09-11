@@ -22,6 +22,8 @@ import { mountBilling, mountBillingWebhook } from "./routes/billing";
 import { mountRoboflow } from "./routes/roboflow";
 import { chat } from "./routes/chat";
 import { mountIntegrations } from "./routes/integrations";
+import { mountTokens } from "./routes/tokens";
+import { mountAudit } from "./routes/audit";
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -69,6 +71,8 @@ mountCoverage(api);
 mountBilling(api);
 mountRoboflow(api);
 mountIntegrations(api);
+mountTokens(api);
+mountAudit(api);
 mountDev(api);
 api.route("/chat", chat);
 
@@ -79,6 +83,8 @@ app.get("/health", (c) => c.json({ ok: true, service: "charmquark-api", env: c.e
 /** FastAPI-compatible error envelope: the client reads `detail`. */
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
+    // A prepared response (e.g. a 409 carrying the current record) goes out as built.
+    if (err.res) return err.getResponse();
     return c.json({ detail: err.message }, err.status);
   }
   console.error("unhandled", err);

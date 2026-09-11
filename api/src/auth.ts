@@ -27,6 +27,7 @@ import type { Env, Principal, Role, Vars } from "./types";
 import { authUnavailable, badRequest, forbidden, unauthorized } from "./errors";
 import { readBearer, verifyFirebaseIdToken, type FirebaseIdentity } from "./identity";
 import { RESOURCES } from "./contracts";
+import { hashToken, isPatToken, parseScopes } from "./tokens";
 
 const ROLES: readonly Role[] = ["PM", "FLEET_LEAD", "ROBOT_OPERATOR"] as const;
 
@@ -110,10 +111,41 @@ async function shimPrincipal(env: Env, roleHeader: string | undefined, userHeade
   return { role: raw, name: userHeader || "dev", subject: userHeader || "dev", email: null, via: "dev-shim" };
 }
 
+/**
+ * API token: acts as its user — the user's current role, and only while the user
+ * is active — narrowed by the token's scopes. Revoked or expired is a 401.
+ */
+async function principalForToken(env: Env, token: string): Promise<Principal> {
+  const row = await env.DB
+    .prepare(
+      `SELECT t.id, t.scopes, u.subject, u.name, u.email, u.role
+       FROM personal_access_tokens t
+       JOIN users u ON u.subject = t.user_subject AND u.is_active = 1
+       WHERE t.token_hash = ? AND t.revoked_at IS NULL
+         AND (t.expires_at IS NULL OR t.expires_at > datetime('now'))`,
+    )
+    .bind(await hashToken(token))
+    .first<UserRow & { id: string; scopes: string }>();
+  if (!row || !isRole(row.role)) throw unauthorized("API token is invalid, expired or revoked");
+  await env.DB.prepare(`UPDATE personal_access_tokens SET last_used_at = datetime('now') WHERE id = ?`)
+    .bind(row.id).run().catch(() => undefined);
+  return {
+    role: row.role,
+    name: row.name || row.subject,
+    subject: row.subject,
+    email: row.email ? row.email.toLowerCase() : null,
+    via: "pat",
+    scopes: parseScopes(row.scopes),
+    tokenId: row.id,
+  };
+}
+
 async function resolvePrincipal(c: Context<{ Bindings: Env; Variables: Vars }>): Promise<Principal> {
   const env = c.env;
   const projectId = firebaseProjectId(env);
   const token = readBearer(c.req.raw);
+
+  if (token && isPatToken(token)) return principalForToken(env, token);
 
   if (token && projectId) {
     let id: FirebaseIdentity;
@@ -178,8 +210,9 @@ const POLICY: Record<string, Partial<Record<Action, readonly Role[]>>> = {
 
   // --- everything else ---
   "run-proposals":  { read: ROLES, write: PM_UP, delete: PM_UP },
-  documents:        { read: ROLES, write: ROLES, delete: PM_UP },
-  workflows:        { read: ROLES, write: PM_UP, delete: PM_UP },
+  // Ownership (your own tokens; Fleet Lead any) is checked in the route.
+  tokens:           { read: ROLES, write: ROLES, delete: ROLES },
+  audit:            { read: ROLES, write: LEAD,  delete: LEAD },
   billing:          { read: ROLES, write: PM_UP, delete: LEAD },
   roboflow:         { read: ROLES, write: PM_UP, delete: PM_UP },
   integrations:     { read: ROLES, write: PM_UP, delete: PM_UP },
@@ -214,6 +247,10 @@ export const crudGuard: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = 
   const p = c.get("principal");
   const action = actionFor(c.req.method);
   const resource = resourceOf(c.req.path);
+  // A read-scoped API token can look but not touch, whatever its user's role.
+  if (p.via === "pat" && action !== "read" && !p.scopes?.includes("write")) {
+    throw forbidden("this API token is read-only (scope: read) — create one with the write scope to make changes");
+  }
   const allowed = POLICY[resource]?.[action] ?? DEFAULT_POLICY[action];
   if (!allowed.includes(p.role)) {
     throw forbidden(

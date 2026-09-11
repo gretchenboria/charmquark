@@ -55,6 +55,41 @@ A listed, verified email with **no** users row at all is created as
 `FLEET_LEAD` on first sign-in. A deactivated row is never revived this way.
 Remove the secret once the roster exists.
 
+## API tokens (agents, scripts, Claude Code, Gemini CLI)
+
+Agents can't do a browser sign-in. A signed-in person creates a token, and the
+token then **acts as that person**. It always has their current role, never
+more, and only while their account is active.
+
+```bash
+# Create one while signed in (or from the UI once it exists). The token is shown ONCE.
+curl -X POST https://charmquark.app/api/tokens -H "Authorization: Bearer <firebase token>" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Claude Code on my laptop","scopes":["read","write"],"expires_in_days":90}'
+
+# Use it
+curl https://charmquark.app/api/labs -H "Authorization: Bearer cq_pat_…"
+```
+
+| Rule | Why |
+|---|---|
+| `read` scope is GET only; `write` adds changes | Give an exploring agent read and nothing else |
+| Only the SHA-256 is stored; the token is shown once | A database dump contains nothing that authenticates |
+| Expires (default 90 days, max 365) and is revocable (`DELETE /api/tokens/:id`) | A leaked token has a bounded life |
+| A token cannot create tokens | Otherwise a leaked token could outlive its own revocation |
+| Every change records `via: "pat"` in `GET /api/audit` | You can tell which changes an agent made |
+
+A Fleet Lead can list every token (`GET /api/tokens?all=1`) and revoke any of them.
+
+## Concurrent edits: `version` and `If-Match`
+
+Every record carries `version`, and a database trigger bumps it on every update.
+Send it back as `If-Match: <version>` on `PATCH`/`PUT`/`DELETE`. If someone else
+changed the record in the meantime, you get **409** with `current` (the record
+as it is now) instead of silently overwriting their edit. Agents should always
+send it. Requests without `If-Match` keep last-write-wins, so existing screens
+keep working.
+
 ## Going live checklist
 
 ```bash

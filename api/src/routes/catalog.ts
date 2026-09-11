@@ -10,6 +10,7 @@ import { CLEARANCE_FIELDS, requireClearanceAuthority, requireLegalReviewer } fro
 import { assessRisk, taskChecklist } from "../domain";
 import * as S from "../serialize";
 import { RESOURCES, assertValid, writableFields } from "../contracts";
+import { audit, versionedDelete, versionedUpdate } from "../changes";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
@@ -86,6 +87,7 @@ export function mountCatalog(app: App): void {
       `INSERT INTO campaigns (id, name, campaign_type, target_n, status) VALUES (?, ?, ?, ?, ?)`,
     ).bind(id, b.name, b.campaign_type, b.target_n ?? 0, b.status ?? "DRAFT").run();
     const row = await c.env.DB.prepare(`SELECT * FROM campaigns WHERE id = ?`).bind(id).first<Row>();
+    await audit(c, { resource: "campaigns", entityId: id, action: "create", after: S.campaign(row!) });
     return c.json(S.campaign(row!), 201);
   });
 
@@ -93,16 +95,18 @@ export function mountCatalog(app: App): void {
     const id = c.req.param("id");
     const b = await c.req.json<Record<string, unknown>>();
     assertValid(RESOURCES.campaigns, b, "update");
-    const upd = buildUpdate("campaigns", id, b, writableFields(RESOURCES.campaigns.fields, "update"));
-    if (upd) await c.env.DB.prepare(upd.sql).bind(...upd.params).run();
-    const row = await c.env.DB.prepare(`SELECT * FROM campaigns WHERE id = ?`).bind(id).first<Row>();
-    if (!row) throw notFound("campaign");
-    return c.json(S.campaign(row));
+    const { before, after } = await versionedUpdate(c, {
+      table: "campaigns", label: "campaign", id, body: b,
+      columns: writableFields(RESOURCES.campaigns.fields, "update"), serialize: S.campaign,
+    });
+    await audit(c, { resource: "campaigns", entityId: id, action: "update", before: S.campaign(before), after: S.campaign(after) });
+    return c.json(S.campaign(after));
   });
 
   app.delete("/campaigns/:id", async (c) => {
-    const res = await c.env.DB.prepare(`DELETE FROM campaigns WHERE id = ?`).bind(c.req.param("id")).run();
-    if (!res.meta.changes) throw notFound("campaign");
+    const id = c.req.param("id");
+    const before = await versionedDelete(c, { table: "campaigns", label: "campaign", id, serialize: S.campaign });
+    await audit(c, { resource: "campaigns", entityId: id, action: "delete", before: S.campaign(before) });
     return c.body(null, 204);
   });
 
@@ -114,21 +118,8 @@ export function mountCatalog(app: App): void {
     return c.json(results.map(S.missionGroup));
   });
 
-  app.get("/mission-groups/:id", async (c) => {
-    const row = await c.env.DB.prepare(`SELECT * FROM mission_groups WHERE id = ?`).bind(c.req.param("id")).first<Row>();
-    if (!row) throw notFound("mission group");
-    return c.json(S.missionGroup(row));
-  });
-
-  app.post("/mission-groups", async (c) => {
-    const b = await c.req.json<Record<string, unknown>>();
-    assertValid(RESOURCES["mission-groups"], b, "create");
-    const id = uuid();
-    await c.env.DB.prepare(`INSERT INTO mission_groups (id, campaign_id, name, "order") VALUES (?, ?, ?, ?)`)
-      .bind(id, b.campaign_id, b.name, b.order ?? 0).run();
-    const row = await c.env.DB.prepare(`SELECT * FROM mission_groups WHERE id = ?`).bind(id).first<Row>();
-    return c.json(S.missionGroup(row!), 201);
-  });
+  // Get / create / update / delete for a single mission group come from the
+  // generic CRUD factory (routes/resources.ts).
 
   // ------------------------------------------------------------ missions
   app.get("/campaigns/:id/missions", async (c) => {
@@ -175,6 +166,7 @@ export function mountCatalog(app: App): void {
       jsonCol(b.variants ?? []), jsonCol(b.inventory_item_ids ?? []), jsonCol(b.instructions ?? []),
     ).run();
     const row = await c.env.DB.prepare(`SELECT * FROM missions WHERE id = ?`).bind(id).first<Row>();
+    await audit(c, { resource: "missions", entityId: id, action: "create", after: S.mission(row!) });
     return c.json(S.mission(row!), 201);
   });
 
@@ -189,16 +181,18 @@ export function mountCatalog(app: App): void {
       if (!current) throw notFound("mission");
       requireClearanceAuthority(c.get("principal"), touched.filter((f) => String(b[f]) !== str(current, f)));
     }
-    const upd = buildUpdate("missions", id, b, MISSION_UPDATE_COLS, MISSION_TRANSFORM);
-    if (upd) await c.env.DB.prepare(upd.sql).bind(...upd.params).run();
-    const row = await c.env.DB.prepare(`SELECT * FROM missions WHERE id = ?`).bind(id).first<Row>();
-    if (!row) throw notFound("mission");
-    return c.json(S.mission(row));
+    const { before, after } = await versionedUpdate(c, {
+      table: "missions", label: "mission", id, body: b,
+      columns: MISSION_UPDATE_COLS, transform: MISSION_TRANSFORM, serialize: S.mission,
+    });
+    await audit(c, { resource: "missions", entityId: id, action: "update", before: S.mission(before), after: S.mission(after) });
+    return c.json(S.mission(after));
   });
 
   app.delete("/missions/:id", async (c) => {
-    const res = await c.env.DB.prepare(`DELETE FROM missions WHERE id = ?`).bind(c.req.param("id")).run();
-    if (!res.meta.changes) throw notFound("mission");
+    const id = c.req.param("id");
+    const before = await versionedDelete(c, { table: "missions", label: "mission", id, serialize: S.mission });
+    await audit(c, { resource: "missions", entityId: id, action: "delete", before: S.mission(before) });
     return c.body(null, 204);
   });
 
@@ -231,6 +225,8 @@ export function mountCatalog(app: App): void {
     await c.env.DB
       .prepare(`UPDATE missions SET risk_level = ?, legal_approval = ?, updated_at = datetime('now') WHERE id = ?`)
       .bind(result.risk_level, legal, id).run();
+    const after = await c.env.DB.prepare(`SELECT * FROM missions WHERE id = ?`).bind(id).first<Row>();
+    await audit(c, { resource: "missions", entityId: id, action: "assess-risk", before: S.mission(row), after: after ? S.mission(after) : undefined });
     return c.json(result);
   });
 
@@ -238,11 +234,13 @@ export function mountCatalog(app: App): void {
     const id = c.req.param("id");
     const b = await c.req.json<{ approved?: boolean; note?: string }>();
     const verdict = b.approved ? "APPROVED" : "PENDING";
-    const res = await c.env.DB
+    const before = await c.env.DB.prepare(`SELECT * FROM missions WHERE id = ?`).bind(id).first<Row>();
+    if (!before) throw notFound("mission");
+    await c.env.DB
       .prepare(`UPDATE missions SET legal_approval = ?, updated_at = datetime('now') WHERE id = ?`)
       .bind(verdict, id).run();
-    if (!res.meta.changes) throw notFound("mission");
     const row = await c.env.DB.prepare(`SELECT * FROM missions WHERE id = ?`).bind(id).first<Row>();
+    await audit(c, { resource: "missions", entityId: id, action: "legal-review", before: S.mission(before), after: S.mission(row!) });
     return c.json(S.mission(row!));
   });
 

@@ -6,12 +6,15 @@
  * API (validation, writable columns, the role policy), the web app (dropdowns,
  * locked fields) and agents (it is what an MCP `describe_schema` tool returns).
  * `api/test/contracts.test.ts` pins it, so a change here is a deliberate one.
+ *
+ * Every record carries `version`. Send it back as `If-Match` on an update and a
+ * write that would overwrite someone else's newer change is refused with 409.
  */
 import {
-  CAMPAIGN_STATUSES, CAMPAIGN_TYPES, INVENTORY_KINDS, INVENTORY_STATUSES, LAB_TYPES,
-  LEGAL_APPROVALS, MISSION_DURATIONS, MISSION_REVIEW_STATUSES, MISSION_SCHEDULE_STATUSES,
-  MISSION_SCOPES, MISSION_STATUSES, OPERATOR_ROLES, RISK_LEVELS, ROBOT_STATUSES, ROLES,
-  RUN_STATES, SENSOR_STATUSES, SENSOR_TYPES, type Role,
+  CAMPAIGN_STATUSES, CAMPAIGN_TYPES, DOCUMENT_CATEGORIES, DOCUMENT_STATUSES, INVENTORY_KINDS,
+  INVENTORY_STATUSES, LAB_TYPES, LEGAL_APPROVALS, MISSION_DURATIONS, MISSION_REVIEW_STATUSES,
+  MISSION_SCHEDULE_STATUSES, MISSION_SCOPES, MISSION_STATUSES, OPERATOR_ROLES, RISK_LEVELS,
+  ROBOT_STATUSES, ROLES, RUN_STATES, SENSOR_STATUSES, SENSOR_TYPES, type Role,
 } from "./enums.ts";
 import type { FieldSpec } from "./fields.ts";
 
@@ -31,6 +34,10 @@ const PLANNERS: readonly Role[] = ["PM", "FLEET_LEAD"];
 const LEAD: readonly Role[] = ["FLEET_LEAD"];
 
 const SERVER_ID: FieldSpec = { type: "id", label: "ID", readonly: "assigned by the server" };
+const VERSION: FieldSpec = {
+  type: "integer", label: "Version",
+  readonly: "incremented on every change — send it back as If-Match so you never overwrite a newer edit",
+};
 const parent = (label: string): FieldSpec => ({
   type: "id", label, required: true, createOnly: true,
   readonly: "fixed after create — create a new record under the other parent instead",
@@ -51,6 +58,7 @@ export const RESOURCES = {
       default_sensor_rig_id: { type: "id", label: "Default sensor rig", nullable: true },
       coverage_space: { type: "json", label: "Coverage space", readonly: "set on the Coverage page (PUT /campaigns/:id/coverage-space)" },
       qa_profile: { type: "json", label: "QA profile", readonly: "not yet editable through the API" },
+      version: VERSION,
     },
   },
 
@@ -62,6 +70,7 @@ export const RESOURCES = {
       campaign_id: parent("Campaign"),
       name: { type: "string", label: "Name", required: true },
       order: { type: "integer", label: "Order", min: 0 },
+      version: VERSION,
     },
   },
 
@@ -96,6 +105,7 @@ export const RESOURCES = {
       reps_gap: derived("integer", "Reps remaining", "reps target minus reps recorded"),
       is_ready: derived("boolean", "Ready", "instructions, risk clearance and variants"),
       is_schedulable: derived("boolean", "Schedulable", "readiness, reps remaining and schedule status"),
+      version: VERSION,
     },
   },
 
@@ -115,6 +125,7 @@ export const RESOURCES = {
       commissioned_date: { type: "date", label: "Commissioned on", nullable: true },
       is_standby: { type: "boolean", label: "Standby" },
       is_cleared: derived("boolean", "Cleared", "safety, calibration and commissioning"),
+      version: VERSION,
     },
   },
 
@@ -128,6 +139,7 @@ export const RESOURCES = {
       role: { type: "enum", label: "Role", values: OPERATOR_ROLES },
       is_active: { type: "boolean", label: "Active" },
       code_number: { type: "integer", label: "Code # (run code)", nullable: true, min: 0 },
+      version: VERSION,
     },
   },
 
@@ -141,6 +153,21 @@ export const RESOURCES = {
       is_available: { type: "boolean", label: "Available" },
       capacity: { type: "integer", label: "Capacity (runs/day)", min: 0 },
       code_number: { type: "integer", label: "Code # (run code)", nullable: true, min: 0 },
+      version: VERSION,
+    },
+  },
+
+  "lab-blackouts": {
+    // Readiness has always honoured these; until now nothing could write them.
+    path: "lab-blackouts", table: "lab_blackouts", label: "lab blackout",
+    roles: { read: ALL, write: PLANNERS, delete: PLANNERS },
+    fields: {
+      id: SERVER_ID,
+      lab_id: parent("Lab"),
+      blackout_date: { type: "date", label: "Date", required: true },
+      slot_time: { type: "time", label: "Slot (blank = whole day)", nullable: true },
+      reason: { type: "text", label: "Reason", nullable: true },
+      version: VERSION,
     },
   },
 
@@ -153,6 +180,7 @@ export const RESOURCES = {
       sensor_type: { type: "string", label: "Type", required: true, suggestions: SENSOR_TYPES },
       status: { type: "enum", label: "Status", values: SENSOR_STATUSES },
       current_campaign_id: { type: "id", label: "Current campaign", nullable: true },
+      version: VERSION,
     },
   },
 
@@ -165,6 +193,7 @@ export const RESOURCES = {
       name: { type: "string", label: "Name", required: true },
       sensor_ids: { type: "id[]", label: "Sensors" },
       qa_profile: { type: "json", label: "QA expectation profile", readonly: "not yet editable through the API" },
+      version: VERSION,
     },
   },
 
@@ -180,6 +209,7 @@ export const RESOURCES = {
       unit: { type: "string", label: "Unit" },
       status: { type: "enum", label: "Status", values: INVENTORY_STATUSES },
       is_available: derived("boolean", "Available", "status"),
+      version: VERSION,
     },
   },
 
@@ -193,6 +223,7 @@ export const RESOURCES = {
       email: { type: "string", label: "Email (used to sign in)", nullable: true },
       role: { type: "enum", label: "Role", values: ROLES },
       is_active: { type: "boolean", label: "Active" },
+      version: VERSION,
     },
   },
 
@@ -225,6 +256,37 @@ export const RESOURCES = {
       collected_rows: { type: "json", label: "Collected rows", readonly: "set by uploading the run sheet" },
       execution_log: { type: "json", label: "Execution log", readonly: "set per mission during execution (PUT /runs/:id/execution/:missionId)" },
       coverage_cell: { type: "json", label: "Coverage cell", readonly: "set on the run (PUT /runs/:id/coverage-cell)" },
+      version: VERSION,
+    },
+  },
+
+  documents: {
+    // Created by uploading a file (POST /documents); metadata is editable after.
+    path: "documents", table: "documents", label: "document",
+    roles: { read: ALL, write: ALL, delete: PLANNERS },
+    fields: {
+      id: SERVER_ID,
+      filename: { type: "string", label: "Filename", required: true },
+      vault_category: { type: "enum", label: "Category", values: DOCUMENT_CATEGORIES },
+      status: { type: "enum", label: "Status", values: DOCUMENT_STATUSES },
+      linked_entity_type: { type: "string", label: "Linked to (type)", nullable: true },
+      linked_entity_id: { type: "id", label: "Linked to (id)", nullable: true },
+      mime_type: { type: "string", label: "MIME type", readonly: "recorded at upload" },
+      file_path: { type: "string", label: "Storage key", readonly: "assigned at upload" },
+      doc_metadata: { type: "json", label: "File metadata", readonly: "recorded at upload" },
+      version: VERSION,
+    },
+  },
+
+  workflows: {
+    // BPMN diagrams. Every save keeps the replaced diagram (GET /workflows/:id/versions).
+    path: "workflows", table: "workflows", label: "workflow",
+    roles: { read: ALL, write: PLANNERS, delete: PLANNERS },
+    fields: {
+      id: SERVER_ID,
+      name: { type: "string", label: "Name", required: true },
+      xml: { type: "text", label: "BPMN 2.0 XML" },
+      version: VERSION,
     },
   },
 } satisfies Record<string, ResourceSpec>;

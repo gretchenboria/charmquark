@@ -302,7 +302,8 @@ export function seedStatements(): string[] {
 
   // Wipe in FK-safe order.
   for (const table of [
-    "qa_pipeline_runs", "mission_executions", "runs", "mission_instruction_versions",
+    "audit_events", "personal_access_tokens", "workflow_versions",
+    "qa_pipeline_runs", "runs", "mission_instruction_versions",
     "missions", "mission_groups", "sensor_rigs", "inventory_items", "lab_blackouts",
     "documents", "workflows", "campaigns", "robots", "operators", "labs", "sensors", "users",
     "credit_ledger", "billing_checkout_sessions", "billing_accounts",
