@@ -26,6 +26,7 @@ import { mountTokens } from "./routes/tokens";
 import { mountAudit } from "./routes/audit";
 import { mountSettings } from "./routes/settings";
 import { mountChangesets } from "./routes/changesets";
+import { mountMcp } from "./routes/mcp";
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
@@ -79,6 +80,14 @@ mountSettings(api);
 mountChangesets(api);
 mountDev(api);
 api.route("/chat", chat);
+
+/**
+ * MCP for coding agents. Authenticated like everything else, but outside the
+ * policy guard on purpose: the endpoint is only a transport, and each tool call
+ * is re-dispatched through the guarded router below as the caller.
+ */
+app.use("/api/mcp", principal);
+mountMcp(app);
 
 app.route("/api", api);
 

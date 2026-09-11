@@ -14,6 +14,10 @@ export interface Env {
   ENVIRONMENT: string;
   AI: any;
   GEMINI_API_KEY?: string;
+  /** Assistant model overrides; defaults live in routes/chat.ts. */
+  GEMINI_MODEL?: string;
+  ANTHROPIC_API_KEY?: string;
+  ANTHROPIC_MODEL?: string;
 
   /**
    * The Firebase project whose ID tokens this API accepts (a var, not a secret —

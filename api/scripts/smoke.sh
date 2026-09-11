@@ -234,6 +234,55 @@ expect "one bad edit rejects the whole set" 422 "$CODE"
 req GET /labs "" "${PM[@]}"
 expect "so the good edit did not land" "no" "$(grep -q 'Atomic A' "$TMP/body" && echo yes || echo no)"
 
+echo "== MCP server (agents)"
+# mcp TOKEN METHOD PARAMS_JSON -> body in $TMP/body
+mcp() {
+  CODE=$(curl -s -o "$TMP/body" -w '%{http_code}' -X POST "$BASE/mcp" -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer $1" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$2\",\"params\":$3}")
+}
+# tool_text: the text of a tools/call result, parsed as JSON when possible, then a field path
+tool() {
+  node -e '
+    const r = JSON.parse(require("fs").readFileSync(process.argv[2], "utf8")).result;
+    if (process.argv[1] === "isError") { process.stdout.write(String(r.isError)); process.exit(0); }
+    let v; try { v = JSON.parse(r.content[0].text); } catch { v = r.content[0].text; }
+    for (const k of process.argv[1].split(".").filter(Boolean)) v = v?.[k];
+    process.stdout.write(v === undefined || v === null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v));
+  ' "$1" "$TMP/body"
+}
+mcp "$WRITE_TOKEN" initialize '{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}'
+expect "initialize" "2025-06-18" "$(jget result.protocolVersion)"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/mcp" -H 'Content-Type: application/json' -H "Authorization: Bearer $WRITE_TOKEN" -d '{"jsonrpc":"2.0","method":"notifications/initialized"}')
+expect "notification is 202" 202 "$CODE"
+mcp "$WRITE_TOKEN" tools/list '{}'
+expect "tools/list includes propose_changes" "yes" "$(grep -q '"propose_changes"' "$TMP/body" && echo yes)"
+CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/mcp" -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}')
+expect "MCP without a credential is refused in dev only by missing role? (dev shim allows)" "200" "$CODE"
+mcp "$WRITE_TOKEN" tools/call "{\"name\":\"get_record\",\"arguments\":{\"resource\":\"labs\",\"id\":\"$LAB\"}}"
+expect "get_record through MCP" "$LAB" "$(tool id)"
+mcp "$WRITE_TOKEN" tools/call "{\"name\":\"propose_changes\",\"arguments\":{\"summary\":\"agent smoke\",\"changes\":[{\"resource\":\"labs\",\"op\":\"update\",\"id\":\"$LAB\",\"data\":{\"capacity\":5}}]}}"
+expect "agent proposes" "true" "$(tool ok)"
+AGENT_CS=$(tool id)
+mcp "$WRITE_TOKEN" tools/call "{\"name\":\"apply_changes\",\"arguments\":{\"changeset_id\":\"$AGENT_CS\"}}"
+expect "agent applies with a write token" "APPLIED" "$(tool status)"
+req GET "/audit?resource=labs&entity_id=$LAB&limit=1" "" "${OP[@]}"
+expect "agent change audited as pat" "pat" "$(jget 0.via)"
+
+req POST /tokens '{"name":"smoke mcp read","scopes":["read"]}' "${LEAD[@]}" "${AS_LEAD[@]}"
+MCP_READ=$(jget token)
+mcp "$MCP_READ" tools/call "{\"name\":\"get_record\",\"arguments\":{\"resource\":\"labs\",\"id\":\"$LAB\"}}"
+expect "read token can use read tools over MCP" "false" "$(tool isError)"
+mcp "$MCP_READ" tools/call "{\"name\":\"propose_changes\",\"arguments\":{\"changes\":[{\"resource\":\"labs\",\"op\":\"update\",\"id\":\"$LAB\",\"data\":{\"capacity\":2}}]}}"
+expect "read token cannot propose (403 inside the tool)" "true" "$(tool isError)"
+mcp "$WRITE_TOKEN" tools/call '{"name":"update_settings","arguments":{"changes":{"agents.mcp_enabled":false}}}'
+expect "agent may change settings as a Fleet Lead" "false" "$(tool isError)"
+mcp "$WRITE_TOKEN" ping '{}'
+expect "MCP off returns 404" 404 "$CODE"
+req PATCH /settings '{"agents.mcp_enabled":null}' "${LEAD[@]}"
+mcp "$WRITE_TOKEN" ping '{}'
+expect "MCP back on" 200 "$CODE"
+req PATCH "/labs/$LAB" '{"capacity":4}' "${PM[@]}"
+
 echo
 echo "smoke: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

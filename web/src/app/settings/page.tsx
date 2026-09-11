@@ -39,7 +39,21 @@ function SettingRow({ s, canEdit, onChange }: { s: SettingView; canEdit: boolean
   };
 
   let control: React.ReactNode;
-  if (typeof s.value === "number") {
+  if (typeof s.value === "boolean") {
+    control = (
+      <label className="inline-flex items-center gap-2 text-sm">
+        <input type="checkbox" disabled={!canEdit} checked={Boolean(draft)} onChange={(e) => setDraft(e.target.checked)} />
+        {draft ? "On" : "Off"}
+      </label>
+    );
+  } else if (s.key === "agents.llm_provider") {
+    control = (
+      <select className="cq-input w-40" disabled={!canEdit} value={String(draft)} onChange={(e) => setDraft(e.target.value)}>
+        <option value="gemini">Gemini</option>
+        <option value="anthropic">Anthropic (Claude)</option>
+      </select>
+    );
+  } else if (typeof s.value === "number") {
     control = <input type="number" className="cq-input w-32" disabled={!canEdit} value={String(draft)} onChange={(e) => setDraft(e.target.value)} />;
   } else if (typeof s.value === "string") {
     control = <input type="time" className="cq-input w-32" disabled={!canEdit} value={String(draft)} onChange={(e) => setDraft(e.target.value)} />;

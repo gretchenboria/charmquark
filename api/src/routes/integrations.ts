@@ -13,7 +13,7 @@ import { HTTPException } from "hono/http-exception";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
-export const PROVIDERS = ["roboflow"] as const;
+export const PROVIDERS = ["roboflow", "gemini", "anthropic"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 const isProvider = (v: string): v is Provider => (PROVIDERS as readonly string[]).includes(v);
 
