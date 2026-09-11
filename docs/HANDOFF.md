@@ -161,8 +161,7 @@ COLLECTED. It has already caught two genuine bugs — trust it.
   verified email; the header shim works only with `ENVIRONMENT=development`. See
   `docs/ACCESS.md`, including the going-live checklist: `INTEGRATION_KEY_SECRET`,
   `BOOTSTRAP_ADMIN_EMAILS`, GitHub `NEXT_PUBLIC_FIREBASE_*` variables, and a users
-  row with an email for every person. There are no API tokens for agents yet
-  (planned).
+  row with an email for every person. Agents use API tokens (`cq_pat_…`).
 - **Integration keys were reset** by migration `0006`: the old plaintext rows are
   dropped, so re-enter the Roboflow key on the Integrations page.
 - The `ROBOTOPS_SPEC.md` capability set is largely unbuilt — see
@@ -175,10 +174,22 @@ COLLECTED. It has already caught two genuine bugs — trust it.
 Metered payments (1 credit = 1 confirmed run, Stripe Checkout, D1 ledger) have
 landed. See `docs/BILLING.md`.
 
-The agentic-configuration roadmap is in progress: Phase 0 (real auth, permission
-fixes, sealed integration keys, CI gate) is done. Next up are a shared contracts
-package, complete CRUD with audit and optimistic locking, an editable UI, then
-the MCP server and Charmy tool layer.
+The agentic-configuration roadmap is in progress. These have landed:
+- real auth and CI gates
+- the contracts package
+- CRUD with audit and `If-Match`
+- settings and change sets
+- agent guardrails
+- the editable UI
+- the MCP server and tool-using Charmy
+
+Phase 5 makes workflows meaningful:
+- BPMN tasks bind to a service catalogue (`cq:service`) and diagrams are validated on the server.
+- The designer has a binding panel and a restricted palette.
+- Diagrams can be generated from a graph or a description.
+- W1–W4 are seeded as diagrams.
+
+Running diagrams is a separate follow-up. After that come customer config-as-code and the central store.
 
 ## 10. Map
 
@@ -195,6 +206,10 @@ the MCP server and Charmy tool layer.
 | `api/src/changes.ts` | The shared write path: `If-Match`/`version` checks (409 on conflict) and the audit trail (`GET /api/audit`). |
 | `api/src/changesets.ts` | Change sets: batched edits previewed (diff + problems) and applied atomically, version-pinned. How agents should change things. |
 | `packages/contracts/src/settings.ts` + `api/src/settings.ts` | Deployment settings (effort budget, slot window, working days, hazard lexicon, limits). Defaults = the old constants; overrides in D1. |
+| `packages/contracts/src/workflows.ts` | Workflow service catalogue, the `cq:` BPMN extension, the JSON graph schema, the graph → laid-out BPMN builder, and the W1–W4 templates. |
+| `api/src/workflow.ts` + `api/src/routes/workflows.ts` | Server-side BPMN validation (bpmn-moddle) and the workflow routes: CRUD, versions, validate, generate. See `docs/ACCESS.md`. |
+| `api/src/agent/` | The agent tool registry (`tools.ts`), MCP protocol (`mcp.ts`), model-neutral assistant loop (`llm.ts`) and workflow generation (`workflowGen.ts`). |
+| `web/src/components/BpmnDesigner.tsx` | bpmn-js designer: restricted palette, service binding panel, live checks, If-Match saves, version history. |
 | `api/scripts/smoke.sh` | End-to-end API checks against a local Worker; CI runs it on every PR. `npm --prefix api run smoke`. |
 | `web/src/lib/api.ts` | Typed API client — the wire contract. |
 | `web/src/app/globals.css` | Brand tokens. |

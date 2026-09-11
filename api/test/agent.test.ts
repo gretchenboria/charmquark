@@ -8,6 +8,7 @@ import { test } from "node:test";
 import { AGENT_TOOLS, ToolArgError, toolByName } from "../src/agent/tools.ts";
 import { SUPPORTED_PROTOCOL_VERSIONS, handleMcpMessage } from "../src/agent/mcp.ts";
 import { anthropicProvider, geminiProvider, runChat, type LlmProvider } from "../src/agent/llm.ts";
+import { WORKFLOW_SERVICES } from "../../packages/contracts/src/workflows.ts";
 
 // ---------------------------------------------------------------- registry
 test("tool names are unique and every tool has a schema", () => {
@@ -36,6 +37,22 @@ test("tools build API calls and reject bad input", () => {
   });
   const schema = toolByName("describe_schema")!.plan({ resource: "labs" }) as { local: { resources: Record<string, unknown> } };
   assert.deepEqual(Object.keys(schema.local.resources), ["labs"]);
+});
+
+test("workflow tools: validate by id or xml, generate from graph or description", () => {
+  assert.deepEqual(toolByName("validate_bpmn")!.plan({ id: "w1" }), { method: "GET", path: "/workflows/w1/validate" });
+  assert.deepEqual(toolByName("validate_bpmn")!.plan({ xml: "<x/>" }), { method: "POST", path: "/workflows/validate", body: { xml: "<x/>" } });
+  assert.throws(() => toolByName("validate_bpmn")!.plan({}), ToolArgError);
+  const graph = { nodes: [], flows: [] };
+  assert.deepEqual(toolByName("generate_workflow")!.plan({ graph, workflow_id: "w1", if_match: 2 }), {
+    method: "POST", path: "/workflows/generate", body: { graph, workflow_id: "w1" }, headers: { "If-Match": "2" },
+  });
+  assert.throws(() => toolByName("generate_workflow")!.plan({}), ToolArgError);
+  assert.throws(() => toolByName("generate_workflow")!.plan({ graph, description: "both" }), ToolArgError);
+});
+
+test("every workflow service that names a tool names a real one", () => {
+  for (const s of WORKFLOW_SERVICES) if (s.tool) assert.ok(toolByName(s.tool), `${s.id} → ${s.tool}`);
 });
 
 // ---------------------------------------------------------------- MCP

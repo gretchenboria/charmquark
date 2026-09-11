@@ -306,13 +306,30 @@ export interface User {
   is_active: boolean;
 }
 
-// ---- BPMN workflow diagrams (Docs/workflows/*.bpmn) ----
+// ---- BPMN workflow diagrams (validation report and graph types come from @contracts) ----
 export interface WorkflowSummary {
   id: string;
   name: string;
 }
 export interface WorkflowContent extends WorkflowSummary {
   xml: string;
+  version: number;
+}
+export interface WorkflowVersionSummary {
+  id: string;
+  version: number;
+  name: string;
+  saved_by: string | null;
+  created_at: string;
+  xml_chars: number;
+}
+export interface WorkflowVersion {
+  workflow_id: string;
+  version: number;
+  name: string;
+  xml: string;
+  saved_by: string | null;
+  created_at: string;
 }
 
 // ---- auto-scheduling (automated run scheduling) — mirrors app/schemas.py ----

@@ -97,13 +97,20 @@ export default function WorkflowsPage() {
                   </li>
                 ))}
               </ol>
-              <div className="mt-4">
+              <div className="mt-4 flex items-center gap-3">
                 <button
                   onClick={() => setActive(w)}
                   className="rounded-md bg-[color:var(--cq-iris)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[color:var(--cq-violet)]"
                 >
                   Start guided run
                 </button>
+                {/* The seeded diagram for this workflow shares its id. */}
+                <a
+                  href={`/workflows/designer?id=${w.id}`}
+                  className="text-xs font-medium text-[color:var(--cq-iris)] hover:underline"
+                >
+                  View diagram
+                </a>
               </div>
             </div>
           ))}

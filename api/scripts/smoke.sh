@@ -99,13 +99,40 @@ echo "== workflows: rename, history, delete"
 req POST /workflows '{"name":"smoke flow"}' "${PM[@]}"
 expect "create workflow" 201 "$CODE"; WF=$(jget id)
 req PUT "/workflows/$WF" '{"xml":"<definitions id=\"smoke\"/>"}' "${PM[@]}"
-expect "designer save" 200 "$CODE"; WV=$(jget version)
+expect "XML that is not BPMN is refused" 400 "$CODE"
+GRAPH='{"nodes":[{"id":"s","type":"start"},{"id":"go","type":"service_task","name":"Confirm","service":"confirm_run"},{"id":"e","type":"end"}],"flows":[{"from":"s","to":"go"},{"from":"go","to":"e"}]}'
+req POST /workflows/generate "{\"workflow_id\":\"$WF\",\"graph\":$GRAPH}" "${PM[@]}"
+expect "a graph saves as a new diagram version" 200 "$CODE"; WV=$(jget workflow.version)
+expect "the generated diagram validates" "true" "$(jget report.ok)"
+expect "its service binding is reported" "confirm_run" "$(jget report.bindings.0.service)"
 req GET "/workflows/$WF/versions" "" "${OP[@]}"
 expect "replaced diagram kept as a version" "1" "$(jget 0.version)"
 req PATCH "/workflows/$WF" '{"name":"stale rename"}' "${PM[@]}" -H 'If-Match: 1'
 expect "stale workflow rename is a 409" 409 "$CODE"
 req PATCH "/workflows/$WF" '{"name":"smoke flow v2"}' "${PM[@]}" -H "If-Match: $WV"
 expect "workflow rename" "smoke flow v2" "$(jget name)"
+
+echo "== workflows: service catalogue and validation"
+req GET /workflows/services "" "${OP[@]}"
+expect "anyone can read the service catalogue" "yes" "$(grep -q '"confirm_run"' "$TMP/body" && echo yes)"
+req GET /workflows/w1_task_ready/validate "" "${OP[@]}"
+expect "the seeded W1 diagram is valid" "true" "$(jget ok)"
+BPMN_HEAD='<bpmn:definitions xmlns:bpmn=\"http://www.omg.org/spec/BPMN/20100524/MODEL\" xmlns:cq=\"https://charmquark.app/schema/bpmn/cq/1.0\" id=\"d\"><bpmn:process id=\"p\"><bpmn:startEvent id=\"s\"/>'
+req PUT "/workflows/$WF" "{\"xml\":\"$BPMN_HEAD<bpmn:serviceTask id=\\\"t\\\" cq:service=\\\"teleport\\\"/></bpmn:process></bpmn:definitions>\"}" "${PM[@]}"
+expect "an unknown cq:service is refused on save" 400 "$CODE"
+HALF="{\"xml\":\"$BPMN_HEAD<bpmn:serviceTask id=\\\"t\\\" cq:service=\\\"confirm_run\\\"/></bpmn:process></bpmn:definitions>\"}"
+req POST /workflows/validate "$HALF" "${PM[@]}"
+expect "validate reports an unconnected task as unreachable" "unreachable" "$(jget errors.0.code)"
+req PUT "/workflows/$WF" "$HALF" "${PM[@]}"
+expect "a half-drawn diagram still saves" 200 "$CODE"
+req POST /workflows/generate '{"graph":{"nodes":[{"id":"s","type":"start"}],"flows":[]}}' "${PM[@]}"
+expect "an invalid graph is a 400" 400 "$CODE"
+req POST /workflows/generate "{\"graph\":$GRAPH}" "${OP[@]}"
+expect "operators cannot generate workflows" 403 "$CODE"
+req PATCH /settings '{"agents.charmy_enabled":false}' "${LEAD[@]}"
+req POST /workflows/generate '{"description":"confirm a run"}' "${PM[@]}"
+expect "AI generation follows the assistant switch" 404 "$CODE"
+req PATCH /settings '{"agents.charmy_enabled":null}' "${LEAD[@]}"
 req DELETE "/workflows/$WF" "" "${PM[@]}"
 expect "delete workflow" 204 "$CODE"
 
@@ -260,6 +287,11 @@ CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/mcp" -H 'Content-Ty
 expect "MCP without a credential is refused in dev only by missing role? (dev shim allows)" "200" "$CODE"
 mcp "$WRITE_TOKEN" tools/call "{\"name\":\"get_record\",\"arguments\":{\"resource\":\"labs\",\"id\":\"$LAB\"}}"
 expect "get_record through MCP" "$LAB" "$(tool id)"
+mcp "$WRITE_TOKEN" tools/call '{"name":"validate_bpmn","arguments":{"id":"w2_compose_confirm_session"}}'
+expect "validate_bpmn through MCP" "true" "$(tool ok)"
+mcp "$WRITE_TOKEN" tools/call "{\"name\":\"generate_workflow\",\"arguments\":{\"name\":\"agent flow\",\"graph\":$GRAPH}}"
+expect "generate_workflow through MCP" "agent flow" "$(tool workflow.name)"
+req DELETE "/workflows/$(tool workflow.id)" "" "${PM[@]}"
 mcp "$WRITE_TOKEN" tools/call "{\"name\":\"propose_changes\",\"arguments\":{\"summary\":\"agent smoke\",\"changes\":[{\"resource\":\"labs\",\"op\":\"update\",\"id\":\"$LAB\",\"data\":{\"capacity\":5}}]}}"
 expect "agent proposes" "true" "$(tool ok)"
 AGENT_CS=$(tool id)

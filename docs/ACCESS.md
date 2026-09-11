@@ -128,6 +128,35 @@ lists, and export and coverage limits. A Fleet Lead changes them with
 Changes are validated together (a floor above the budget is refused) and
 audited.
 
+## Workflows (BPMN)
+
+A workflow task is bound to a CharmQuark service with `cq:service` on a
+`bpmn:serviceTask` (the system does it) or a `bpmn:userTask` (a person does it),
+using `xmlns:cq="https://charmquark.app/schema/bpmn/cq/1.0"`. The catalogue is
+`WORKFLOW_SERVICES` in `packages/contracts/src/workflows.ts`, served at
+`GET /api/workflows/services`. Diagrams are not executed yet.
+
+| Route | Who | What |
+|---|---|---|
+| `GET /api/workflows/:id/validate` | everyone | Check a saved diagram |
+| `POST /api/workflows/validate {xml}` | PM, Fleet Lead | Check a draft without saving |
+| `POST /api/workflows/generate {graph \| description, name?, workflow_id?}` | PM, Fleet Lead | Build a laid-out diagram from a JSON graph, or have the deployment's model design the graph from a description. Creates a workflow, or saves a new version of `workflow_id` (send `If-Match`) |
+| `PUT`/`PATCH /api/workflows/:id` | PM, Fleet Lead | Save; the replaced diagram is kept in `GET /api/workflows/:id/versions` |
+
+The check returns `errors`, `warnings` and the service `bindings`.
+
+- **Errors:** XML that isn't BPMN, an unknown service, an element type outside the supported set, a binding on the wrong element, a missing start event, or a node unreachable from a start.
+- **Warnings:** an unbound service task, a human service on a service task, a missing end event, or a node that leads nowhere.
+
+A save refuses only XML that isn't BPMN and unknown services, so a half-drawn
+diagram still saves.
+
+Generation from a description follows `agents.charmy_enabled` and
+`agents.llm_provider`. The model must answer with a graph, which is checked
+against the catalogue, with one retry, before any XML is built. Sending a graph
+needs no model and always works. MCP clients get the same routes as the tools
+`list_service_tasks`, `validate_bpmn` and `generate_workflow`.
+
 ## Going live checklist
 
 ```bash

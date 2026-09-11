@@ -11,6 +11,7 @@
  * of runs spread across the pipeline states.
  */
 import { autocheck, parseManifest, parseProfile } from "./qaAutocheck.ts";
+import { WORKFLOW_TEMPLATES, graphToBpmn } from "../../packages/contracts/src/workflows.ts";
 
 // Stable ids so the seed is idempotent and re-runnable.
 const ID = {
@@ -396,6 +397,12 @@ export function seedStatements(): string[] {
 
   // The completed run carries the cell it ran in, so the run detail can show it.
   out.push(`UPDATE runs SET coverage_cell = ${q(JSON.stringify({ lighting: "bright", surface: "concrete", payload: "empty" }))} WHERE id = ${q(s(1))}`);
+
+  // The guided workflows as diagrams bound to the service catalogue, under the
+  // same ids the guided runners use, so each runner links to its diagram.
+  for (const t of WORKFLOW_TEMPLATES) {
+    out.push(`INSERT INTO workflows (id, name, xml) VALUES (${q(t.id)}, ${q(t.name)}, ${q(graphToBpmn({ ...t.graph, name: t.name }))})`);
+  }
 
   return out;
 }
