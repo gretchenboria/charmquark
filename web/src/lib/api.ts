@@ -76,6 +76,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...authHeaders() },
     cache: "no-store",
+    credentials: "same-origin",
     ...init,
   });
   if (!res.ok) {
@@ -243,6 +244,7 @@ export const api = {
     const res = await fetch(`${BASE}/campaigns/${campaignId}/catalog.csv`, {
       headers: { ...authHeaders() },
       cache: "no-store",
+      credentials: "same-origin",
     });
     if (!res.ok) {
       let detail: unknown;

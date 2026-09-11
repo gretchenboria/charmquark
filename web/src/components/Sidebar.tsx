@@ -133,19 +133,19 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
   },
 ];
 
-function UtcClock() { 
-  return ( 
-    <div className="mb-4 mt-2 flex items-center justify-between rounded bg-white/5 px-3 py-2 text-xs font-medium text-[color:var(--cq-iris)]"> 
-      <div className="flex items-center gap-2"> 
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"> 
-          <circle cx="12" cy="12" r="10"></circle> 
-          <polyline points="12 6 12 12 16 14"></polyline> 
-        </svg> 
-        Global System Time 
-      </div> 
-      <span className="font-mono">UTC</span> 
-    </div> 
-  ); 
+function UtcClock() {
+  return (
+    <div className="mb-4 mt-2 flex items-center justify-between rounded bg-white/5 px-3 py-2 text-xs font-medium text-white/90">
+      <div className="flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        Global System Time
+      </div>
+      <span className="font-mono text-white">UTC</span>
+    </div>
+  );
 } 
 
 export function Sidebar() {
@@ -162,14 +162,15 @@ export function Sidebar() {
   return (
     <nav className="cq-rail flex w-64 shrink-0 flex-col">
       <div className="flex flex-col items-center gap-2.5 border-b border-white/10 px-4 pb-5 pt-6">
-        <Image
-          src="/cq-logo.png"
-          alt=""
-          width={148}
-          height={148}
-          priority
-          className="drop-shadow-[0_6px_26px_rgba(155,111,212,0.55)]"
-        />
+        <div className="rounded-xl bg-white p-2 shadow-sm mb-1">
+          <Image
+            src="/cq-logo.png"
+            alt=""
+            width={128}
+            height={128}
+            priority
+          />
+        </div>
         <span
           className="cq-display text-[17px] font-bold uppercase tracking-[0.22em] text-white/90"
           style={{ textShadow: "0 1px 10px rgba(155,111,212,0.35)" }}
