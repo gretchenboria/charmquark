@@ -45,6 +45,43 @@ import type {
 
 const BASE = "/api";
 
+export interface AuditEvent {
+  id: string;
+  at: string;
+  actor_subject: string;
+  actor_name: string | null;
+  via: "firebase" | "pat" | "dev-shim" | "system";
+  resource: string;
+  entity_id: string | null;
+  action: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+}
+
+export interface SettingView {
+  key: string;
+  group: string;
+  label: string;
+  description: string;
+  value: unknown;
+  default: unknown;
+  overridden: boolean;
+  updated_by: string | null;
+  updated_at: string | null;
+}
+
+export interface ApiToken {
+  id: string;
+  user_subject: string;
+  name: string;
+  token_prefix: string;
+  scopes: string[];
+  created_at: string;
+  last_used_at: string | null;
+  expires_at: string | null;
+  revoked_at: string | null;
+}
+
 export class ApiError extends Error {
   status: number;
   detail: unknown;
@@ -86,10 +123,15 @@ async function authHeaders(): Promise<Record<string, string>> {
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...await authHeaders() },
     cache: "no-store",
     credentials: "same-origin",
     ...init,
+    // Merged, so a caller's extra header (If-Match) never drops the auth headers.
+    headers: {
+      "Content-Type": "application/json",
+      ...await authHeaders(),
+      ...(init?.headers as Record<string, string> | undefined),
+    },
   });
   if (!res.ok) {
     let detail: unknown;
@@ -303,6 +345,24 @@ export const api = {
     req<CheckoutClaim>(`/billing/claim?session_id=${encodeURIComponent(sessionId)}`),
 
   // users (RBAC admin)
+  /**
+   * PATCH one record, honouring its version: a 409 ApiError carries
+   * `detail.current` (the record as it is now) when someone else changed it first.
+   */
+  updateRecord: <T>(path: string, id: string, body: Record<string, unknown>, version?: number) =>
+    req<T>(`/${path}/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+      headers: version ? { "If-Match": String(version) } : undefined,
+    }),
+  listAudit: (q: { resource?: string; entity_id?: string; limit?: number }) =>
+    req<AuditEvent[]>(`/audit?${new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))}`),
+  getSettings: () => req<SettingView[]>("/settings"),
+  updateSettings: (changes: Record<string, unknown>) => patch<SettingView[]>("/settings", changes),
+  listTokens: () => req<ApiToken[]>("/tokens"),
+  createToken: (b: { name: string; scopes: string[]; expires_in_days: number }) => post<ApiToken & { token: string }>("/tokens", b),
+  revokeToken: (id: string) => del(`/tokens/${id}`),
+
   /** The signed-in caller as the server resolved them — the source of truth for role. */
   me: () =>
     req<{ name: string; role: "PM" | "FLEET_LEAD" | "ROBOT_OPERATOR"; subject: string; email: string | null; auth: string }>("/me"),

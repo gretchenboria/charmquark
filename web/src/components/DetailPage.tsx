@@ -13,6 +13,7 @@ export function DetailPage({
   backHref,
   backLabel,
   fields,
+  editor,
   actions,
   children,
 }: {
@@ -21,6 +22,8 @@ export function DetailPage({
   backHref: string;
   backLabel: string;
   fields: Field[];
+  /** An editable field grid shown in place of the read-only `fields` card. */
+  editor?: ReactNode;
   actions?: ReactNode;
   children?: ReactNode;
 }) {
@@ -40,14 +43,16 @@ export function DetailPage({
       </header>
       <div className="flex-1 overflow-auto p-6">
         <Card className="mb-6 max-w-2xl">
-          <dl className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1 sm:gap-y-2 text-sm">
-            {fields.map((f) => (
-              <div key={f.label} className="contents">
-                <dt className="text-neutral-400">{f.label}</dt>
-                <dd className="text-neutral-800">{f.value}</dd>
-              </div>
-            ))}
-          </dl>
+          {editor ?? (
+            <dl className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-1 sm:gap-y-2 text-sm">
+              {fields.map((f) => (
+                <div key={f.label} className="contents">
+                  <dt className="text-neutral-400">{f.label}</dt>
+                  <dd className="text-neutral-800">{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </Card>
         {children}
       </div>

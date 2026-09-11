@@ -8,6 +8,8 @@ import { canDeleteCampaign } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
 import type { SensorRig, InventoryItem, Run, Campaign, Mission, MissionGroup } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
+import { FieldGrid } from "@/components/FieldGrid";
+import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
 
 export default function CampaignDetail() {
@@ -47,6 +49,7 @@ export default function CampaignDetail() {
 
   return (
     <DetailPage
+      editor={<FieldGrid resource="campaigns" record={campaign} onSaved={(u) => setCampaign((prev) => (prev ? { ...prev, ...u } : u))} />}
       title={campaign.name}
       subtitle={`${campaign.campaign_type} · target N ${campaign.target_n}`}
       backHref="/campaigns"
@@ -92,6 +95,9 @@ export default function CampaignDetail() {
             note: `${s.slot_date ?? ""} ${s.state}`,
           }))}
         />
+      </Section>
+      <Section title="Activity">
+        <ActivityPanel resource="campaigns" entityId={campaign.id} refreshKey={(campaign as { version?: number }).version} />
       </Section>
     </DetailPage>
   );

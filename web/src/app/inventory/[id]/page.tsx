@@ -8,6 +8,8 @@ import { canDelete } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
 import type { InventoryItem, Campaign, Mission } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
+import { FieldGrid } from "@/components/FieldGrid";
+import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
 
 export default function InventoryDetail() {
@@ -36,6 +38,7 @@ export default function InventoryDetail() {
 
   return (
     <DetailPage
+      editor={<FieldGrid resource="inventory-items" record={item} onSaved={(u) => setItem((prev) => (prev ? { ...prev, ...u } : u))} />}
       title={item.name}
       subtitle={`${item.kind} · ${item.status}`}
       backHref="/inventory"
@@ -70,6 +73,9 @@ export default function InventoryDetail() {
           items={missions.map((t) => ({ href: `/missions/${t.id}`, label: `${t.mission_code} · ${t.name}` }))}
           empty="Not required by any mission."
         />
+      </Section>
+      <Section title="Activity">
+        <ActivityPanel resource="inventory-items" entityId={item.id} refreshKey={(item as { version?: number }).version} />
       </Section>
     </DetailPage>
   );

@@ -141,6 +141,7 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
       { href: "/home", label: "Tutorial", icon: IconWorkflow },
       { href: "/api-reference", label: "API Reference", icon: IconLab },
       { href: "/integrations", label: "Integrations", icon: IconSettings },
+      { href: "/settings", label: "Settings & API tokens", icon: IconSettings },
       { href: "https://github.com/gretchenboria/charmquark", label: "README", icon: IconMission },
     ],
   },

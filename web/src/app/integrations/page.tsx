@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppShell } from "@/components/AppShell";
 import { api } from "@/lib/api";
 
 export default function IntegrationsPage() {
@@ -45,7 +44,8 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <AppShell>
+    // The root layout already wraps every page in AppShell; wrapping again drew a second sidebar.
+    <div className="h-full overflow-auto">
       <div className="mx-auto max-w-3xl py-10 px-8">
         <h1 className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">Bring Your Own Key (BYOK)</h1>
         <p className="mt-4 text-[15px] text-[color:var(--cq-ink-soft)]">
@@ -125,6 +125,6 @@ export default function IntegrationsPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </div>
   );
 }

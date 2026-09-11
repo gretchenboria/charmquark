@@ -8,6 +8,8 @@ import { canDelete, canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
 import type { Operator, Run } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
+import { FieldGrid } from "@/components/FieldGrid";
+import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
@@ -81,6 +83,7 @@ export default function OperatorDetail() {
 
   return (
     <DetailPage
+      editor={<FieldGrid resource="operators" record={o} onSaved={(u) => setO((prev) => (prev ? { ...prev, ...u } : u))} />}
       title={o.operator_code}
       subtitle={o.role}
       backHref="/operators"
@@ -159,6 +162,9 @@ export default function OperatorDetail() {
           }))}
           empty="Not moderating any run."
         />
+      </Section>
+      <Section title="Activity">
+        <ActivityPanel resource="operators" entityId={o.id} refreshKey={(o as { version?: number }).version} />
       </Section>
     </DetailPage>
   );

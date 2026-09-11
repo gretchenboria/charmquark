@@ -8,6 +8,8 @@ import { canDelete, canWriteCatalog } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
 import type { Sensor, SensorRig } from "@/lib/types";
 import { DetailPage, LinkList, Section } from "@/components/DetailPage";
+import { FieldGrid } from "@/components/FieldGrid";
+import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
@@ -78,6 +80,7 @@ export default function SensorDetail() {
 
   return (
     <DetailPage
+      editor={<FieldGrid resource="sensors" record={sensor} onSaved={(u) => setSensor((prev) => (prev ? { ...prev, ...u } : u))} />}
       title={sensor.asset_name}
       subtitle={sensor.sensor_type}
       backHref="/sensors"
@@ -148,6 +151,9 @@ export default function SensorDetail() {
           items={fleets.map((f) => ({ label: f.name, note: `${f.sensor_ids.length} sensors` }))}
           empty="Not in any fleet."
         />
+      </Section>
+      <Section title="Activity">
+        <ActivityPanel resource="sensors" entityId={sensor.id} refreshKey={(sensor as { version?: number }).version} />
       </Section>
     </DetailPage>
   );
