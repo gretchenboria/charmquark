@@ -30,16 +30,6 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <div className="mt-16 w-full overflow-hidden rounded-xl border border-neutral-200 shadow-2xl">
-        <Image 
-          src="/screenshot-dashboard.png" 
-          alt="CharmQuark Dashboard" 
-          width={1920} 
-          height={1080} 
-          className="w-full object-cover"
-        />
-      </div>
-
       <section className="mt-24" id="problem" aria-labelledby="the-problem">
         <h2 id="the-problem" className="cq-display text-2xl font-semibold border-b border-[color:var(--cq-line)] pb-2">1. The Problem</h2>
         <div className="mt-6 text-[16px] leading-relaxed text-[color:var(--cq-ink-soft)] space-y-4 max-w-3xl">
