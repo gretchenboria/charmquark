@@ -61,7 +61,7 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
       body: (
         <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-600">
           <li>Build a <b>campaign</b> → mission groups → missions (ready = instructions + low-risk/legal-approved).</li>
-          <li>Add resources: robots (consent · booking · survey), operators, labs, sensors.</li>
+          <li>Add resources: robots (safety · calib · commission), operators, labs, sensors.</li>
           <li>On the <b>Schedule</b>, add runs to a day (4 slots/lab) and fill each role from eligible-only pickers.</li>
           <li>Confirm → run gets an encoded code, then moves down the data pipeline with QA.</li>
         </ul>

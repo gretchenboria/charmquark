@@ -104,12 +104,12 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
     ],
   },
   {
-    title: "Operations",
+    title: "RobotOps",
     items: [
-      { href: "/coverage", label: "Coverage", icon: IconDashboard },
+      { href: "/coverage", label: "Collection Coverage", icon: IconDashboard },
       { href: "/schedule", label: "Run Board", icon: IconCalendar },
-      { href: "/auto-schedule", label: "Auto-Schedule", icon: IconWorkflow },
-      { href: "/monitoring", label: "Monitoring", icon: IconReport },
+      { href: "/auto-schedule", label: "Auto-Scheduler", icon: IconWorkflow },
+      { href: "/monitoring", label: "Live Telemetry", icon: IconReport },
     ],
   },
   {
@@ -122,10 +122,10 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
     ],
   },
   {
-    title: "Insights",
+    title: "DataOps Pipeline",
     items: [
-      { href: "/reports", label: "Reports", icon: IconReport },
-      { href: "/workflows", label: "Workflow Designer", icon: IconWorkflow },
+      { href: "/reports", label: "Dataset Yield Reports", icon: IconReport },
+      { href: "/workflows", label: "QA Pipeline Designer", icon: IconWorkflow },
     ],
   },
   {

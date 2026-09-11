@@ -212,7 +212,7 @@ export default function HomePage() {
             {/* Metrics & charts — the full command-center dashboard for PM / Fleet Lead. */}
             {showAnalytics && metrics && (
               <>
-                <Panel title={`Collection progress — ${metrics.progressPct}% of target N ${metrics.targetN}`}>
+                <Panel title={`Data yield — ${metrics.progressPct}% of target N ${metrics.targetN}`}>
                   <Progress pct={metrics.progressPct} />
                   <div className="mt-2 flex justify-between text-xs text-neutral-400">
                     <span>{metrics.collectedPlus} collected</span>
@@ -221,7 +221,7 @@ export default function HomePage() {
                   </div>
                 </Panel>
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  <Panel title="Pipeline funnel">
+                  <Panel title="Data QA Pipeline">
                     <Funnel rows={funnel} />
                   </Panel>
                   <Panel title="Readiness mix">

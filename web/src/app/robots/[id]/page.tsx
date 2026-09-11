@@ -147,7 +147,7 @@ export default function RobotDetail() {
             <label className="col-span-2 flex items-center gap-2 text-sm text-neutral-700">
               <input type="checkbox" checked={form.safety_certified}
                 onChange={(e) => setForm({ ...form, safety_certified: e.target.checked })} />
-              Consent signed
+              Safety certified
             </label>
             <label className="col-span-2 flex items-center gap-2 text-sm text-neutral-700">
               <input type="checkbox" checked={form.calibration_valid}
@@ -180,8 +180,8 @@ export default function RobotDetail() {
 
       <Section title="Clearance checklist">
         <p className="mb-2 text-xs text-neutral-400">
-          These come from external apps (consent, Ask survey, Bookable) that aren’t integrated,
-          so a PM or Robot Operator marks each done here. All must be checked before this robot
+          These come from external safety and QA systems that aren’t fully integrated,
+          so a PM or Operator marks each done here. All must be checked before this robot
           can be added to a run.
         </p>
         <ReadinessChecklist items={p.checklist ?? []} canEdit={canUpdate(user?.role)} onToggle={toggle} />
