@@ -12,11 +12,11 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import type { Env, Vars } from "../types";
-import { fromBool, jsonCol, num, uuid, type Row } from "../db";
+import { num, uuid, type Row } from "../db";
 import { notFound } from "../errors";
 import { requireUserAdmin } from "../auth";
-import { audit, versionedDelete, versionedUpdate } from "../changes";
-import { RESOURCES, assertValid, writableFields, type FieldSpec, type ResourceSpec } from "../contracts";
+import { audit, storageTransforms, versionedDelete, versionedUpdate } from "../changes";
+import { RESOURCES, assertValid, writableFields, type ResourceSpec } from "../contracts";
 import * as S from "../serialize";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
@@ -32,16 +32,6 @@ interface CrudSpec {
   writeGuard?: (c: Context<{ Bindings: Env; Variables: Vars }>) => Promise<void>;
   /** Default ORDER BY clause. */
   orderBy?: string;
-}
-
-/** How a field's value is stored: SQLite has no boolean, lists and objects are JSON text. */
-function storageTransforms(fields: Record<string, FieldSpec>): Record<string, (v: unknown) => unknown> {
-  const out: Record<string, (v: unknown) => unknown> = {};
-  for (const [name, f] of Object.entries(fields)) {
-    if (f.type === "boolean") out[name] = (v) => fromBool(v);
-    else if (f.type === "id[]" || f.type === "json") out[name] = (v) => jsonCol(v ?? []);
-  }
-  return out;
 }
 
 /** Mount list/get/create/update/delete for one table. */

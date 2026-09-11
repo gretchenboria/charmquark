@@ -163,6 +163,77 @@ expect "operator cannot accept a proposal" 403 "$CODE"
 req DELETE "/labs/$LAB" "" "${PM[@]}"
 expect "PM cannot delete a lab" 403 "$CODE"
 
+echo "== settings"
+req GET /settings "" "${OP[@]}"
+BUDGET=$(node -e 'const a=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(String(a.find(s=>s.key==="scheduling.run_effort_budget").value))' "$TMP/body")
+expect "anyone can read settings" "4" "$BUDGET"
+req PATCH /settings '{"scheduling.run_effort_budget":6}' "${PM[@]}"
+expect "PM cannot change settings" 403 "$CODE"
+req PATCH /settings '{"scheduling.run_effort_floor":5}' "${LEAD[@]}"
+expect "floor above budget is refused" 400 "$CODE"
+req PATCH /settings '{"nonsense.key":1}' "${LEAD[@]}"
+expect "unknown setting is refused" 400 "$CODE"
+req GET /runs "" "${PM[@]}"; SRUN=$(jget 0.id)
+req PATCH "/runs/$SRUN" '{"slot_time":"09:15"}' "${PM[@]}"
+expect "09:15 is off the stock 30-minute grid" 400 "$CODE"
+req PATCH /settings '{"scheduling.slot_step_minutes":15}' "${LEAD[@]}"
+expect "Fleet Lead sets a 15-minute grid" 200 "$CODE"
+req PATCH "/runs/$SRUN" '{"slot_time":"09:15"}' "${PM[@]}"
+expect "the run accepts 09:15 under the new setting" 200 "$CODE"
+req PATCH "/runs/$SRUN" '{"slot_time":"09:00"}' "${PM[@]}"
+req PATCH /settings '{"scheduling.slot_step_minutes":null}' "${LEAD[@]}"
+expect "null resets to the default" 200 "$CODE"
+req GET "/audit?resource=settings&limit=1" "" "${OP[@]}"
+expect "setting changes are audited" "reset" "$(jget 0.action)"
+
+echo "== change sets"
+req GET "/labs/$LAB" "" "${PM[@]}"; LV=$(jget version)
+CS="{\"summary\":\"smoke: new bay with a blackout\",\"changes\":[
+  {\"resource\":\"labs\",\"op\":\"create\",\"ref\":\"bay\",\"data\":{\"name\":\"Smoke Bay\",\"type\":\"OUTDOORS\",\"capacity\":2}},
+  {\"resource\":\"lab-blackouts\",\"op\":\"create\",\"data\":{\"lab_id\":\"\$ref:bay\",\"blackout_date\":\"2030-02-01\"}},
+  {\"resource\":\"labs\",\"op\":\"update\",\"id\":\"$LAB\",\"if_match\":$LV,\"data\":{\"capacity\":3}}
+]}"
+req POST /changesets/preview "$CS" "${PM[@]}"
+expect "preview is ok" "true" "$(jget ok)"
+expect "preview shows the diff" "3" "$(jget changes.2.diff.capacity.to)"
+CSID=$(jget id)
+req GET "/labs/$LAB" "" "${PM[@]}"
+expect "preview writes nothing" "$LV" "$(jget version)"
+req POST "/changesets/$CSID/apply" "" "${PM[@]}"
+expect "apply" "APPLIED" "$(jget status)"
+NEWLAB=$(jget created.bay)
+req GET "/labs/$NEWLAB/blackouts" "" "${PM[@]}"
+expect "ref wired the blackout to the new lab" "1" "$(jget length)"
+req POST "/changesets/$CSID/apply" "" "${PM[@]}"
+expect "a change set applies once" 409 "$CODE"
+
+req POST /changesets/preview "{\"changes\":[{\"resource\":\"labs\",\"op\":\"update\",\"id\":\"$LAB\",\"data\":{\"capacity\":9,\"version\":1,\"colour\":\"red\",\"type\":\"CAVE\"}}]}" "${PM[@]}"
+expect "problems are named, not dropped" "false" "$(jget ok)"
+expect "read-only, unknown and invalid fields all reported" "3" "$(jget problems)"
+
+req POST /changesets/preview "{\"changes\":[{\"resource\":\"labs\",\"op\":\"create\",\"data\":{\"name\":\"Nope\"}}]}" "${OP[@]}"
+expect "per-edit permissions are checked" "false" "$(jget ok)"
+req POST /changesets/preview "{\"changes\":[{\"resource\":\"missions\",\"op\":\"update\",\"id\":\"$MISSION\",\"data\":{\"legal_approval\":\"APPROVED\"}}]}" "${PM[@]}"
+expect "the legal gate holds inside change sets" "false" "$(jget ok)"
+
+req GET "/labs/$LAB" "" "${PM[@]}"; LV=$(jget version)
+req POST /changesets/preview "{\"changes\":[{\"resource\":\"labs\",\"op\":\"update\",\"id\":\"$LAB\",\"data\":{\"capacity\":7}}]}" "${PM[@]}"
+STALE=$(jget id)
+req PATCH "/labs/$LAB" '{"capacity":8}' "${PM[@]}"
+req POST "/changesets/$STALE/apply" "" "${PM[@]}"
+expect "a record edited after preview blocks apply" 422 "$CODE"
+req GET "/labs/$LAB" "" "${PM[@]}"
+expect "and nothing was applied" "8" "$(jget capacity)"
+req PATCH "/labs/$LAB" '{"capacity":4}' "${PM[@]}"
+
+req POST /changesets/apply "{\"changes\":[
+  {\"resource\":\"labs\",\"op\":\"create\",\"ref\":\"a\",\"data\":{\"name\":\"Atomic A\"}},
+  {\"resource\":\"labs\",\"op\":\"update\",\"id\":\"does-not-exist\",\"data\":{\"capacity\":1}}
+]}" "${PM[@]}"
+expect "one bad edit rejects the whole set" 422 "$CODE"
+req GET /labs "" "${PM[@]}"
+expect "so the good edit did not land" "no" "$(grep -q 'Atomic A' "$TMP/body" && echo yes || echo no)"
+
 echo
 echo "smoke: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

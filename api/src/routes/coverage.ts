@@ -19,6 +19,8 @@ import {
   type CoverageSpace,
 } from "../coverage";
 
+import { loadSettings } from "../settings";
+
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
 async function loadSpace(db: D1Database, campaignId: string): Promise<CoverageSpace | null> {
@@ -54,7 +56,7 @@ export function mountCoverage(app: App): void {
   app.put("/campaigns/:id/coverage-space", async (c) => {
     const id = c.req.param("id");
     const space = await c.req.json<CoverageSpace>();
-    const problems = validateSpace(space);
+    const problems = validateSpace(space, (await loadSettings(c.env.DB))["limits.coverage_max_cells"]);
     if (problems.length) {
       throw badRequest(problems.map((p) => `${p.field}: ${p.reason}`).join("; "));
     }

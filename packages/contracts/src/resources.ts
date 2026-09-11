@@ -92,11 +92,11 @@ export const RESOURCES = {
       schedule_status: { type: "enum", label: "Schedule status", values: MISSION_SCHEDULE_STATUSES },
       instructions_complete: { type: "boolean", label: "Instructions complete" },
       risk_level: {
-        type: "enum", label: "Risk", values: RISK_LEVELS, writeRoles: LEAD,
+        type: "enum", label: "Risk", values: RISK_LEVELS, default: "UNKNOWN", writeRoles: LEAD,
         writeRolesReason: "risk clearance decides schedulability — use Assess risk, or a Fleet Lead sets it",
       },
       legal_approval: {
-        type: "enum", label: "Legal", values: LEGAL_APPROVALS, writeRoles: LEAD,
+        type: "enum", label: "Legal", values: LEGAL_APPROVALS, default: "NONE", writeRoles: LEAD,
         writeRolesReason: "the Fleet Lead legal review sets this",
       },
       variants: { type: "json", label: "Variants" },

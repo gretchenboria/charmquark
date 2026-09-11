@@ -27,6 +27,7 @@ import { jsonCol, str, strOrNull, uuid, requireVault, type Row } from "../db";
 import { annotationUnavailable, badRequest, conflict, forbidden, notFound } from "../errors";
 import { isPlanner } from "../auth";
 import { hasIntegration, integrationKey } from "./integrations";
+import { loadSettings } from "../settings";
 import * as S from "../serialize";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
@@ -38,7 +39,7 @@ const ROBOFLOW_API = "https://api.roboflow.com";
  * so a run with hundreds of frames is capped rather than silently truncated: the
  * response reports how many were left, and the caller exports again.
  */
-const MAX_IMAGES_PER_EXPORT = 25;
+// The cap is the deployment setting `limits.roboflow_max_images_per_export` (stock 25).
 
 type Split = "train" | "valid" | "test";
 const isSplit = (v: string): v is Split => v === "train" || v === "valid" || v === "test";
@@ -140,7 +141,7 @@ export function mountRoboflow(app: App): void {
     return c.json({
       annotation_configured: Boolean(hasKey || c.env.ROBOFLOW_API_KEY),
       workspace: c.env.ROBOFLOW_WORKSPACE ?? null,
-      max_images_per_export: MAX_IMAGES_PER_EXPORT,
+      max_images_per_export: (await loadSettings(c.env.DB))["limits.roboflow_max_images_per_export"],
       exports: results.map(S.roboflowExport),
     });
   });
@@ -199,7 +200,7 @@ export function mountRoboflow(app: App): void {
 
     const vault = requireVault(c.env);
     const batch = b.batch ?? `charmquark-${str(run, "encoded_code") || str(run, "provisional_code") || runId.slice(0, 8)}`;
-    const selected = docs.slice(0, MAX_IMAGES_PER_EXPORT);
+    const selected = docs.slice(0, (await loadSettings(c.env.DB))["limits.roboflow_max_images_per_export"]);
     const outcomes: UploadOutcome[] = [];
 
     for (const doc of selected) {

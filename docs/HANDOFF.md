@@ -193,6 +193,8 @@ the MCP server and Charmy tool layer.
 | `packages/contracts/src/` | **Single source of truth** for enums (`enums.ts`), field specs and validation (`fields.ts`), and the resource registry — writable fields, read-only reasons, roles (`resources.ts`). Used by API and web; pinned against the migrations by `api/test/contracts.test.ts`. |
 | `api/src/auth.ts` + `api/src/identity.ts` + `api/src/tokens.ts` | Firebase sign-in, API tokens for agents, and the role policy. See `docs/ACCESS.md`. |
 | `api/src/changes.ts` | The shared write path: `If-Match`/`version` checks (409 on conflict) and the audit trail (`GET /api/audit`). |
+| `api/src/changesets.ts` | Change sets: batched edits previewed (diff + problems) and applied atomically, version-pinned. How agents should change things. |
+| `packages/contracts/src/settings.ts` + `api/src/settings.ts` | Deployment settings (effort budget, slot window, working days, hazard lexicon, limits). Defaults = the old constants; overrides in D1. |
 | `api/scripts/smoke.sh` | End-to-end API checks against a local Worker; CI runs it on every PR. `npm --prefix api run smoke`. |
 | `web/src/lib/api.ts` | Typed API client — the wire contract. |
 | `web/src/app/globals.css` | Brand tokens. |
