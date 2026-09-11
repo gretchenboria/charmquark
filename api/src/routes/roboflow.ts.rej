@@ -1,8 +1,0 @@
-@@ -2,6 +2,7 @@
- import { HTTPException } from "hono/http-exception";
- import type { App } from "../index";
- import type { Env, Row } from "../types";
-+import type { Context } from "hono";
- import { S, jsonCol, str, strOrNull } from "../schema";
- 
- const ROBOFLOW_API = "https://api.roboflow.com";
