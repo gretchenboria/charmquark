@@ -65,9 +65,9 @@ export default function LandingPage() {
             CharmQuark solves this by treating every component (Robots, Sensors, Missions, Runs) as a rigidly versioned entity with strict lifecycles.
           </p>
           <ul className="list-disc pl-5 space-y-3">
-            <li><strong>Strong Ontology:</strong> A "Mission" isn't free text. It is a structured object linked relationally to specific Inventory, Safety Hazards, and Execution Variants.</li>
+            <li><strong>Strong Ontology:</strong> A &quot;Mission&quot; isn&apos;t free text. It is a structured object linked relationally to specific Inventory, Safety Hazards, and Execution Variants.</li>
             <li><strong>State-Driven QA Gates:</strong> A run cannot transition from <code>SCHEDULED</code> to <code>CONFIRMED</code> without legal sign-off. It cannot move to <code>EXPORTED</code> without human QA approval.</li>
-            <li><strong>Agentic Variant Generation:</strong> Built-in AI autonomously breaks down standard missions into structured "Negative Examples" (e.g., E1: Sensor Glare, E2: Hardware Fault) to force operators to collect ML failure edge cases.</li>
+            <li><strong>Agentic Variant Generation:</strong> Built-in AI autonomously breaks down standard missions into structured &quot;Negative Examples&quot; (e.g., E1: Sensor Glare, E2: Hardware Fault) to force operators to collect ML failure edge cases.</li>
           </ul>
         </div>
       </section>
