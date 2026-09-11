@@ -156,12 +156,12 @@ export default function LandingPage() {
             <Link href="/home" className="cq-btn-primary rounded-lg px-5 py-2.5 text-sm font-semibold">
               Sign in
             </Link>
-            <a
-              href="#faq"
+            <Link
+              href="/how-it-works"
               className="rounded-lg border border-[color:var(--cq-line)] px-5 py-2.5 text-sm font-medium text-[color:var(--cq-ink-soft)] transition-colors hover:bg-white"
             >
               How it works
-            </a>
+            </Link>
           </div>
         </header>
 
