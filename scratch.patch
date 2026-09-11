@@ -1,10 +1,32 @@
---- web/src/lib/api.ts
-+++ web/src/lib/api.ts
-@@ -2,6 +2,7 @@
- // proxies to FastAPI. The logged-in user's role/name are sent as headers so the
- // backend enforces role-group permissions.
- import { getUser } from "./session";
-+import { auth } from "./firebase";
- import type {
-   AcceptProposalResult,
-   BillingAccount,
+--- web/src/components/Login.tsx
++++ web/src/components/Login.tsx
+@@ -4,6 +4,7 @@
+ import Image from "next/image";
+ import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+ import { auth } from "@/lib/firebase";
++import { PRESET_USERS } from "@/lib/session";
+ import { setUser } from "@/lib/session";
+ 
+ export function Login() {
+@@ -14,6 +15,10 @@
+   const handleEmailLogin = async (e: React.FormEvent) => {
+     e.preventDefault();
+     try {
++      if (process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
++        setUser(PRESET_USERS[0]);
++        return;
++      }
+       const cred = await signInWithEmailAndPassword(auth, email, password);
+       setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
+     } catch (err: any) {
+@@ -23,6 +28,10 @@
+ 
+   const handleGoogleLogin = async () => {
+     try {
++      if (process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
++        setUser(PRESET_USERS[0]);
++        return;
++      }
+       const provider = new GoogleAuthProvider();
+       const cred = await signInWithPopup(auth, provider);
+       setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { PRESET_USERS } from "@/lib/session";
 import { setUser } from "@/lib/session";
 
 export function Login() {
@@ -14,6 +15,10 @@ export function Login() {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
+        setUser(PRESET_USERS[0]);
+        return;
+      }
       const cred = await signInWithEmailAndPassword(auth, email, password);
       setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
     } catch (err: any) {
@@ -23,6 +28,10 @@ export function Login() {
 
   const handleGoogleLogin = async () => {
     try {
+      if (process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
+        setUser(PRESET_USERS[0]);
+        return;
+      }
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
       setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
