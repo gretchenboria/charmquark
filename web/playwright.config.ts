@@ -12,7 +12,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: "list",
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000",
+    baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:3200",
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
@@ -24,13 +24,13 @@ export default defineConfig({
           //   npm --prefix ../api run db:reset:local
           command: "npm --prefix ../api run dev",
           url: "http://127.0.0.1:8787/health",
-          reuseExistingServer: !process.env.CI,
+          reuseExistingServer: true,
           timeout: 60_000,
         },
         {
-          command: "npm run dev",
-          url: "http://127.0.0.1:3000",
-          reuseExistingServer: !process.env.CI,
+          command: "npm run dev -- -p 3200",
+          url: "http://127.0.0.1:3200",
+          reuseExistingServer: true,
           timeout: 60_000,
         },
       ],

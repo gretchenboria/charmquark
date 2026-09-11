@@ -71,6 +71,8 @@ test("robot operator finishes a run end to end", async ({ page, request, context
   );
 
   await page.goto(`/runs/${runId}`);
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: 'screenshots/operator_1_run_page.png', fullPage: true });
 
   // Entry guard (CQ-EXE-4): a CONFIRMED run is executable.
   const execute = page.getByRole("button", { name: "Execute" });
@@ -78,6 +80,8 @@ test("robot operator finishes a run end to end", async ({ page, request, context
   await execute.click();
 
   await expect(page.getByRole("heading", { name: "Execute run" })).toBeVisible();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: 'screenshots/operator_2_execute_page.png', fullPage: true });
 
   const card = page.locator(`#mission-${missionId}`);
   const done = card.locator('input[type="checkbox"]');
@@ -89,18 +93,26 @@ test("robot operator finishes a run end to end", async ({ page, request, context
 
   await done.check();
   await card.locator("textarea").fill("clean run, recording confirmed");
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: 'screenshots/operator_3_filled_form.png', fullPage: true });
   await page.getByRole("heading", { name: "Execute run" }).click(); // blur -> immediate save
 
   // Sync chip (CQ-EXE-2): the entry persisted.
   await expect(card.getByText("saved")).toBeVisible();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: 'screenshots/operator_4_saved.png', fullPage: true });
 
   // Finish (CQ-EXE-1): open the recap, confirm, land on COLLECTED.
   await page.getByRole("button", { name: "Finish run" }).click();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: 'screenshots/operator_5_recap.png', fullPage: true });
   const confirmFinish = page.getByRole("button", { name: "Keep working" }).locator("xpath=following-sibling::button");
   await expect(confirmFinish).toBeEnabled();
   await confirmFinish.click();
 
   await expect(page.getByRole("heading", { name: "Execute run" })).toBeHidden();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: 'screenshots/operator_6_finished.png', fullPage: true });
 
   // The run reached COLLECTED with a complete log entry.
   const after = await (await request.get(`/api/runs/${runId}`, { headers: PM })).json();

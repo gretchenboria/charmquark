@@ -5,7 +5,7 @@ import { getUser, type User } from "./session";
 
 /** Reactive current-user hook. Re-renders on login/logout (same tab). */
 export function useUser(): User | null {
-  const [user, setUserState] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(getUser);
   useEffect(() => {
     const sync = () => setUserState(getUser());
     sync();

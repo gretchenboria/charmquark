@@ -9,6 +9,7 @@ import { loadCampaignMetrics, PIPELINE_STAGES, STAGE_LABEL, type CampaignMetrics
 import { CQ, STATUS_COLOR } from "@/lib/palette";
 import { canSeeAnalytics } from "@/lib/roleViews";
 import { useUser } from "@/lib/useUser";
+import { useBilling } from "@/components/Billing";
 import type { CloudStatus, Run, Campaign, Mission } from "@/lib/types";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { BarChart, Burndown, Donut } from "@/components/Charts";
@@ -45,6 +46,7 @@ const NOT_READY = new Set(["DRAFT", "ASSEMBLING"]);
 
 export default function HomePage() {
   const user = useUser();
+  const billing = useBilling();
   // Robot operators get the operational view; PM / Fleet Lead (and unknown/loading
   // roles, as a safe fuller default) get the full analytics dashboard.
   const showAnalytics = canSeeAnalytics(user?.role);
