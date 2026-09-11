@@ -1,82 +1,139 @@
 /**
- * Authorization shim.
+ * Authentication and authorization.
  *
- * The caller's role arrives in the `X-CharmQuark-Role` header (and optional
- * `X-CharmQuark-User`). Policy, carried over from the predecessor system: FULL
- * CRUD for every signed-in role — no hard-coded read-only. The only role-specific
- * action is the legal-review verdict, which stays a Fleet-Lead approval.
+ * Identity — who is calling — is resolved once per request by `principal`:
  *
- * The matrix below is the single wiring point, so policy can be tightened later
- * in one place. Swap `resolvePrincipal` for a real IdP (Cloudflare Access JWT)
- * without touching any route.
+ *   FIREBASE — the normal path. The web app signs people in with Firebase and
+ *   sends the ID token as `Authorization: Bearer <token>`. The token is verified
+ *   cryptographically (identity.ts), its *verified* email is matched to an
+ *   active `users` row, and the role comes from that row — never from anything
+ *   the request says about itself. A token that does not verify is a hard 401;
+ *   there is deliberately no fallback, because falling back on a bad token
+ *   would make the check theatre.
+ *
+ *   DEV SHIM — only when ENVIRONMENT=development and no token is presented. The
+ *   X-CharmQuark-Role / X-CharmQuark-User headers are trusted, which
+ *   authenticates nobody; it exists so local dev and the e2e suite can act as
+ *   any role. In every other environment those headers are ignored.
+ *
+ * GET /api/cloud/status reports which mode is active, so the shim cannot be
+ * mistaken for security.
+ *
+ * Authorization — what the caller may do — is the POLICY matrix below, plus a
+ * few explicit gates for money, safety and the users table itself.
  */
 import type { Context, MiddlewareHandler } from "hono";
 import type { Env, Principal, Role, Vars } from "./types";
-import { badRequest, forbidden } from "./errors";
-import { accessConfig, readAssertion, verifyAccessJwt } from "./access";
+import { authUnavailable, badRequest, forbidden, unauthorized } from "./errors";
+import { readBearer, verifyFirebaseIdToken, type FirebaseIdentity } from "./identity";
 
 const ROLES: readonly Role[] = ["PM", "FLEET_LEAD", "ROBOT_OPERATOR"] as const;
 
 const isRole = (v: string): v is Role => (ROLES as readonly string[]).includes(v);
 
-/**
- * Resolve the caller to a role.
- *
- * Two modes, and which one is active depends only on configuration:
- *
- *   ENFORCED — Cloudflare Access is configured (`CF_ACCESS_TEAM_DOMAIN` and
- *   `CF_ACCESS_AUD`). The signed assertion is the sole source of identity: it
- *   is verified cryptographically, its email is matched to an active `users`
- *   row, and the X-CharmQuark-* headers are ignored entirely. An unverifiable
- *   assertion, or an email with no active user row, is a hard 403. There is
- *   deliberately no fallback here — falling back on a bad token would make the
- *   whole check theatre.
- *
- *   SHIM — Access is not configured. The X-CharmQuark-* headers are trusted,
- *   which authenticates nobody. This is the development default and it is
- *   reported as such by GET /api/cloud/status so it cannot be mistaken for
- *   security.
- */
-async function resolveFromUsersTable(db: D1Database, subject: string): Promise<Principal | null> {
-  const row = await db
-    .prepare(`SELECT name, subject, role FROM users WHERE subject = ? AND is_active = 1`)
-    .bind(subject)
-    .first<{ name: string; subject: string; role: string }>();
-  if (row && isRole(row.role)) return { role: row.role, name: row.name || row.subject };
-  return null;
+export const isDevelopment = (env: Env): boolean => env.ENVIRONMENT === "development";
+
+const firebaseProjectId = (env: Env): string | null => (env.FIREBASE_PROJECT_ID ?? "").trim() || null;
+
+export type AuthMode = "firebase" | "dev-shim" | "unconfigured";
+
+/** How this deployment authenticates callers. Surfaced by GET /api/cloud/status. */
+export function authMode(env: Env): AuthMode {
+  if (firebaseProjectId(env)) return "firebase";
+  return isDevelopment(env) ? "dev-shim" : "unconfigured";
 }
 
-async function resolvePrincipal(
-  env: Env,
-  req: Request,
-  roleHeader: string | undefined,
-  userHeader: string,
-): Promise<Principal> {
-  // Cloudflare Access check removed. App relies on Next.js/Firebase Auth barrier + Shim headers for now.
-  // When Firebase is configured, this should verify the Firebase JWT token instead.
+/**
+ * Emails allowed to self-provision as FLEET_LEAD on first sign-in, so a fresh
+ * deployment has a way in. Only applies when no users row exists for that
+ * login at all — a deactivated account stays deactivated.
+ */
+const bootstrapAdmins = (env: Env): string[] =>
+  (env.BOOTSTRAP_ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 
-  // --- shim mode ---
+interface UserRow { subject: string; name: string; email: string | null; role: string }
+
+async function principalForIdentity(env: Env, id: FirebaseIdentity): Promise<Principal> {
+  if (!id.email) {
+    throw forbidden("this sign-in carries no email address, so it cannot be matched to a CharmQuark user");
+  }
+  if (!id.emailVerified) {
+    throw forbidden(`${id.email} is not verified yet — open the verification link we emailed you, then sign in again`);
+  }
+
+  const find = () => env.DB
+    .prepare(
+      `SELECT subject, name, email, role FROM users
+       WHERE is_active = 1 AND (subject = ? OR lower(email) = ?)
+       ORDER BY (subject = ?) DESC LIMIT 1`,
+    )
+    .bind(id.uid, id.email, id.uid)
+    .first<UserRow>();
+
+  let row = await find();
+  if (!row && bootstrapAdmins(env).includes(id.email)) {
+    const exists = await env.DB
+      .prepare(`SELECT 1 FROM users WHERE subject = ? OR lower(email) = ?`)
+      .bind(id.uid, id.email).first();
+    if (!exists) {
+      await env.DB
+        .prepare(`INSERT INTO users (id, subject, name, email, role) VALUES (?, ?, ?, ?, 'FLEET_LEAD')`)
+        .bind(crypto.randomUUID(), id.uid, id.name || id.email, id.email).run();
+      row = await find();
+    }
+  }
+  if (!row || !isRole(row.role)) {
+    throw forbidden(`no active CharmQuark account for ${id.email} — ask a Fleet Lead to add this email on the Users page`);
+  }
+  return {
+    role: row.role,
+    name: row.name || row.subject,
+    subject: row.subject,
+    email: (row.email ?? id.email).toLowerCase(),
+    via: "firebase",
+  };
+}
+
+/** Development only: trust the X-CharmQuark-* headers. */
+async function shimPrincipal(env: Env, roleHeader: string | undefined, userHeader: string): Promise<Principal> {
   if (userHeader && userHeader !== "dev") {
-    const p = await resolveFromUsersTable(env.DB, userHeader);
-    if (p) return p;
+    const row = await env.DB
+      .prepare(`SELECT subject, name, email, role FROM users WHERE subject = ? AND is_active = 1`)
+      .bind(userHeader).first<UserRow>();
+    if (row && isRole(row.role)) {
+      return { role: row.role, name: row.name || row.subject, subject: row.subject, email: row.email, via: "dev-shim" };
+    }
   }
   const raw = (roleHeader || "PM").toUpperCase();
   if (!isRole(raw)) throw badRequest(`unknown role: ${roleHeader}`);
-  return { role: raw, name: userHeader || "dev" };
+  return { role: raw, name: userHeader || "dev", subject: userHeader || "dev", email: null, via: "dev-shim" };
 }
 
-/** True when Access is enforcing identity rather than the header shim. */
-export const isAccessEnforced = (env: Env): boolean => accessConfig(env) !== null;
+async function resolvePrincipal(c: Context<{ Bindings: Env; Variables: Vars }>): Promise<Principal> {
+  const env = c.env;
+  const projectId = firebaseProjectId(env);
+  const token = readBearer(c.req.raw);
+
+  if (token && projectId) {
+    let id: FirebaseIdentity;
+    try {
+      id = await verifyFirebaseIdToken(env.FLEET_STATUS, projectId, token);
+    } catch (e) {
+      throw unauthorized(`sign-in token rejected: ${e instanceof Error ? e.message : "invalid token"}`);
+    }
+    return principalForIdentity(env, id);
+  }
+
+  if (isDevelopment(env)) {
+    return shimPrincipal(env, c.req.header("X-CharmQuark-Role"), c.req.header("X-CharmQuark-User") ?? "dev");
+  }
+  if (!projectId) throw authUnavailable();
+  throw unauthorized("sign in required");
+}
 
 /** Attach the principal to the request context. Mounted once, app-wide. */
 export const principal: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = async (c, next) => {
-  const p = await resolvePrincipal(
-    c.env,
-    c.req.raw,
-    c.req.header("X-CharmQuark-Role") ?? undefined,
-    c.req.header("X-CharmQuark-User") ?? "dev",
-  );
-  c.set("principal", p);
+  c.set("principal", await resolvePrincipal(c));
   await next();
 };
 
@@ -124,7 +181,9 @@ const POLICY: Record<string, Partial<Record<Action, readonly Role[]>>> = {
   labs:             { read: ROLES, write: PM_UP, delete: LEAD },
   operators:        { read: ROLES, write: PM_UP, delete: LEAD },
 
-  // --- execution: operators write here, and this is the point of the role ---
+  // --- execution: operators write here, and this is the point of the role.
+  //     The planning actions nested under /runs (accepting a proposal, standby
+  //     swap, QA-override export) carry `requirePlanner` on the route. ---
   runs:             { read: ROLES, write: ROLES, delete: PM_UP },
   "run-proposals":  { read: ROLES, write: PM_UP, delete: PM_UP },
 
@@ -134,6 +193,9 @@ const POLICY: Record<string, Partial<Record<Action, readonly Role[]>>> = {
   users:            { read: ROLES, write: LEAD,  delete: LEAD },
   billing:          { read: ROLES, write: PM_UP, delete: LEAD },
   roboflow:         { read: ROLES, write: PM_UP, delete: PM_UP },
+  integrations:     { read: ROLES, write: PM_UP, delete: PM_UP },
+  chat:             { read: ROLES, write: ROLES, delete: LEAD },
+  me:               { read: ROLES },
   cloud:            { read: ROLES, write: LEAD,  delete: LEAD },
   dev:              { read: LEAD,  write: LEAD,  delete: LEAD },
 };
@@ -173,6 +235,9 @@ export const crudGuard: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = 
   await next();
 };
 
+/** PM or Fleet Lead — the roles that commit the fleet's plan. */
+export const isPlanner = (role: Role): boolean => PM_UP.includes(role);
+
 /**
  * Confirming a run spends a credit and books a lab slot against everyone else's
  * capacity. That is a planning commitment, not a field action, so it is gated
@@ -180,11 +245,41 @@ export const crudGuard: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = 
  */
 export const requireRunConfirmer: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = async (c, next) => {
   const p = c.get("principal");
-  if (!PM_UP.includes(p.role)) {
+  if (!isPlanner(p.role)) {
     throw forbidden(`role ${p.role} may not confirm a run — confirming spends a credit (requires: FLEET_LEAD, PM)`);
   }
   await next();
 };
+
+/**
+ * Planning actions that live under /runs — accepting or re-rolling a proposal,
+ * the standby robot swap. They change the plan (and robot status), not the
+ * field log, so the open `runs.write` policy is not enough.
+ */
+export const requirePlanner: MiddlewareHandler<{ Bindings: Env; Variables: Vars }> = async (c, next) => {
+  const p = c.get("principal");
+  if (!isPlanner(p.role)) {
+    throw forbidden(`role ${p.role} may not perform this planning action (requires: FLEET_LEAD, PM)`);
+  }
+  await next();
+};
+
+/**
+ * Mission fields that decide whether a hazard is cleared for scheduling: a
+ * mission is schedulable when risk is LOW or legal is APPROVED. Setting either
+ * directly would skip the Fleet-Lead legal review, so only a Fleet Lead may —
+ * everyone else goes through "Assess risk" and the legal-review action.
+ */
+export const CLEARANCE_FIELDS = ["risk_level", "legal_approval"] as const;
+
+/** Throw unless the caller may change the given clearance fields. */
+export function requireClearanceAuthority(p: Principal, changed: readonly string[]): void {
+  if (changed.length === 0 || p.role === "FLEET_LEAD") return;
+  throw forbidden(
+    `role ${p.role} may not set ${changed.join(", ")} directly — use Assess risk and the ` +
+    "Fleet Lead legal review (requires: FLEET_LEAD)",
+  );
+}
 
 /**
  * Gate for administering the `users` table.
@@ -203,16 +298,15 @@ export async function requireUserAdmin(c: Context<{ Bindings: Env; Variables: Va
   // A Fleet Lead may manage the roster but not quietly escalate or lock out
   // peers by editing themselves — self-service role changes are the exact
   // escalation path being closed, and demoting yourself is how you lock the
-  // last admin out of the account.
+  // last admin out of the account. Compared on the verified subject and email,
+  // never the display name.
   const targetId = c.req.param("id");
   if (targetId && (c.req.method === "PATCH" || c.req.method === "DELETE")) {
     const row = await c.env.DB
       .prepare(`SELECT subject, lower(email) AS email FROM users WHERE id = ?`)
       .bind(targetId).first<{ subject: string; email: string | null }>();
-    const me = p.name.toLowerCase();
-    if (row && (row.subject?.toLowerCase() === me || (row.email ?? "") === me)) {
-      throw forbidden("you cannot change your own role or status; ask another Fleet Lead");
-    }
+    const isSelf = !!row && (row.subject === p.subject || (!!p.email && row.email === p.email));
+    if (isSelf) throw forbidden("you cannot change your own role or status; ask another Fleet Lead");
   }
 }
 

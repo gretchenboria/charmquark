@@ -10,7 +10,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { Env, Vars } from "./types";
-import { crudGuard, principal } from "./auth";
+import { crudGuard, isDevelopment, principal } from "./auth";
 import { mountResources } from "./routes/resources";
 import { mountCatalog } from "./routes/catalog";
 import { mountRuns } from "./routes/runs";
@@ -25,11 +25,18 @@ import { mountIntegrations } from "./routes/integrations";
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
+const allowedOrigins = (env: Env): string[] =>
+  (env.ALLOWED_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
+
 app.use(
   "*",
   cors({
-    origin: (o) => o,
-    allowHeaders: ["Content-Type", "X-CharmQuark-Role", "X-CharmQuark-User"],
+    // Listed origins only. In production the web app and API share a host, so
+    // no cross-origin caller is needed; development reflects any origin so
+    // `next dev` on whatever port works.
+    origin: (origin, c) =>
+      allowedOrigins(c.env).includes(origin) || isDevelopment(c.env) ? origin : null,
+    allowHeaders: ["Content-Type", "Authorization", "X-CharmQuark-Role", "X-CharmQuark-User"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   }),
@@ -37,8 +44,8 @@ app.use(
 
 /**
  * The Stripe webhook is registered before the guarded router so it matches
- * first. It carries no X-CharmQuark-* headers — its credential is the
- * `stripe-signature` it is verified against, so the header shim must not see it.
+ * first. It carries no user credential — its credential is the
+ * `stripe-signature` it is verified against.
  */
 mountBillingWebhook(app);
 
@@ -46,6 +53,12 @@ mountBillingWebhook(app);
 const api = new Hono<{ Bindings: Env; Variables: Vars }>();
 api.use("*", principal);
 api.use("*", crudGuard);
+
+/** Who the server thinks you are. The web app takes its role from here, never from itself. */
+api.get("/me", (c) => {
+  const p = c.get("principal");
+  return c.json({ name: p.name, role: p.role, subject: p.subject, email: p.email, auth: p.via });
+});
 
 mountCatalog(api);
 mountResources(api);

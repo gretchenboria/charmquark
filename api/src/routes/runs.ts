@@ -22,7 +22,7 @@ import {
 } from "../domain";
 import { debitRunCredit } from "./billing";
 import * as S from "../serialize";
-import { requireRunConfirmer } from "../auth";
+import { requirePlanner, requireRunConfirmer } from "../auth";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
@@ -349,7 +349,7 @@ export function mountRuns(app: App): void {
    * slot; otherwise drop the assignment and send the run back to ASSEMBLING
    * so the gap is visible rather than silently unready.
    */
-  app.post("/runs/:id/robot-cancel", async (c) => {
+  app.post("/runs/:id/robot-cancel", requirePlanner, async (c) => {
     const id = c.req.param("id");
     const row = await getRun(c.env.DB, id);
     const s = S.run(row);

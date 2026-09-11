@@ -14,12 +14,13 @@ model and `docs/DATA_STRIPPING.md` for provenance.
 
 ## 2. Live Cloudflare state
 
-The account is `Me@gretchenboria.com's Account`, id `6c415c903ba42618ddadb9175a6255b8`.
+The Cloudflare account is the one `CLOUDFLARE_ACCOUNT_ID` in `/.env` names
+(account identifiers are kept out of tracked docs).
 
 | Resource | State | Identifier |
 |---|---|---|
-| D1 `charmquark` | **created, migrated, seeded** | `817b5862-28b3-489c-a57a-b010f1844e4b` |
-| KV `FLEET_STATUS` | **created** | `634e3230fd224dadbc7546b9535b8a80` |
+| D1 `charmquark` | **created, migrated, seeded** | `database_id` in `api/wrangler.jsonc` |
+| KV `FLEET_STATUS` | **created** | `id` in `api/wrangler.jsonc` |
 | R2 `charmquark-vault` | **created** (R2 enabled 2026-09-10) | Standard storage class |
 | Zone `charmquark.app` | active, **DNS created** | AAAA apex -> `100::` proxied, CNAME www |
 | Worker `charmquark-api` | **DEPLOYED**, `ENVIRONMENT=production` | route `charmquark.app/api/*` live |
@@ -84,7 +85,8 @@ Two things bit during the first deploy, both now fixed but worth knowing:
    invert that: the fail-safe direction is locked-down-by-default. Verify after
    any deploy:
    `curl -X POST https://charmquark.app/api/dev/seed/demo -H 'X-CharmQuark-Role: PM'`
-   must return **403**.
+   must return **401** (the header no longer authenticates in production). A
+   signed-in Fleet Lead must still get **403** there.
 
 If your machine cached an NXDOMAIN for charmquark.app before DNS existed,
 curl needs `--resolve charmquark.app:443:$(dig +short charmquark.app @1.1.1.1 | head -1)`
@@ -104,8 +106,12 @@ so it wins — which is why `web/next.config.mjs` emits its `/api` rewrite in
 **development only** (see the comment there; the OpenNext adapter parses rewrite
 destinations with path-to-regexp and throws on a `host:port` destination).
 
-Before production traffic, read `docs/DEPLOYMENT.md` §"Production hardening" —
-in particular auth is still a header shim (§8 below).
+Before production traffic, read `docs/DEPLOYMENT.md` §"Production hardening"
+and the going-live checklist in `docs/ACCESS.md`.
+
+Pushes to `main` now deploy only after `.github/workflows/ci.yml` passes
+(typecheck, tests, lint, build, brand grep, append-only migrations), and D1
+migrations are applied before the API deploys.
 
 ## 6. Running locally
 
@@ -151,13 +157,14 @@ COLLECTED. It has already caught two genuine bugs — trust it.
 
 ## 8. Known gaps, stated plainly
 
-- **Auth is a development shim.** `api/src/auth.ts` trusts the
-  `X-CharmQuark-Role` header. Anyone who can reach the Worker can claim any role.
-  The fix is Cloudflare Access in front of `charmquark.app` plus swapping
-  `resolvePrincipal` to read the verified Access JWT; the RBAC matrix in that
-  file is already the single wiring point. **Do not describe the app as secured
-  until this is done.**
-- **R2 features are 503** until R2 is enabled (§4).
+- **Auth is Firebase ID tokens verified in the Worker**, mapped to `users` rows by
+  verified email; the header shim works only with `ENVIRONMENT=development`. See
+  `docs/ACCESS.md`, including the going-live checklist: `INTEGRATION_KEY_SECRET`,
+  `BOOTSTRAP_ADMIN_EMAILS`, GitHub `NEXT_PUBLIC_FIREBASE_*` variables, and a users
+  row with an email for every person. There are no API tokens for agents yet
+  (planned).
+- **Integration keys were reset** by migration `0006`: the old plaintext rows are
+  dropped, so re-enter the Roboflow key on the Integrations page.
 - The `ROBOTOPS_SPEC.md` capability set is largely unbuilt — see
   `docs/ROADMAP.md` for the honest built-vs-specified line. Its highest-value gap
   is calibration and time-sync as real readiness gates; without them a run can be
@@ -165,22 +172,13 @@ COLLECTED. It has already caught two genuine bugs — trust it.
 
 ## 9. In flight
 
-A subagent is implementing **metered payments**, mirroring the user's existing
-Sim2Rad mechanism (Stripe Checkout with inline `price_data`, credit packs carried
-in session metadata, a webhook that mints the entitlement, claim-on-return). The
-reference implementation is at `/Users/dr.gretchenboria/ROS/sim2rad/ui.html` and
-`/Users/dr.gretchenboria/gretchenboria.com/functions/api/`.
+Metered payments (1 credit = 1 confirmed run, Stripe Checkout, D1 ledger) have
+landed. See `docs/BILLING.md`.
 
-Adaptation brief given: 1 credit = 1 **confirmed run** (CharmQuark's billable unit
-is already called a Run, mapping onto Sim2Rad's 1 Bq = 1 simulation); ledger in
-**D1, not Supabase**; atomic decrement via guarded `UPDATE ... WHERE balance >= ?`
-checking `meta.changes`; Stripe signature verified with
-`constructEventAsync` (Workers has no sync crypto) and an idempotent webhook;
-B2B pricing. Expected artifacts: `db/migrations/0002_billing.sql`,
-`api/src/routes/billing.ts`, frontend balance + purchase modal, `docs/BILLING.md`.
-
-**If that work is not present, it did not finish** — check `docs/BILLING.md` and
-`git status`. It was told not to commit, so review the working tree.
+The agentic-configuration roadmap is in progress: Phase 0 (real auth, permission
+fixes, sealed integration keys, CI gate) is done. Next up are a shared contracts
+package, complete CRUD with audit and optimistic locking, an editable UI, then
+the MCP server and Charmy tool layer.
 
 ## 10. Map
 

@@ -81,27 +81,17 @@ export default function MissionsPage() {
         fields={[
           { name: "mission_group_id", label: "Mission group", type: "select", options: groups.map((g) => ({ value: g.id, label: g.name })) },
           { name: "name", label: "Name", required: true },
-          {
-            name: "risk_level",
-            label: "Risk",
-            type: "select",
-            options: [
-              { value: "LOW", label: "Low" },
-              { value: "HIGH", label: "High" },
-              { value: "UNKNOWN", label: "Unknown" },
-            ],
-            default: "LOW",
-          },
           { name: "instructions_complete", label: "Instructions complete", type: "checkbox", default: true },
         ]}
         onCreate={(v) =>
+          // Risk starts UNKNOWN: it is set by "Assess risk" or a Fleet Lead's legal
+          // review on the mission page, never picked at creation (the API enforces this).
           api.createMission({
             campaign_id: campaignId,
             mission_group_id: v.mission_group_id,
             name: v.name,
-            risk_level: v.risk_level,
             instructions_complete: v.instructions_complete,
-            // seed a single default variant so a Low-risk mission is schedulable out of the box
+            // seed a single default variant so a cleared mission is schedulable without more setup
             variants: [{ id: "v1", name: "Default", correct: { id: "v1-c" }, errors: [] }],
           })
         }

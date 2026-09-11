@@ -2,49 +2,93 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { PRESET_USERS } from "@/lib/session";
-import { setUser } from "@/lib/session";
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  type User as FirebaseUser,
+} from "firebase/auth";
+import { requireAuth } from "@/lib/firebase";
+import { ApiError, api } from "@/lib/api";
+import { PRESET_USERS, ROLE_LABEL, setUser } from "@/lib/session";
+
+/** Local development only: skip Firebase and act as a preset user (the API must run with ENVIRONMENT=development). */
+const DEV_BYPASS = process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true";
+const FIREBASE_CONFIGURED = Boolean(process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
 
 export function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  /** True when sign-in was handled without Firebase (dev bypass) or cannot happen at all. */
+  const handledWithoutFirebase = (): boolean => {
+    if (DEV_BYPASS) {
+      setUser(PRESET_USERS[0]);
+      return true;
+    }
+    if (!FIREBASE_CONFIGURED) {
+      setError("Sign-in is not configured for this deployment: the NEXT_PUBLIC_FIREBASE_* variables were not set at build time.");
+      return true;
+    }
+    return false;
+  };
+
+  /**
+   * Firebase proves who someone is; the API decides what they may do. The role
+   * shown in the app comes from GET /api/me — the same users row the server
+   * authorizes against — never from the client.
+   */
+  const finishSignIn = async (fbUser: FirebaseUser) => {
+    const auth = requireAuth();
+    if (!fbUser.emailVerified) {
+      await sendEmailVerification(fbUser).catch(() => undefined);
+      await signOut(auth);
+      setNotice(`We sent a verification link to ${fbUser.email}. Open it, then sign in.`);
+      return;
+    }
+    try {
+      const me = await api.me();
+      setUser({ name: me.name, role: me.role, title: ROLE_LABEL[me.role] });
+    } catch (err) {
+      await signOut(auth).catch(() => undefined);
+      throw err;
+    }
+  };
+
+  const fail = (err: unknown, fallback: string) =>
+    setError(err instanceof ApiError ? err.friendly : err instanceof Error ? err.message : fallback);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setNotice(null);
+    if (handledWithoutFirebase()) return;
     try {
-      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
-        setUser(PRESET_USERS[0]);
-        return;
-      }
-      
-      let cred;
-      if (isSignUp) {
-        cred = await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        cred = await signInWithEmailAndPassword(auth, email, password);
-      }
-      
-      setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
-    } catch (err: any) {
-      setError(err.message || `Failed to ${isSignUp ? "sign up" : "sign in"}`);
+      const auth = requireAuth();
+      const cred = isSignUp
+        ? await createUserWithEmailAndPassword(auth, email, password)
+        : await signInWithEmailAndPassword(auth, email, password);
+      await finishSignIn(cred.user);
+    } catch (err) {
+      fail(err, `Failed to ${isSignUp ? "sign up" : "sign in"}`);
     }
   };
 
   const handleGoogleLogin = async () => {
+    setError(null);
+    setNotice(null);
+    if (handledWithoutFirebase()) return;
     try {
-      if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY || process.env.NEXT_PUBLIC_BYPASS_FIREBASE === "true") {
-        setUser(PRESET_USERS[0]);
-        return;
-      }
-      const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
-      setUser({ name: cred.user.displayName || email, role: "PM", title: "Manager" });
-    } catch (err: any) {
-      setError(err.message || "Google sign in failed");
+      const cred = await signInWithPopup(requireAuth(), new GoogleAuthProvider());
+      await finishSignIn(cred.user);
+    } catch (err) {
+      fail(err, "Google sign in failed");
     }
   };
 
@@ -61,6 +105,7 @@ export function Login() {
         </div>
 
         {error && <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</div>}
+        {notice && <div className="mb-4 text-sm text-neutral-700 bg-neutral-100 p-3 rounded">{notice}</div>}
 
         <form onSubmit={handleEmailAuth} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -100,8 +145,8 @@ export function Login() {
 
         <div className="mt-4 text-center text-sm text-neutral-500">
           {isSignUp ? "Already have an account? " : "Don't have an account? "}
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => setIsSignUp(!isSignUp)}
             className="font-medium text-[color:var(--cq-azure-base)] hover:underline"
           >
@@ -118,7 +163,7 @@ export function Login() {
           onClick={handleGoogleLogin}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.920 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
           Google SSO
         </button>
 

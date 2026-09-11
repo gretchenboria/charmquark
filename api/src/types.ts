@@ -16,12 +16,31 @@ export interface Env {
   GEMINI_API_KEY?: string;
 
   /**
-   * Cloudflare Access. Both must be set for Access to be enforced — a team
-   * domain alone proves the org, not which application the token was for.
-   *   CF_ACCESS_TEAM_DOMAIN  e.g. "yourteam.cloudflareaccess.com"
-   *   CF_ACCESS_AUD          the Access application's AUD tag
-   * While unset the API falls back to the development header shim and says so
-   * loudly via GET /api/cloud/status.
+   * The Firebase project whose ID tokens this API accepts (a var, not a secret —
+   * it is public in the web bundle too). Required outside development: without
+   * it every request is a 503 naming this variable. See auth.ts.
+   */
+  FIREBASE_PROJECT_ID?: string;
+  /**
+   * Comma-separated emails that may self-provision as FLEET_LEAD on first
+   * sign-in when they have no users row — how a fresh deployment gets its first
+   * admin. Set as a secret; remove once the roster exists.
+   */
+  BOOTSTRAP_ADMIN_EMAILS?: string;
+  /**
+   * Comma-separated origins allowed to call the API cross-origin. Unset in
+   * production means same-origin only (the web app and API share a host).
+   */
+  ALLOWED_ORIGINS?: string;
+  /**
+   * Seals third-party credentials at rest (secrets.ts). A Worker secret:
+   * `openssl rand -base64 32 | wrangler secret put INTEGRATION_KEY_SECRET`.
+   */
+  INTEGRATION_KEY_SECRET?: string;
+
+  /**
+   * Cloudflare Access — only for a deployment that puts Access in front of the
+   * Worker. Not used for request authentication; see access.ts.
    */
   CF_ACCESS_TEAM_DOMAIN?: string;
   CF_ACCESS_AUD?: string;
@@ -53,12 +72,18 @@ export interface Env {
   ROBOFLOW_WORKSPACE?: string;
 }
 
-/** The RBAC principal for a request, derived from the X-CharmQuark-* headers. */
 export type Role = "PM" | "FLEET_LEAD" | "ROBOT_OPERATOR";
 
+/** The authenticated caller, resolved once per request by auth.ts. */
 export interface Principal {
   role: Role;
+  /** Display name — for messages and audit text only, never for identity checks. */
   name: string;
+  /** users.subject — the stable identity. */
+  subject: string;
+  /** Verified, lowercased email; null only under the development shim. */
+  email: string | null;
+  via: "firebase" | "dev-shim";
 }
 
 export type Vars = { principal: Principal };

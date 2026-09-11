@@ -65,7 +65,8 @@ export default function UsersPage() {
       fields={[
         { name: "name", label: "Full name", required: true },
         { name: "subject", label: "Login (username / DSID)", required: true },
-        { name: "email", label: "Email (optional)" },
+        // Sign-in matches the verified email from Firebase to this row, so without it the person cannot log in.
+        { name: "email", label: "Email (used to sign in)", required: true },
         { name: "role", label: "Role", type: "select", options: ROLE_OPTIONS, default: "ROBOT_OPERATOR" },
       ]}
       onCreate={(v) =>

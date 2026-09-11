@@ -295,25 +295,17 @@ npx wrangler d1 execute charmquark --local --command "UPDATE billing_accounts SE
 
 Read this before treating the meter as revenue protection.
 
-1. **There is no real authentication.** Auth is a header shim
-   (`api/src/auth.ts`): `X-CharmQuark-Role` / `X-CharmQuark-User` are trusted as
-   sent, and the login screen is a role picker, not a credential check. Anyone
-   who can reach the API can therefore confirm runs and spend the
-   organisation's credits, and can attribute the spend to any name they like.
-   Making the balance account-scoped rather than `localStorage`-scoped removes
-   the *trivial* client-side forgery (there is no token to edit, and no header
-   value changes whose credits are spent — only whose name lands in the ledger's
-   `actor` column), but it does not authenticate anyone. **The meter is a
-   billing control, not a security boundary, until Cloudflare Access or a real
-   IdP replaces `resolvePrincipal`.**
+1. ~~There is no real authentication.~~ **Fixed:** callers are authenticated
+   with verified Firebase ID tokens, and the ledger `actor` is the display name
+   of a verified user (`docs/ACCESS.md`). The header shim is honoured only when
+   `ENVIRONMENT=development`.
 2. **The API is not rate-limited.** A loop of `POST /runs/:id/confirm` across
    many runs will spend a balance as fast as D1 will take the writes. The
    decrement is correct under that load — it will never overdraw — but nothing
    throttles it.
-3. **Anyone signed in can start a checkout.** There is no billing-admin role;
-   `crudGuard` gives every role full CRUD. A `ROBOT_OPERATOR` can put a $21,000
-   pack in front of themselves. They still have to pay for it, so the exposure is
-   confusion rather than loss — but it is not the policy a real deployment wants.
+3. **Any PM or Fleet Lead can start a checkout.** `billing.write` is limited to
+   PM and Fleet Lead, so operators can't, but there is no dedicated billing-admin
+   role.
 4. **No CSRF protection on state-changing routes.** They are same-origin JSON
    calls with no cookie auth, so there is no ambient credential to ride, but
    nothing enforces that either.

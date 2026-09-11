@@ -22,6 +22,7 @@ import {
 import * as S from "../serialize";
 import { parseCsv } from "./catalog";
 import { recordCoverage } from "./coverage";
+import { requirePlanner } from "../auth";
 
 type App = Hono<{ Bindings: Env; Variables: Vars }>;
 
@@ -215,7 +216,7 @@ export function mountAutoschedule(app: App): void {
   });
 
   /** Re-roll: propose a different set, excluding whatever was just rejected. */
-  app.post("/runs/:id/reject-proposal", async (c) => {
+  app.post("/runs/:id/reject-proposal", requirePlanner, async (c) => {
     const id = c.req.param("id");
     const row = await c.env.DB.prepare(`SELECT * FROM runs WHERE id = ?`).bind(id).first<Row>();
     if (!row) throw notFound("run");
@@ -236,7 +237,7 @@ export function mountAutoschedule(app: App): void {
    * Accept the proposal: record the operator's run inputs, mark the missions
    * IN_PROGRESS, and emit the run-sheet CSV (also stored in the vault).
    */
-  app.post("/runs/:id/accept-proposal", async (c) => {
+  app.post("/runs/:id/accept-proposal", requirePlanner, async (c) => {
     const id = c.req.param("id");
     const b = await c.req.json<{ robot_id?: string | null; payload?: string | null; run_lab?: string | null }>();
 
