@@ -11,8 +11,9 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { DeleteButton } from "@/components/DeleteButton";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
+import { LAB_TYPES } from "@contracts";
 
-const TYPES = ["LAB_BAY", "OFFICE", "OUTDOORS"] as const;
+const TYPES = LAB_TYPES;
 
 export default function LabDetail() {
   const { id } = useParams<{ id: string }>();

@@ -6,8 +6,11 @@
  * definition of "eligible", evaluated per slot.
  */
 
+// Type-only: erased at runtime, so the seed generator (plain node) is unaffected.
+import type { MissionDuration, RiskLevel } from "../../packages/contracts/src/index.ts";
+export type { MissionDuration, RiskLevel };
+
 // ---------------------------------------------------------------- effort budget
-export type MissionDuration = "SHORT" | "MEDIUM" | "LONG" | "UNSPECIFIED";
 
 /**
  * Effort weight in run-budget units. UNSPECIFIED defaults to 1 so un-sized
@@ -110,8 +113,6 @@ const POTENTIAL_HAZARD = [
   "obstacle", "crowd", "bystander", "human-in-the-loop", "handover", "lift", "carry",
   "tool change", "spinning", "rotating", "heat", "hot",
 ];
-
-export type RiskLevel = "LOW" | "POTENTIAL" | "HIGH" | "UNKNOWN";
 
 /** Risk levels that require a Fleet-Lead legal approval before scheduling. */
 export const NEEDS_LEGAL_REVIEW: readonly RiskLevel[] = ["HIGH", "POTENTIAL", "UNKNOWN"];

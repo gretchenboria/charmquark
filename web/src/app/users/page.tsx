@@ -9,12 +9,15 @@ import type { User } from "@/lib/types";
 import { ListPage, type Column } from "@/components/ListPage";
 import { NewButton } from "@/components/NewButton";
 import { useToast } from "@/components/Toast";
+import { ROLES, type Role } from "@contracts";
 
-const ROLE_OPTIONS = [
-  { value: "ROBOT_OPERATOR", label: "Robot Operator — runs runs, records QA (no catalog writes)" },
-  { value: "PM", label: "PM — full create/update/delete" },
-  { value: "FLEET_LEAD", label: "Fleet Lead — read-only + delete a whole campaign + legal review" },
-];
+/** What each role can actually do — kept in step with the policy in api/src/auth.ts. */
+const ROLE_DESCRIPTIONS: Record<Role, string> = {
+  ROBOT_OPERATOR: "Robot Operator — executes runs: logs execution, QA and uploads; no catalog or fleet changes",
+  PM: "PM — plans: edits campaigns, missions and the fleet; confirms runs",
+  FLEET_LEAD: "Fleet Lead — everything a PM can, plus legal review, deleting fleet records and user admin",
+};
+const ROLE_OPTIONS = ROLES.map((value) => ({ value, label: ROLE_DESCRIPTIONS[value] }));
 
 const columns: Column[] = [
   { key: "name", header: "Name" },

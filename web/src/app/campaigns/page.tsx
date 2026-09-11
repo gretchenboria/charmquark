@@ -9,6 +9,7 @@ import { useUser } from "@/lib/useUser";
 import type { Campaign } from "@/lib/types";
 import { ListPage, type Column } from "@/components/ListPage";
 import { NewButton } from "@/components/NewButton";
+import { CAMPAIGN_TYPES, optionsFor } from "@contracts";
 import { useToast } from "@/components/Toast";
 
 const columns: Column[] = [
@@ -72,11 +73,7 @@ export default function CampaignsPage() {
             name: "campaign_type",
             label: "Type",
             type: "select",
-            options: [
-              { value: "PERCEPTION", label: "Perception" },
-              { value: "MANIPULATION", label: "Manipulation" },
-              { value: "NAVIGATION", label: "Navigation" },
-            ],
+            options: optionsFor(CAMPAIGN_TYPES),
             default: "MANIPULATION",
           },
           { name: "target_n", label: "Target N", type: "number", default: 0 },

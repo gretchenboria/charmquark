@@ -9,6 +9,7 @@ import { useUser } from "@/lib/useUser";
 import type { Lab } from "@/lib/types";
 import { ListPage, type Column } from "@/components/ListPage";
 import { NewButton } from "@/components/NewButton";
+import { LAB_TYPES, optionsFor } from "@contracts";
 
 const columns: Column[] = [
   { key: "name", header: "Name" },
@@ -41,11 +42,7 @@ export default function LabsPage() {
           name: "type",
           label: "Type",
           type: "select",
-          options: [
-            { value: "LAB_BAY", label: "Lab bay" },
-            { value: "OFFICE", label: "Office" },
-            { value: "OUTDOORS", label: "Outdoors" },
-          ],
+          options: optionsFor(LAB_TYPES),
           default: "LAB_BAY",
         },
         { name: "capacity", label: "Capacity (runs/day)", type: "number", default: 4 },

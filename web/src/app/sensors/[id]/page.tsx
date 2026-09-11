@@ -11,9 +11,9 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { DeleteButton } from "@/components/DeleteButton";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
+import { SENSOR_STATUSES, SENSOR_TYPES } from "@contracts";
 
-const DEVICE_TYPES = ["WATCH", "IPHONE", "AIRPODS", "INSTA360", "SENSOR", "CONTROL", "VISION_PRO"] as const;
-const STATUSES = ["OPERATIONAL", "MAINTENANCE", "RETIRED"] as const;
+const STATUSES = SENSOR_STATUSES;
 
 export default function SensorDetail() {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +28,7 @@ export default function SensorDetail() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     asset_name: "",
-    sensor_type: "WATCH",
+    sensor_type: SENSOR_TYPES[0] as string,
     status: "OPERATIONAL",
   });
 
@@ -118,7 +118,7 @@ export default function SensorDetail() {
               <span className={labelCls}>Type</span>
               <select className={inputCls} value={form.sensor_type}
                 onChange={(e) => setForm({ ...form, sensor_type: e.target.value })}>
-                {DEVICE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                {SENSOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </label>
             <label>

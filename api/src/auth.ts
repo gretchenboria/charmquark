@@ -26,6 +26,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import type { Env, Principal, Role, Vars } from "./types";
 import { authUnavailable, badRequest, forbidden, unauthorized } from "./errors";
 import { readBearer, verifyFirebaseIdToken, type FirebaseIdentity } from "./identity";
+import { RESOURCES } from "./contracts";
 
 const ROLES: readonly Role[] = ["PM", "FLEET_LEAD", "ROBOT_OPERATOR"] as const;
 
@@ -168,29 +169,17 @@ const LEAD: readonly Role[] = ["FLEET_LEAD"];
  * endpoint is governed rather than silently open.
  */
 const POLICY: Record<string, Partial<Record<Action, readonly Role[]>>> = {
-  // --- catalogue: planners author it, operators read it ---
-  campaigns:        { read: ROLES, write: PM_UP, delete: LEAD },
-  "mission-groups": { read: ROLES, write: PM_UP, delete: PM_UP },
-  missions:         { read: ROLES, write: PM_UP, delete: PM_UP },
-  "inventory-items":{ read: ROLES, write: PM_UP, delete: PM_UP },
-
-  // --- the fleet itself: changing what exists is a planning act ---
-  robots:           { read: ROLES, write: PM_UP, delete: LEAD },
-  sensors:          { read: ROLES, write: PM_UP, delete: LEAD },
-  "sensor-rigs":    { read: ROLES, write: PM_UP, delete: LEAD },
-  labs:             { read: ROLES, write: PM_UP, delete: LEAD },
-  operators:        { read: ROLES, write: PM_UP, delete: LEAD },
-
-  // --- execution: operators write here, and this is the point of the role.
-  //     The planning actions nested under /runs (accepting a proposal, standby
-  //     swap, QA-override export) carry `requirePlanner` on the route. ---
-  runs:             { read: ROLES, write: ROLES, delete: PM_UP },
-  "run-proposals":  { read: ROLES, write: PM_UP, delete: PM_UP },
+  // --- record types in the contract registry carry their own roles
+  //     (packages/contracts/src/resources.ts, pinned by api/test/contracts.test.ts):
+  //     planners author the catalogue and fleet, operators write runs, Fleet Leads
+  //     delete fleet records and administer users. The planning actions nested
+  //     under /runs carry `requirePlanner` on the route. ---
+  ...Object.fromEntries(Object.values(RESOURCES).map((r) => [r.path, r.roles])),
 
   // --- everything else ---
+  "run-proposals":  { read: ROLES, write: PM_UP, delete: PM_UP },
   documents:        { read: ROLES, write: ROLES, delete: PM_UP },
   workflows:        { read: ROLES, write: PM_UP, delete: PM_UP },
-  users:            { read: ROLES, write: LEAD,  delete: LEAD },
   billing:          { read: ROLES, write: PM_UP, delete: LEAD },
   roboflow:         { read: ROLES, write: PM_UP, delete: PM_UP },
   integrations:     { read: ROLES, write: PM_UP, delete: PM_UP },

@@ -9,6 +9,7 @@ import { useUser } from "@/lib/useUser";
 import type { Operator } from "@/lib/types";
 import { ListPage, type Column } from "@/components/ListPage";
 import { NewButton } from "@/components/NewButton";
+import { OPERATOR_ROLES, optionsFor } from "@contracts";
 
 const columns: Column[] = [
   { key: "code", header: "Code" },
@@ -40,12 +41,7 @@ export default function OperatorsPage() {
           name: "role",
           label: "Role",
           type: "select",
-          options: [
-            { value: "ROBOT_OPERATOR", label: "Robot Operator" },
-            { value: "QA_REVIEWER", label: "QA Reviewer" },
-            { value: "FIELD_LEAD", label: "Field Lead" },
-            { value: "DATA_ENGINEER", label: "Data Engineer" },
-          ],
+          options: optionsFor(OPERATOR_ROLES),
           default: "ROBOT_OPERATOR",
         },
       ]}
