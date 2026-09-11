@@ -26,6 +26,9 @@ export interface Settings {
   "risk.potential_hazard_terms": string[];
   "limits.roboflow_max_images_per_export": number;
   "limits.coverage_max_cells": number;
+  "agents.mcp_enabled": boolean;
+  "agents.charmy_enabled": boolean;
+  "agents.llm_provider": "gemini" | "anthropic";
 }
 
 export type SettingKey = keyof Settings;
@@ -54,10 +57,13 @@ export const SETTING_DEFAULTS: Settings = {
   ],
   "limits.roboflow_max_images_per_export": 25,
   "limits.coverage_max_cells": 512,
+  "agents.mcp_enabled": true,
+  "agents.charmy_enabled": true,
+  "agents.llm_provider": "gemini",
 };
 
 export interface SettingSpec {
-  group: "Scheduling" | "Risk" | "Limits";
+  group: "Scheduling" | "Risk" | "Limits" | "Agents";
   label: string;
   description: string;
   validate: (v: unknown) => string | null;
@@ -139,6 +145,21 @@ export const SETTING_SPECS: Record<SettingKey, SettingSpec> = {
     group: "Limits", label: "Coverage cells per campaign",
     description: "Upper bound on a campaign's coverage state space.",
     validate: intIn(1, 4096),
+  },
+  "agents.mcp_enabled": {
+    group: "Agents", label: "MCP server for coding agents",
+    description: "Lets Claude Code, Gemini CLI and other MCP clients use /api/mcp with an API token. Off: the endpoint returns 404 and everything stays manual.",
+    validate: (v) => (typeof v === "boolean" ? null : "must be true or false"),
+  },
+  "agents.charmy_enabled": {
+    group: "Agents", label: "In-app assistant (Charmy)",
+    description: "Shows the assistant, which can read data and propose change sets for you to apply. Off: the assistant is hidden.",
+    validate: (v) => (typeof v === "boolean" ? null : "must be true or false"),
+  },
+  "agents.llm_provider": {
+    group: "Agents", label: "Assistant model provider",
+    description: "Which model provider Charmy uses. Its API key comes from the Integrations page or the Worker secret.",
+    validate: (v) => (v === "gemini" || v === "anthropic" ? null : "must be gemini or anthropic"),
   },
 };
 

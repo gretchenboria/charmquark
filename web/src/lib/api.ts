@@ -70,6 +70,22 @@ export interface SettingView {
   updated_at: string | null;
 }
 
+export interface ChangesetPreview {
+  id: string;
+  ok: boolean;
+  problems: number;
+  summary: string | null;
+  changes: {
+    index: number;
+    resource: string;
+    op: string;
+    id: string | null;
+    ok: boolean;
+    problems: string[];
+    diff: Record<string, { from: unknown; to: unknown }>;
+  }[];
+}
+
 export interface ApiToken {
   id: string;
   user_subject: string;
@@ -371,8 +387,10 @@ export const api = {
   updateUser: (id: string, b: Record<string, unknown>) => patch<User>(`/users/${id}`, b),
   deleteUser: (id: string) => del(`/users/${id}`),
 
-  chat: (messages: { role: "user" | "model"; parts: { text: string }[] }[]) =>
-    post<{ text: string }>("/chat", { messages }),
+  /** Charmy: reads via tools and may return a proposed change set for the person to apply. */
+  chat: (messages: { role: "user" | "assistant"; text: string }[], context?: { path: string }) =>
+    post<{ text: string; changeset: ChangesetPreview | null; tool_calls: { name: string; ok: boolean }[] }>("/chat", { messages, context }),
+  applyChangeset: (id: string) => post<{ id: string; status: string }>(`/changesets/${id}/apply`, {}),
 
   // integrations
   getIntegrations: () => req<{ configured: string[], has_global_roboflow: boolean }>("/integrations"),
