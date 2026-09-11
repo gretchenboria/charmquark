@@ -54,6 +54,7 @@ app.use(
  * first. It carries no user credential — its credential is the
  * `stripe-signature` it is verified against.
  */
+// Also mounts POST /api/billing/grants (signed by the central store).
 mountBillingWebhook(app);
 
 /** Everything under /api is authenticated and policy-guarded. */

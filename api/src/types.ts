@@ -63,6 +63,15 @@ export interface Env {
    */
   APP_ORIGIN?: string;
   /**
+   * The central store (store/). STORE_PUBLIC_KEY is the base64 raw Ed25519 key
+   * grants are verified with; DEPLOYMENT_ID is this deployment's id in the store,
+   * which every grant must name. Both are public vars. STORE_URL, once set, sends
+   * buyers to the store and turns off this Worker's own Stripe checkout.
+   */
+  STORE_PUBLIC_KEY?: string;
+  DEPLOYMENT_ID?: string;
+  STORE_URL?: string;
+  /**
    * Roboflow annotation handoff. Optional for the same reason as the two above:
    * a deployment without it still runs and says the integration is unconfigured
    * rather than half-working. A Worker *secret* (`wrangler secret put`), never a

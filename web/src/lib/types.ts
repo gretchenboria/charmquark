@@ -471,6 +471,7 @@ export interface BillingAccount {
   credit_cost_per_run: number;
   /** False when the Worker has no Stripe secret — the modal says so rather than failing at checkout. */
   payments_configured: boolean;
+  store_url?: string | null;
   packs: CreditPack[];
 }
 

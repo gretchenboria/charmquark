@@ -69,6 +69,7 @@ export const CHANGESET_STATUSES = ["PREVIEWED", "APPLIED", "REJECTED"] as const;
 
 export const LEDGER_REASONS = ["PURCHASE", "GRANT", "DEBIT", "REFUND", "ADJUSTMENT"] as const;
 export const CHECKOUT_STATUSES = ["PENDING", "COMPLETED"] as const;
+export const GRANT_REASONS = ["PURCHASE", "GRANT"] as const;
 
 export type Role = (typeof ROLES)[number];
 export type CampaignType = (typeof CAMPAIGN_TYPES)[number];
@@ -89,6 +90,7 @@ export type RunState = (typeof RUN_STATES)[number];
 export type MissionScope = (typeof MISSION_SCOPES)[number];
 export type QaVerdict = (typeof QA_VERDICTS)[number];
 export type LedgerReason = (typeof LEDGER_REASONS)[number];
+export type GrantReason = (typeof GRANT_REASONS)[number];
 
 /**
  * `table.column` -> the list its CHECK constraint must equal. The contract test
@@ -123,6 +125,7 @@ export const DB_ENUMS: Record<string, readonly string[]> = {
   "audit_events.via": AUDIT_VIA,
   "changesets.status": CHANGESET_STATUSES,
   "billing_checkout_sessions.status": CHECKOUT_STATUSES,
+  "billing_grants.reason": GRANT_REASONS,
 };
 
 // ---------------------------------------------------------------- labels

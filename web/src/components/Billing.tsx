@@ -219,7 +219,20 @@ function PurchaseModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, onRefresh]);
 
+  // Returning from the store tab: pick up credits the store has delivered.
+  useEffect(() => {
+    if (!account?.store_url) return;
+    const onFocus = () => void onRefresh();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [account?.store_url, onRefresh]);
+
   const buy = async (pack: CreditPack) => {
+    if (account?.store_url) {
+      window.open(`${account.store_url}&pack=${encodeURIComponent(pack.id)}`, "_blank", "noopener");
+      setMessage("Finish the purchase in the CharmQuark store tab. Credits appear here within a minute of payment.");
+      return;
+    }
     setBusy(pack.id);
     setMessage("Opening secure checkout…");
     try {
