@@ -43,45 +43,49 @@ function SettingRow({ s, canEdit, onChange }: { s: SettingView; canEdit: boolean
   let control: React.ReactNode;
   if (typeof s.value === "boolean") {
     control = (
-      <label className="inline-flex items-center gap-2 text-sm">
-        <input type="checkbox" disabled={!canEdit} checked={Boolean(draft)} onChange={(e) => setDraft(e.target.checked)} />
-        {draft ? "On" : "Off"}
+      <label className="relative inline-flex cursor-pointer items-center gap-3">
+        <input type="checkbox" className="peer sr-only" disabled={!canEdit} checked={Boolean(draft)} onChange={(e) => setDraft(e.target.checked)} />
+        <div className="h-6 w-11 rounded-full bg-neutral-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-neutral-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"></div>
+        <span className="text-sm font-medium text-neutral-700">{draft ? "Enabled" : "Disabled"}</span>
       </label>
     );
   } else if (s.key === "agents.llm_provider") {
     control = (
-      <select className="cq-input w-40" disabled={!canEdit} value={String(draft)} onChange={(e) => setDraft(e.target.value)}>
+      <select className="cq-input w-40 rounded-md border-neutral-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" disabled={!canEdit} value={String(draft)} onChange={(e) => setDraft(e.target.value)}>
         <option value="gemini">Gemini</option>
         <option value="anthropic">Anthropic (Claude)</option>
       </select>
     );
   } else if (typeof s.value === "number") {
-    control = <input type="number" className="cq-input w-32" disabled={!canEdit} value={String(draft)} onChange={(e) => setDraft(e.target.value)} />;
+    control = <input type="number" className="cq-input w-32 rounded-md border-neutral-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" disabled={!canEdit} value={String(draft)} onChange={(e) => setDraft(e.target.value)} />;
   } else if (typeof s.value === "string") {
-    control = <input type="time" className="cq-input w-32" disabled={!canEdit} value={String(draft)} onChange={(e) => setDraft(e.target.value)} />;
+    control = <input type="time" className="cq-input w-32 rounded-md border-neutral-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" disabled={!canEdit} value={String(draft)} onChange={(e) => setDraft(e.target.value)} />;
   } else if (s.key === "scheduling.work_days") {
     const days = draft as number[];
     control = (
-      <div className="flex flex-wrap gap-3">
-        {DAYS.map((d, i) => (
-          <label key={d} className="inline-flex items-center gap-1 text-sm">
-            <input type="checkbox" disabled={!canEdit} checked={days.includes(i + 1)}
-              onChange={(e) => setDraft(e.target.checked ? [...days, i + 1].sort() : days.filter((x) => x !== i + 1))} />
-            {d}
-          </label>
-        ))}
+      <div className="flex flex-wrap gap-2">
+        {DAYS.map((d, i) => {
+          const checked = days.includes(i + 1);
+          return (
+            <label key={d} className={`cursor-pointer rounded-full px-3 py-1 text-sm transition-colors ${checked ? 'bg-blue-100 text-blue-700 font-medium border border-blue-200' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 border border-transparent'}`}>
+              <input type="checkbox" className="sr-only" disabled={!canEdit} checked={checked}
+                onChange={(e) => setDraft(e.target.checked ? [...days, i + 1].sort() : days.filter((x) => x !== i + 1))} />
+              {d}
+            </label>
+          );
+        })}
       </div>
     );
   } else if (typeof draft === "string") {
-    control = <textarea className="cq-input w-full font-mono text-xs" rows={Math.min(10, draft.split("\n").length + 1)} disabled={!canEdit} value={draft} onChange={(e) => setDraft(e.target.value)} />;
+    control = <textarea className="cq-input w-full font-mono text-xs rounded-md border-neutral-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" rows={Math.min(10, draft.split("\n").length + 1)} disabled={!canEdit} value={draft} onChange={(e) => setDraft(e.target.value)} />;
   } else if (draft && typeof draft === "object") {
     const obj = draft as Record<string, number>;
     control = (
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-4">
         {Object.keys(obj).map((k) => (
-          <label key={k} className="inline-flex items-center gap-1 text-sm">
-            {k.toLowerCase()}
-            <input type="number" min={1} className="cq-input w-20" disabled={!canEdit} value={obj[k]}
+          <label key={k} className="flex flex-col gap-1 text-sm font-medium text-neutral-700">
+            {k.charAt(0).toUpperCase() + k.slice(1).toLowerCase()}
+            <input type="number" min={1} className="cq-input w-24 rounded-md border-neutral-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" disabled={!canEdit} value={obj[k]}
               onChange={(e) => setDraft({ ...obj, [k]: Number(e.target.value) })} />
           </label>
         ))}
@@ -90,25 +94,26 @@ function SettingRow({ s, canEdit, onChange }: { s: SettingView; canEdit: boolean
   }
 
   return (
-    <div className="border-b border-neutral-100 py-4 last:border-0">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <div className="text-sm font-medium text-neutral-800">{s.label}</div>
-          <div className="text-xs text-neutral-500">{s.description}</div>
+    <div className="border-b border-neutral-100 py-5 last:border-0">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex-1 min-w-[250px]">
+          <div className="text-base font-semibold text-neutral-900">{s.label}</div>
+          <div className="mt-1 text-sm text-neutral-500">{s.description}</div>
         </div>
-        <code className="text-[11px] text-neutral-400">{s.key}</code>
+        <div className="flex-1 min-w-[250px]">
+          <div className="mt-1">{control}</div>
+        </div>
       </div>
-      <div className="mt-2">{control}</div>
-      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-neutral-500">
         {canEdit && dirty && (
-          <button className="cq-btn-primary px-3 py-1 text-xs" disabled={busy} onClick={() => run({ [s.key]: fromDraft(s, draft) })}>
-            {busy ? "Saving…" : "Save"}
+          <button className="cq-btn-primary px-3 py-1.5 text-xs font-medium rounded shadow-sm" disabled={busy} onClick={() => run({ [s.key]: fromDraft(s, draft) })}>
+            {busy ? "Saving…" : "Save changes"}
           </button>
         )}
         {canEdit && s.overridden && (
-          <button className="text-neutral-500 hover:text-neutral-800" disabled={busy} onClick={() => run({ [s.key]: null })}>Reset to default</button>
+          <button className="text-neutral-500 hover:text-neutral-800 transition-colors" disabled={busy} onClick={() => run({ [s.key]: null })}>Reset to default</button>
         )}
-        {s.overridden ? <span>Changed by {s.updated_by ?? "unknown"} · {s.updated_at} UTC</span> : <span>Default</span>}
+        {s.overridden ? <span className="ml-auto italic">Changed by {s.updated_by ?? "unknown"} · {s.updated_at} UTC</span> : <span className="ml-auto italic">Default</span>}
       </div>
     </div>
   );

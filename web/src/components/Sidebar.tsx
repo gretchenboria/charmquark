@@ -137,8 +137,8 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
   {
     title: "Resources",
     items: [
-      { href: "/", label: "Documentation", icon: IconReport },
-      { href: "/home", label: "Tutorial", icon: IconWorkflow },
+      { href: "/docs", label: "Documentation", icon: IconReport },
+      { href: "/tutorial", label: "Tutorial", icon: IconWorkflow },
       { href: "/api-reference", label: "API Reference", icon: IconLab },
       { href: "/integrations", label: "Integrations", icon: IconSettings },
       { href: "/settings", label: "Settings & API tokens", icon: IconSettings },
