@@ -7,10 +7,7 @@ pick this up cold. Read this first, then `README.md`.
 
 ## 1. What this is
 
-A fleet-orchestration and physical-AI resource-management app for `charmquark.app`,
-ported from a predecessor research-orchestration system ("Gala") whose data was
-fully stripped. Two Cloudflare Workers plus D1. See `README.md` for the domain
-model and `docs/DATA_STRIPPING.md` for provenance.
+A Single-Tenant ROS2 Command & Control Center and fleet-orchestration app for `charmquark.app`. It includes a native ROS2 Python edge client (`packages/edge_client`) that streams live WebSocket telemetry and executes immediate hardware commands (like E-Stops). Built on two Cloudflare Workers plus D1. See `README.md` for the domain model and `docs/DATA_STRIPPING.md` for provenance of the predecessor research system.
 
 ## 2. Live Cloudflare state
 
@@ -171,8 +168,7 @@ COLLECTED. It has already caught two genuine bugs — trust it.
 
 ## 9. In flight
 
-Metered payments (1 credit = 1 confirmed run, Stripe Checkout, D1 ledger) have
-landed. See `docs/BILLING.md`.
+Single-Tenant Enterprise Licensing with a Hard Paywall has landed. Once Demo Mode credits run out, the UI locks until `is_unlimited = 1` is set. Stripe has been removed. See `docs/BILLING.md`.
 
 The agentic-configuration roadmap is in progress. These have landed:
 - real auth and CI gates

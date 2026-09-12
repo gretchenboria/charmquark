@@ -1,14 +1,10 @@
 # CharmQuark
 
-Fleet orchestration and physical-AI resource management for robot operations.
+Single-Tenant ROS2 Command & Control Center and fleet orchestrator for robot operations.
 
-CharmQuark plans and runs **data-collection runs** for a robot fleet: which
-robot, in which lab, with which sensor rig, driven by which operator, running
-which missions — and whether every gate is green before anyone presses record.
+CharmQuark provides a persistent **C2 dashboard** that interfaces directly with physical robots via the **ROS2 Edge Client**. It combines live WebSocket telemetry with immediate hardware execution (e.g., E-Stops) alongside deep resource management: which robot, in which lab, with which sensor rig, driven by which operator, running which missions.
 
-It merges two predecessor systems: a research data-collection orchestrator (the
-readiness engine, run board, auto-scheduler and QA pipeline) and a lab
-operations toolkit (sensor inventory, operator roster, maintenance, stock).
+It features the `packages/edge_client`, a native ROS2 Python daemon that runs on your hardware, bridging local ROS2 topics (like `/cmd_vel`) to the cloud backend for real-time orchestration and strict data-collection lifecycles.
 
 ---
 
@@ -164,13 +160,7 @@ already bit.
 
 ## Billing
 
-CharmQuark is metered on **confirmed runs**: one credit is spent the moment a run
-passes readiness and books its lab slot. Drafting, proposing and auto-filling are
-free, the ledger is auditable, and the balance belongs to the organisation rather
-than to a browser. Stripe Checkout tops it up; the Worker needs
-`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` as secrets (never in a tracked
-file). Pricing, schema, setup steps and an explicit "what is not secured yet" are
-in [docs/BILLING.md](docs/BILLING.md).
+CharmQuark operates on a Single-Tenant Enterprise Licensing model with a Hard Paywall. Once the initial "Demo Mode" credits are exhausted, the UI locks entirely until an Enterprise Perpetual License is purchased. This requires an admin to set `is_unlimited = 1` in the database, which permanently unlocks the C2 dashboard and removes the concept of credits entirely. Stripe and metered billing have been removed. Details are in [docs/BILLING.md](docs/BILLING.md).
 
 ## QA autocheck
 
