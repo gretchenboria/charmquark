@@ -143,14 +143,27 @@ export function BillingProvider({ children }: { children: ReactNode }) {
     };
   }, [user, refresh, toast]);
 
+  const hardLocked = account != null && account.balance === 0 && !account.unlimited;
+
+  // Enforce the hard paywall when the account is out of credits
+  useEffect(() => {
+    if (hardLocked) {
+      setReason("Software License Expired — Out of Credits");
+      setOpen(true);
+    }
+  }, [hardLocked]);
+
   return (
     <Ctx.Provider value={{ account, refresh, openPaywall }}>
       {children}
-      {open && (
+      {(open || hardLocked) && (
         <PurchaseModal
           account={account}
-          reason={reason}
-          onClose={() => setOpen(false)}
+          reason={hardLocked ? "Software License Expired — Out of Credits. Purchase a pack to continue using the application." : reason}
+          onClose={() => {
+            if (!hardLocked) setOpen(false);
+          }}
+          hardLocked={hardLocked}
           onRefresh={refresh}
         />
       )}
@@ -200,11 +213,13 @@ function PurchaseModal({
   account,
   reason,
   onClose,
+  hardLocked,
   onRefresh,
 }: {
   account: BillingAccount | null;
   reason: string | null;
   onClose: () => void;
+  hardLocked?: boolean;
   onRefresh: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -213,11 +228,11 @@ function PurchaseModal({
   useEffect(() => {
     void onRefresh();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !hardLocked) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, onRefresh]);
+  }, [onClose, onRefresh, hardLocked]);
 
   // Returning from the store tab: pick up credits the store has delivered.
   useEffect(() => {
@@ -250,7 +265,9 @@ function PurchaseModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(30, 24, 48, 0.55)", backdropFilter: "blur(3px)" }}
-      onClick={onClose}
+      onClick={() => {
+        if (!hardLocked) onClose();
+      }}
       role="presentation"
     >
       <div
@@ -262,19 +279,22 @@ function PurchaseModal({
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="cq-display text-xl font-semibold">Run credits</h2>
+            <h2 className="cq-display text-xl font-semibold">{hardLocked ? "License Required" : "Run credits"}</h2>
             <p className="mt-1 max-w-xl text-sm text-[color:var(--cq-ink-soft)]">
-              One credit confirms one run — the moment a run passes readiness, books its lab
-              slot and takes its encoded code. Drafting, assembling and auto-scheduling are free.
+              {hardLocked 
+                ? "This deployment is currently locked because it is out of run credits. Please purchase a license pack to resume operations."
+                : "One credit confirms one run — the moment a run passes readiness, books its lab slot and takes its encoded code. Drafting, assembling and auto-scheduling are free."}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg px-2 py-1 text-sm text-[color:var(--cq-ink-faint)] hover:bg-[color:var(--cq-ground)]"
-            aria-label="Close"
-          >
-            ✕
-          </button>
+          {!hardLocked && (
+            <button
+              onClick={onClose}
+              className="rounded-lg px-2 py-1 text-sm text-[color:var(--cq-ink-faint)] hover:bg-[color:var(--cq-ground)]"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <div className="mt-4 flex items-baseline gap-2 border-y border-[color:var(--cq-line)] py-3">
@@ -353,12 +373,14 @@ function PurchaseModal({
 
         <div className="mt-auto pt-5 flex items-center justify-between gap-4">
           <p className="min-h-[1.25rem] text-sm text-[color:var(--cq-ink-soft)]">{message ?? ""}</p>
-          <button
-            onClick={onClose}
-            className="cq-btn-primary shrink-0 rounded-xl px-4 py-2 text-sm font-medium"
-          >
-            Done
-          </button>
+          {!hardLocked && (
+            <button
+              onClick={onClose}
+              className="cq-btn-primary shrink-0 rounded-xl px-4 py-2 text-sm font-medium"
+            >
+              Done
+            </button>
+          )}
         </div>
       </div>
     </div>
