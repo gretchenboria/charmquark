@@ -47,7 +47,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["RobotActor"]
+      "new_sqlite_classes": ["RobotActor"]
     }
   ],
 
