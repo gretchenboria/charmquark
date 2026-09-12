@@ -158,10 +158,23 @@ export default function HomePage() {
       ? `PostgreSQL@${cloud.provider}`
       : "Local SQLite";
 
-  const handleWorkflow = (action: string) => {
+  const handleWorkflow = async (action: string) => {
     if (action === "E-Stop Fleet") {
        if (!confirm("Are you sure you want to E-STOP ALL ROBOTS in the fleet? This will trigger an immediate halt.")) return;
+       
+       setTriggering(action);
+       try {
+         const active = robots.filter(r => r.status === "ACTIVE" || r.status === "ONLINE" || r.status === "MAINTENANCE");
+         await Promise.all(active.map(r => api.sendRobotCommand(r.id, "estop")));
+         alert(`EMERGENCY STOP dispatched to ${active.length} active robots.`);
+       } catch (err) {
+         alert("Failed to dispatch E-STOP to some robots.");
+       } finally {
+         setTriggering(null);
+       }
+       return;
     }
+    
     setTriggering(action);
     setTimeout(() => {
       setTriggering(null);
