@@ -30,6 +30,8 @@ import { mountSettings } from "./routes/settings";
 import { mountChangesets } from "./routes/changesets";
 import { mountMcp } from "./routes/mcp";
 
+export { RobotActor } from "./actor";
+
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 const allowedOrigins = (env: Env): string[] =>

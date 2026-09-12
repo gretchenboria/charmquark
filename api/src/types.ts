@@ -11,6 +11,7 @@ export interface Env {
    */
   VAULT?: R2Bucket;
   FLEET_STATUS: KVNamespace;
+  ROBOT_ACTOR: DurableObjectNamespace;
   ENVIRONMENT: string;
   AI: any;
   GEMINI_API_KEY?: string;

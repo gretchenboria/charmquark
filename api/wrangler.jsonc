@@ -38,6 +38,19 @@
     }
   ],
 
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROBOT_ACTOR", "class_name": "RobotActor" }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["RobotActor"]
+    }
+  ],
+
   // Cloudflare Workers AI for risk assessment classification.
   "ai": { "binding": "AI" },
 

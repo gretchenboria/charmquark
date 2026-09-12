@@ -379,5 +379,33 @@ export function mountMisc(app: App): void {
       });
     }
   });
+
+  // ------------------------------------------------------------ live orchestration
+  app.post("/robots/:id/commands", async (c) => {
+    const id = c.req.param("id");
+    const actorId = c.env.ROBOT_ACTOR.idFromName(id);
+    const stub = c.env.ROBOT_ACTOR.get(actorId);
+    
+    // forward the request to the DO fetch
+    const response = await stub.fetch(new Request(c.req.url, {
+      method: "POST",
+      body: await c.req.text(),
+      headers: c.req.header(),
+    }));
+    return new Response(response.body, response);
+  });
+
+  app.get("/robots/:id/stream", async (c) => {
+    const id = c.req.param("id");
+    const actorId = c.env.ROBOT_ACTOR.idFromName(id);
+    const stub = c.env.ROBOT_ACTOR.get(actorId);
+
+    // forward the upgrade request to the DO
+    const response = await stub.fetch(new Request(c.req.url, {
+      method: "GET",
+      headers: c.req.header(),
+    }));
+    return new Response(response.body, response);
+  });
 }
 
