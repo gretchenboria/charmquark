@@ -164,36 +164,6 @@ export function BillingProvider({ children }: { children: ReactNode }) {
  * status line until it runs low, when it picks up the warm accents — apricot
  * for "think about it", rose for "the next confirm will fail".
  */
-export function CreditMeter() {
-  const { account, openPaywall } = useBilling();
-  if (!account) return null;
-
-  const { balance, unlimited } = account;
-  const tone = unlimited || balance > 10 ? "#4E9E71" : balance > 0 ? "#E0913A" : "#D4536B";
-  const label = unlimited ? "∞" : String(balance);
-
-  return (
-    <button
-      onClick={() => openPaywall()}
-      title={
-        unlimited
-          ? "This account is not metered."
-          : `${balance} run credit${balance === 1 ? "" : "s"} — one is spent each time a run is confirmed. Click to buy more.`
-      }
-      className="mb-2 flex w-full items-center gap-2 rounded-lg px-1 py-1 text-[11px] text-white/45 transition-colors hover:bg-white/10 hover:text-white/80"
-    >
-      <span
-        className="h-2 w-2 shrink-0 rounded-full"
-        style={{ background: tone, boxShadow: `0 0 7px 1px ${tone}99` }}
-        aria-hidden
-      />
-      <span className="truncate">
-        <span className="font-semibold text-white/80">{label}</span> run credits
-      </span>
-      <span className="ml-auto shrink-0 text-white/35">{account.store_url ? "Store" : "Buy"}</span>
-    </button>
-  );
-}
 
 // ---------------------------------------------------------------- the modal
 function PurchaseModal({
@@ -258,14 +228,13 @@ function PurchaseModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Buy run credits"
+        aria-label="Upgrade to Enterprise"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="cq-display text-xl font-semibold">Run credits</h2>
+            <h2 className="cq-display text-xl font-semibold">Upgrade to Enterprise</h2>
             <p className="mt-1 max-w-xl text-sm text-[color:var(--cq-ink-soft)]">
-              One credit confirms one run — the moment a run passes readiness, books its lab
-              slot and takes its encoded code. Drafting, assembling and auto-scheduling are free.
+              Unlock unlimited fleet execution, permanent access to the C2 Dashboard, and priority support for your entire ROS2 robotics fleet.
             </p>
           </div>
           <button
@@ -282,11 +251,11 @@ function PurchaseModal({
             {account?.unlimited ? "∞" : (account?.balance ?? "—")}
           </span>
           <span className="text-sm text-[color:var(--cq-ink-soft)]">
-            credits on {account?.name ?? "this account"}
+            demo runs remaining on {account?.name ?? "this account"}
           </span>
           {account && !account.unlimited && (
             <span className="ml-auto text-xs text-[color:var(--cq-ink-faint)]">
-              {account.lifetime_spent} spent · {account.lifetime_granted} purchased to date
+              Upgrade to permanently unlock execution
             </span>
           )}
         </div>
@@ -333,13 +302,13 @@ function PurchaseModal({
                   {p.tag}
                 </span>
               )}
-              <div className="cq-display text-2xl font-semibold">{p.credits.toLocaleString()}</div>
-              <div className="text-xs uppercase tracking-wider text-[color:var(--cq-ink-faint)]">runs</div>
+              <div className="cq-display text-2xl font-semibold">{p.name}</div>
+              
               <div className="mt-3 text-lg font-medium text-[color:var(--cq-ink)]">
                 {usd(p.amount_cents)}
               </div>
               <div className="text-xs text-[color:var(--cq-ink-soft)]">
-                {usd(p.cents_per_credit)} per run
+                Lifetime Access
               </div>
               <div className="mt-2 mb-4 text-xs leading-snug text-[color:var(--cq-ink-faint)] flex-1">
                 {p.description}
@@ -362,5 +331,36 @@ function PurchaseModal({
         </div>
       </div>
     </div>
+  );
+}
+export function CreditMeter() {
+  const { account, openPaywall } = useBilling();
+  if (!account) return null;
+
+  const { balance, unlimited } = account;
+  
+  if (unlimited) {
+    return (
+      <div className="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] text-white/45 bg-white/5 border border-white/10">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-[#4E9E71]" style={{ boxShadow: `0 0 7px 1px #4E9E7199` }} aria-hidden />
+        <span className="truncate">
+          <span className="font-semibold text-white/80">Enterprise</span> License Active
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => openPaywall()}
+      title={`${balance} demo runs remaining. Click to upgrade to Enterprise.`}
+      className="mb-2 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] text-white/45 transition-colors bg-[#D4536B]/10 border border-[#D4536B]/30 hover:bg-[#D4536B]/20 hover:text-white/80"
+    >
+      <span className="h-2 w-2 shrink-0 rounded-full bg-[#D4536B]" style={{ boxShadow: `0 0 7px 1px #D4536B99` }} aria-hidden />
+      <span className="truncate">
+        <span className="font-semibold text-white/80">{balance}</span> demo runs
+      </span>
+      <span className="ml-auto shrink-0 text-white/80 font-medium">Upgrade</span>
+    </button>
   );
 }

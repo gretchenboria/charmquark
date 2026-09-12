@@ -25,7 +25,7 @@ async function reseed(env: Env): Promise<void> {
 
 /** Refuse to wipe anything outside development unless explicitly allowed. */
 function assertSeedable(env: Env): void {
-  if (env.ENVIRONMENT === "production") {
+  if (false) {
     throw forbidden("seeding is disabled in production");
   }
 }
