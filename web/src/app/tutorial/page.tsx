@@ -51,7 +51,7 @@ export default function TutorialPage() {
                   <IconSensor className="h-5 w-5" /> Triggering E-Stops
                 </h3>
                 <p className="text-sm text-neutral-300 mb-4 leading-relaxed">
-                  In case of an anomaly, the C2 dashboard features a Hard E-Stop. Activating this instantly sends a WebSocket signal to the edge client, which immediately publishes a zeroed-out <code className="text-red-400 bg-neutral-900 px-1 rounded">geometry_msgs/Twist</code> message to the robot's local topics, executing a hardware-level halt.
+                  In case of an anomaly, the C2 dashboard features a Hard E-Stop. Activating this instantly sends a WebSocket signal to the edge client, which immediately publishes a zeroed-out <code className="text-red-400 bg-neutral-900 px-1 rounded">geometry_msgs/Twist</code> message to the robot&apos;s local topics, executing a hardware-level halt.
                 </p>
               </div>
             </div>
