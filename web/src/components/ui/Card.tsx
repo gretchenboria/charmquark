@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, CSSProperties } from "react";
 
 /**
  * Base surface for the consolidated dashboard and (optionally) list/detail pages.
@@ -11,6 +11,7 @@ export function Card({
   actions,
   className = "",
   bodyClassName = "",
+  style,
   children,
 }: {
   title?: ReactNode;
@@ -18,12 +19,14 @@ export function Card({
   actions?: ReactNode;
   className?: string;
   bodyClassName?: string;
+  style?: CSSProperties;
   children?: ReactNode;
 }) {
   const hasHeader = title || subtitle || actions;
   return (
     <div
       className={`cq-card ${className}`}
+      style={style}
     >
       {hasHeader && (
         <div className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-2">
