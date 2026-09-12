@@ -20,6 +20,10 @@ import { StatWidget } from "@/components/ui/StatWidget";
 import { StatusDot } from "@/components/StatusDot";
 import { CampaignHeader } from "@/components/CampaignHeader";
 
+import { IconDashboard, IconSettings, IconSensor, IconWorkflow } from "@/components/icons";
+import { useToast } from "@/components/Toast";
+import { useRouter } from "next/navigation";
+
 // Fill colors per pipeline state, shared with the charts
 const STATE_FILL: Record<string, string> = {
   DRAFT: STATUS_COLOR.draft,
@@ -34,10 +38,10 @@ const STATE_FILL: Record<string, string> = {
 };
 
 const C2_WORKFLOWS = [
-  { action: "Start Hardware Calibration", icon: "🔧", color: "bg-blue-600 hover:bg-blue-700" },
-  { action: "Run Full QA Validation", icon: "✅", color: "bg-emerald-600 hover:bg-emerald-700" },
-  { action: "Deploy Sensor Rig", icon: "📡", color: "bg-indigo-600 hover:bg-indigo-700" },
-  { action: "E-Stop Fleet", icon: "🛑", color: "bg-red-600 hover:bg-red-700 font-bold" },
+  { action: "Start Hardware Calibration", icon: IconSettings, color: "bg-white border-neutral-200 text-neutral-800 hover:bg-neutral-50", link: "/workflows/designer" },
+  { action: "Run Full QA Validation", icon: IconWorkflow, color: "bg-white border-neutral-200 text-neutral-800 hover:bg-neutral-50", link: "/reports" },
+  { action: "Deploy Sensor Rig", icon: IconSensor, color: "bg-white border-neutral-200 text-neutral-800 hover:bg-neutral-50", link: "/sensors" },
+  { action: "E-Stop Fleet", icon: IconDashboard, color: "bg-red-600 border-red-700 text-white hover:bg-red-700 font-bold", isDangerous: true },
 ];
 
 const NOT_READY = new Set(["DRAFT", "ASSEMBLING"]);
@@ -46,6 +50,8 @@ export default function HomePage() {
   const user = useUser();
   const billing = useBilling();
   const showAnalytics = canSeeAnalytics(user?.role);
+  const router = useRouter();
+  const toast = useToast();
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignId, setCampaignId] = useState<string | null>(null);
@@ -57,6 +63,7 @@ export default function HomePage() {
   const [cloudFailed, setCloudFailed] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [triggering, setTriggering] = useState<string | null>(null);
+  const [estopModalOpen, setEstopModalOpen] = useState(false);
 
   const monday = useMemo(() => startOfWeekMonday(new Date()), []);
   const days = useMemo(() => weekDays(monday, 5), [monday]);
@@ -159,27 +166,33 @@ export default function HomePage() {
       : "Local SQLite";
 
   const handleWorkflow = async (action: string) => {
+    const wf = C2_WORKFLOWS.find(w => w.action === action);
     if (action === "E-Stop Fleet") {
-       if (!confirm("Are you sure you want to E-STOP ALL ROBOTS in the fleet? This will trigger an immediate halt.")) return;
-       
-       setTriggering(action);
-       try {
-         const active = robots.filter(r => r.status === "ACTIVE" || r.status === "ONLINE" || r.status === "MAINTENANCE");
-         await Promise.all(active.map(r => api.sendRobotCommand(r.id, "estop")));
-         alert(`EMERGENCY STOP dispatched to ${active.length} active robots.`);
-       } catch (err) {
-         alert("Failed to dispatch E-STOP to some robots.");
-       } finally {
-         setTriggering(null);
-       }
+       setEstopModalOpen(true);
        return;
     }
     
     setTriggering(action);
     setTimeout(() => {
       setTriggering(null);
-      alert(`Workflow "${action}" initiated successfully.`);
-    }, 800);
+      if (wf && wf.link) {
+        router.push(wf.link);
+      }
+    }, 400);
+  };
+  
+  const confirmEStop = async () => {
+    setEstopModalOpen(false);
+    setTriggering("E-Stop Fleet");
+    try {
+      const active = robots.filter(r => r.status === "ACTIVE" || r.status === "ONLINE" || r.status === "MAINTENANCE");
+      await Promise.all(active.map(r => api.sendRobotCommand(r.id, "estop")));
+      toast("success", `EMERGENCY STOP dispatched to ${active.length} active robots.`);
+    } catch (err) {
+      toast("error", "Failed to dispatch E-STOP to some robots.");
+    } finally {
+      setTriggering(null);
+    }
   };
 
   return (
@@ -258,17 +271,21 @@ export default function HomePage() {
               <div className="lg:col-span-1 flex flex-col gap-4">
                 <Card title="C2 Operations" subtitle="Command Fleet Actions" className="border-neutral-300">
                   <div className="flex flex-col gap-3 py-2">
-                    {C2_WORKFLOWS.map((wf) => (
-                      <button
-                        key={wf.action}
-                        onClick={() => handleWorkflow(wf.action)}
-                        disabled={!!triggering}
-                        className={`flex items-center gap-3 w-full rounded-md px-4 py-3 text-sm text-white transition-all shadow-sm ${wf.color} ${triggering === wf.action ? "opacity-70 cursor-wait" : ""}`}
-                      >
-                        <span className="text-lg">{wf.icon}</span>
-                        <span className="flex-1 text-left font-medium">{triggering === wf.action ? "Initiating..." : wf.action}</span>
-                      </button>
-                    ))}
+                    {C2_WORKFLOWS.map((wf) => {
+                      const Icon = wf.icon;
+                      return (
+                        <button
+                          key={wf.action}
+                          onClick={() => handleWorkflow(wf.action)}
+                          disabled={!!triggering}
+                          className={`flex items-center gap-3 w-full rounded-lg border px-4 py-3 text-sm transition-all shadow-sm ${wf.color} ${triggering === wf.action ? "opacity-70 cursor-wait" : ""}`}
+                        >
+                          <Icon className="h-5 w-5 opacity-75" />
+                          <span className="flex-1 text-left font-medium">{triggering === wf.action ? "Initiating..." : wf.action}</span>
+                          <span className="text-neutral-300">›</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </Card>
 
@@ -374,6 +391,39 @@ export default function HomePage() {
           </Section>
         </div>
       </div>
+      
+      {/* E-Stop Modal */}
+      {estopModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl overflow-hidden">
+            <div className="bg-red-600 px-4 py-3 flex items-center gap-3">
+              <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wide">Emergency Stop Protocol</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-neutral-700 text-sm mb-4">
+                Are you absolutely sure you want to <strong>E-STOP ALL ROBOTS</strong> in the fleet? 
+                This will trigger an immediate hard-halt across all active connections. 
+                Any ongoing missions will fail and physical recovery may be required.
+              </p>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setEstopModalOpen(false)}
+                  className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmEStop}
+                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                >
+                  Confirm E-STOP
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
