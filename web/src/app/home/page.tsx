@@ -164,11 +164,34 @@ export default function HomePage() {
 
   return (
     <div className="flex h-full flex-col bg-neutral-50">
-      <CampaignHeader title="Fleet Overview" campaigns={campaigns} campaignId={campaignId} onChange={setCampaignId} />
+      <CampaignHeader title="Command & Control Center" campaigns={campaigns} campaignId={campaignId} onChange={setCampaignId} />
       {err && <div className="bg-red-50 px-6 py-2 text-sm text-red-700">{err}</div>}
 
       <div className="flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-6xl">
+
+          {/* System Alerts Ticker */}
+          <div className="mb-6 rounded-lg bg-red-50 border border-red-200 p-3 shadow-sm flex items-start gap-3">
+            <div className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-red-600 animate-pulse" />
+            <div>
+              <h4 className="text-xs font-bold text-red-800 uppercase tracking-wide mb-1">Active Fleet Alerts</h4>
+              <ul className="text-sm text-red-700 space-y-1">
+                {attention.length > 0 ? (
+                  attention.map(r => (
+                    <li key={r.id}>
+                      <span className="font-semibold">Run {r.provisional_code || r.encoded_code || r.id.slice(0, 8)}:</span> {STAGE_LABEL[r.state] ?? r.state} - Attention Required
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-green-700 font-medium">All systems nominal. No active alerts.</li>
+                )}
+                {cloud && !cloud.reachable && (
+                  <li className="font-semibold">CRITICAL: Backend Cloud Connection Offline</li>
+                )}
+              </ul>
+            </div>
+          </div>
+
           <Section>
             {/* Global fuzzy search — prominent entry to jump to any object. */}
             <GlobalSearch campaignId={campaignId} />

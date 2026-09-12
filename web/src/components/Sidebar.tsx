@@ -91,7 +91,7 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
   {
     title: "Overview",
     items: [
-      { href: "/home", label: "Fleet Overview", icon: IconDashboard },
+      { href: "/home", label: "Command & Control Center", icon: IconDashboard },
     ],
   },
   {
@@ -125,7 +125,7 @@ const SECTIONS: { title: string; items: { href: string; label: string; icon: Ico
     title: "DataOps Pipeline",
     items: [
       { href: "/reports", label: "Dataset Yield Reports", icon: IconReport },
-      { href: "/workflows", label: "QA Pipeline Designer", icon: IconWorkflow },
+      { href: "/workflows", label: "DataOps Pipeline Designer", icon: IconWorkflow },
     ],
   },
   {

@@ -73,9 +73,10 @@ function Designer() {
     <div className="p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Workflow designer</h1>
-          <p className="text-sm text-neutral-500">
-            Draw BPMN 2.0 workflows and bind each task to the CharmQuark service that performs it.
+          <h1 className="text-lg font-semibold text-neutral-800">Fleet & DataOps Pipeline Designer</h1>
+          <p className="mt-1 text-sm text-neutral-600 max-w-3xl">
+            This is your <strong>Command Center</strong> for orchestrating all automated fleet logic. 
+            Draw BPMN 2.0 workflows to automate <strong>hardware calibration routines, safety approval processes, autonomous robotic data collection, QA validation steps, and ML dataset extraction pipelines</strong>. Bind each visual task directly to a CharmQuark backend service.
           </p>
         </div>
         <div className="flex items-center gap-3">

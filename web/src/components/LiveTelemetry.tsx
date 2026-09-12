@@ -55,7 +55,7 @@ export function LiveTelemetry({ robotId }: { robotId: string }) {
     <div className="rounded-md border border-neutral-200 bg-white p-4">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
-          <div className={`h-2 w-2 rounded-full ${status === 'connected' ? 'bg-green-500' : status === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+          <div className={`h-2 w-2 rounded-full ${status === 'connected' ? 'bg-green-500 animate-pulse' : status === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
           Live Connection
         </h3>
         <span className="text-xs text-neutral-500">{status}</span>
