@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 
-const TAGLINE = "Single-Tenant ROS2 Command & Control Center";
-const SUMMARY = "CharmQuark is the ultimate Command & Control orchestrator for your physical robotic fleets, combining live WebSocket telemetry with immediate edge execution.";
+const TAGLINE = "Single-Tenant ROS2 Command & Control";
+const SUMMARY = "The ultimate platform for Robot Operations. We bring strict data models, live WebSocket telemetry, and hardware-level execution to your physical assets.";
 
 export const metadata = {
   title: `CharmQuark — ${TAGLINE}`,
@@ -11,75 +11,82 @@ export const metadata = {
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-black text-white selection:bg-red-500/30 overflow-hidden">
-      {/* Background gradients */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[800px] opacity-20 pointer-events-none">
-        <div className="absolute top-[-200px] left-1/2 -translate-x-1/2 w-[800px] h-[600px] rounded-full bg-gradient-to-b from-red-600 to-black blur-[120px]"></div>
+    <main className="min-h-screen bg-[color:var(--cq-plum)] text-white selection:bg-[color:var(--cq-iris)] overflow-hidden">
+      {/* Background gradients: The Aurora */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[800px] opacity-40 pointer-events-none">
+        <div className="absolute top-[-200px] left-1/2 -translate-x-1/2 w-[800px] h-[600px] rounded-full bg-gradient-to-br from-[color:var(--cq-violet)] to-[color:var(--cq-blue)] blur-[120px]"></div>
       </div>
 
       <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-3">
-          <Image src="/cq-logo.png" alt="CharmQuark Logo" width={48} height={48} className="rounded-md grayscale contrast-125" />
-          <span className="font-bold text-2xl tracking-tighter uppercase tracking-widest text-zinc-100">CharmQuark</span>
+          <Image src="/charmquark-wordmark-light.svg" alt="CharmQuark Logo" width={200} height={40} className="h-8 w-auto" />
         </div>
-        <Link href="/home" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
-          C2 Dashboard Login
+        <Link href="/home" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
+          C2 Dashboard
         </Link>
       </nav>
 
       <header className="relative z-10 flex flex-col items-center text-center pt-32 pb-24 px-6 max-w-5xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-950/30 border border-red-500/20 text-xs font-bold tracking-widest text-red-400 mb-8 backdrop-blur-sm uppercase">
-          <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/20 border border-white/10 text-sm font-medium text-[color:var(--cq-sage)] mb-8 backdrop-blur-md">
+          <span className="flex h-2 w-2 rounded-full bg-[color:var(--cq-sage)]"></span>
           Live WebSocket Telemetry Enabled
         </div>
         
-        <h1 className="text-6xl sm:text-8xl font-black tracking-tighter mb-8 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent uppercase">
-          Command &<br className="hidden sm:block" />
-          Control.
+        <h1 className="cq-display text-5xl sm:text-7xl font-bold tracking-tight mb-8">
+          Single-Tenant ROS2 <br />
+          Command & Control.
         </h1>
         
-        <p className="max-w-2xl text-xl sm:text-2xl text-zinc-400 leading-relaxed mb-12 font-medium">
-          The single-tenant, perpetual-license orchestrator for ROS2 hardware. Stream live telemetry from the edge and trigger instantaneous E-Stops across your entire physical fleet.
+        <p className="max-w-2xl text-xl text-white/70 leading-relaxed mb-12">
+          The perpetual-license orchestrator for physical hardware. Stream live telemetry from the edge and trigger instantaneous E-Stops across your entire fleet.
         </p>
         
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 relative z-20">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
           <Link 
             href="/home" 
-            className="px-10 py-5 rounded-none bg-red-600 text-white font-bold tracking-widest uppercase hover:bg-red-500 transition-all shadow-[0_0_30px_rgba(220,38,38,0.4)] hover:scale-105"
+            className="cq-btn-primary px-8 py-4 rounded-xl text-white font-medium text-lg transition-all"
+            style={{ background: "linear-gradient(135deg, var(--cq-violet), var(--cq-blue))" }}
           >
             Deploy Dashboard
           </Link>
         </div>
       </header>
 
-      <section className="relative z-10 px-6 max-w-7xl mx-auto mb-32">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-zinc-900/50 border border-white/5 p-8 backdrop-blur-sm hover:border-red-500/30 transition-colors">
-            <h3 className="text-red-500 font-mono text-sm mb-4 uppercase tracking-widest">01 / Architecture</h3>
-            <h4 className="text-2xl font-bold mb-4">Single-Tenant Enterprise Security</h4>
-            <p className="text-zinc-400">Forget SaaS. CharmQuark is deployed as a single-tenant instance behind a perpetual software license. Your telemetry, your hardware, zero shared infrastructure.</p>
+      <div className="relative z-10 max-w-7xl mx-auto px-6 pb-32">
+        <section className="mb-32">
+          <div className="text-center mb-16">
+            <h2 className="cq-display text-3xl font-semibold mb-4">Hardware Execution</h2>
+            <p className="text-lg text-white/60 max-w-2xl mx-auto">
+              Our ROS2 Python daemon bridges the gap between cloud coordination and physical execution.
+            </p>
           </div>
-          <div className="bg-zinc-900/50 border border-white/5 p-8 backdrop-blur-sm hover:border-red-500/30 transition-colors">
-            <h3 className="text-red-500 font-mono text-sm mb-4 uppercase tracking-widest">02 / Edge Agent</h3>
-            <h4 className="text-2xl font-bold mb-4">Native ROS2 Python Daemon</h4>
-            <p className="text-zinc-400">The edge client runs directly on your robots via <code className="text-zinc-300">ament_python</code>. It opens a persistent WebSocket to stream hardware states like battery and health directly into the cloud C2 interface.</p>
-          </div>
-          <div className="bg-zinc-900/50 border border-white/5 p-8 backdrop-blur-sm hover:border-red-500/30 transition-colors">
-            <h3 className="text-red-500 font-mono text-sm mb-4 uppercase tracking-widest">03 / Execution</h3>
-            <h4 className="text-2xl font-bold mb-4">Instantaneous E-Stops</h4>
-            <p className="text-zinc-400">When things go wrong, every millisecond matters. Clicking E-Stop in the web dashboard instantly routes through the WebSocket and publishes a zeroed <code className="text-zinc-300">cmd_vel</code> directly to the local ROS topic.</p>
-          </div>
-        </div>
-      </section>
 
-      <footer className="border-t border-white/10 bg-black py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="text-xs tracking-widest text-zinc-600 font-mono uppercase">© 2026 CharmQuark Inc. — Single-Tenant License Required</span>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="cq-card bg-[color:var(--cq-plum)] border border-white/10 rounded-2xl p-8 hover:bg-white/5 transition-colors">
+              <h3 className="cq-display text-2xl font-semibold mb-3 text-white">Live Telemetry</h3>
+              <p className="text-white/60 leading-relaxed">
+                Connect your physical robots to the cloud via WebSockets. Monitor active states, battery levels, and diagnostics in real-time.
+              </p>
+            </div>
+            <div className="cq-card bg-[color:var(--cq-plum)] border border-white/10 rounded-2xl p-8 hover:bg-white/5 transition-colors">
+              <h3 className="cq-display text-2xl font-semibold mb-3 text-white">Instant E-Stops</h3>
+              <p className="text-white/60 leading-relaxed">
+                A single click in the C2 Dashboard publishes a zeroed-out Twist message to local `/cmd_vel` topics, halting your hardware instantly.
+              </p>
+            </div>
           </div>
-          <div className="flex gap-6 text-sm text-zinc-500 font-mono uppercase tracking-widest">
-            <Link href="/home" className="hover:text-red-400 transition-colors">C2 Dashboard</Link>
-            <Link href="/tutorial" className="hover:text-red-400 transition-colors">Documentation</Link>
+        </section>
+      </div>
+
+      <footer className="border-t border-white/10 bg-black/40 py-12 px-6 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-white/50 font-medium">© 2026 CharmQuark Inc.</span>
+          </div>
+          <div className="flex gap-6 text-sm text-white/50">
+            <Link href="/home" className="hover:text-white transition-colors">C2 Dashboard</Link>
+            <Link href="/docs" className="hover:text-white transition-colors">Documentation</Link>
+            <Link href="/tutorial" className="hover:text-white transition-colors">Tutorial</Link>
           </div>
         </div>
       </footer>
