@@ -11,6 +11,7 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { FieldGrid } from "@/components/FieldGrid";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
+import { EntityFiles } from "@/components/EntityFiles";
 
 export default function InventoryDetail() {
   const { id } = useParams<{ id: string }>();
@@ -73,6 +74,9 @@ export default function InventoryDetail() {
           items={missions.map((t) => ({ href: `/missions/${t.id}`, label: `${t.mission_code} · ${t.name}` }))}
           empty="Not required by any mission."
         />
+      </Section>
+      <Section title="Pictures & Files">
+        <EntityFiles entityType="inventory-item" entityId={item.id} canEdit={true} emptyMessage="No images or files uploaded yet." />
       </Section>
       <Section title="Activity">
         <ActivityPanel resource="inventory-items" entityId={item.id} refreshKey={(item as { version?: number }).version} />

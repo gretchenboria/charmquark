@@ -19,7 +19,7 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { FieldGrid } from "@/components/FieldGrid";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { ExecuteRun } from "@/components/ExecuteRun";
-import { RunFiles } from "@/components/RunFiles";
+import { EntityFiles } from "@/components/EntityFiles";
 import { STATE_META } from "@/components/StatusDot";
 import { canWriteRun } from "@/lib/session";
 import { useUser } from "@/lib/useUser";
@@ -193,7 +193,7 @@ export default function RunDetail() {
       </Section>
 
       <Section title="Files">
-        <RunFiles runId={run.id} canEdit={canEdit} />
+        <EntityFiles entityType="run" entityId={run.id} emptyMessage="No files attached to this run yet." canEdit={canEdit} />
       </Section>
       <Section title="Activity">
         <ActivityPanel resource="runs" entityId={run.id} refreshKey={(run as { version?: number }).version} />

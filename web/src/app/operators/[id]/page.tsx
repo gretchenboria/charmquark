@@ -11,6 +11,7 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { FieldGrid } from "@/components/FieldGrid";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
+import { EntityFiles } from "@/components/EntityFiles";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
 import { OPERATOR_ROLES } from "@contracts";
@@ -162,6 +163,9 @@ export default function OperatorDetail() {
           }))}
           empty="Not moderating any run."
         />
+      </Section>
+      <Section title="Pictures & Files">
+        <EntityFiles entityType="operator" entityId={o.id} canEdit={canEdit} emptyMessage="No images or files uploaded yet." />
       </Section>
       <Section title="Activity">
         <ActivityPanel resource="operators" entityId={o.id} refreshKey={(o as { version?: number }).version} />

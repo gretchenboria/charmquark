@@ -11,6 +11,7 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { FieldGrid } from "@/components/FieldGrid";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
+import { EntityFiles } from "@/components/EntityFiles";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
 import { LAB_TYPES } from "@contracts";
@@ -174,6 +175,9 @@ export default function LabDetail() {
           }))}
           empty="No runs here."
         />
+      </Section>
+      <Section title="Pictures & Files">
+        <EntityFiles entityType="lab" entityId={l.id} canEdit={canEdit} emptyMessage="No images or files uploaded yet." />
       </Section>
       <Section title="Activity">
         <ActivityPanel resource="labs" entityId={l.id} refreshKey={(l as { version?: number }).version} />

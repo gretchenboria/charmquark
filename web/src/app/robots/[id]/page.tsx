@@ -11,6 +11,7 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { FieldGrid } from "@/components/FieldGrid";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
+import { EntityFiles } from "@/components/EntityFiles";
 import { ReadinessChecklist } from "@/components/ReadinessChecklist";
 import { useToast } from "@/components/Toast";
 import { ROBOT_STATUSES } from "@contracts";
@@ -196,6 +197,9 @@ export default function RobotDetail() {
           }))}
           empty="Not assigned to any run."
         />
+      </Section>
+      <Section title="Pictures & Files">
+        <EntityFiles entityType="robot" entityId={p.id} canEdit={canEdit} emptyMessage="No images or files uploaded yet." />
       </Section>
       <Section title="Activity">
         <ActivityPanel resource="robots" entityId={p.id} refreshKey={(p as { version?: number }).version} />

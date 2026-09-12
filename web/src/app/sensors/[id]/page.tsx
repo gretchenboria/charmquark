@@ -11,6 +11,7 @@ import { DetailPage, LinkList, Section } from "@/components/DetailPage";
 import { FieldGrid } from "@/components/FieldGrid";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
+import { EntityFiles } from "@/components/EntityFiles";
 import { useToast } from "@/components/Toast";
 import { validateField } from "@/lib/validation";
 import { SENSOR_STATUSES, SENSOR_TYPES } from "@contracts";
@@ -169,6 +170,9 @@ export default function SensorDetail() {
           items={fleets.map((f) => ({ label: f.name, note: `${f.sensor_ids.length} sensors` }))}
           empty="Not in any fleet."
         />
+      </Section>
+      <Section title="Pictures & Files">
+        <EntityFiles entityType="sensor" entityId={sensor.id} canEdit={canEdit} emptyMessage="No images or files uploaded yet." />
       </Section>
       <Section title="Activity">
         <ActivityPanel resource="sensors" entityId={sensor.id} refreshKey={(sensor as { version?: number }).version} />
