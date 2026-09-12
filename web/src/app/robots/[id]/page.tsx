@@ -12,6 +12,7 @@ import { FieldGrid } from "@/components/FieldGrid";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { DeleteButton } from "@/components/DeleteButton";
 import { EntityFiles } from "@/components/EntityFiles";
+import { LiveTelemetry } from "@/components/LiveTelemetry";
 import { ReadinessChecklist } from "@/components/ReadinessChecklist";
 import { useToast } from "@/components/Toast";
 import { ROBOT_STATUSES } from "@contracts";
@@ -186,6 +187,10 @@ export default function RobotDetail() {
           can be added to a run.
         </p>
         <ReadinessChecklist items={p.checklist ?? []} canEdit={canUpdate(user?.role)} onToggle={toggle} />
+      </Section>
+
+      <Section title="Live Control">
+        <LiveTelemetry robotId={p.id} />
       </Section>
 
       <Section title={`Runs (${runs.length})`}>

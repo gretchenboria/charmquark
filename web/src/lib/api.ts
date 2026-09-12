@@ -237,6 +237,7 @@ export const api = {
   createRobot: (b: Record<string, unknown>) => post<Robot>("/robots", b),
   updateRobot: (id: string, b: Record<string, unknown>) => patch<Robot>(`/robots/${id}`, b),
   deleteRobot: (id: string) => del(`/robots/${id}`),
+  sendRobotCommand: (id: string, command: string, params?: any) => post<{status: string}>(`/robots/${id}/commands`, { command, params }),
   listOperators: () => req<Operator[]>("/operators"),
   getOperator: (id: string) => req<Operator>(`/operators/${id}`),
   createOperator: (b: Record<string, unknown>) => post<Operator>("/operators", b),
