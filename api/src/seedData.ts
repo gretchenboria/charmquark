@@ -66,9 +66,9 @@ const steps = (...lines: string[]): string =>
 const COVERAGE_SPACE = {
   target_per_cell: 3,
   dimensions: [
-    { key: "lighting", label: "Lighting", levels: ["bright", "normal", "low"] },
-    { key: "surface", label: "Floor surface", levels: ["concrete", "epoxy", "grating"] },
-    { key: "payload", label: "Payload", levels: ["empty", "loaded"] },
+    { key: "weather", label: "Weather", levels: ["clear", "rain", "fog"] },
+    { key: "time", label: "Time of day", levels: ["day", "night"] },
+    { key: "traffic", label: "Traffic", levels: ["light", "heavy"] }
   ],
 };
 
@@ -79,12 +79,11 @@ const COVERAGE_SPACE = {
  * exists to make visible.
  */
 const COVERAGE_OBSERVATIONS: [string, string, string, number][] = [
-  ["bright", "concrete", "empty", 5], ["bright", "concrete", "loaded", 4],
-  ["bright", "epoxy", "empty", 3],    ["bright", "epoxy", "loaded", 2],
-  ["normal", "concrete", "empty", 3], ["normal", "concrete", "loaded", 3],
-  ["normal", "epoxy", "empty", 2],    ["normal", "epoxy", "loaded", 1],
-  ["normal", "grating", "empty", 1],
-  ["low", "concrete", "empty", 1],
+  ["clear", "day", "light", 5], ["clear", "day", "heavy", 4],
+  ["clear", "night", "light", 3], ["clear", "night", "heavy", 2],
+  ["rain", "day", "light", 3], ["rain", "day", "heavy", 3],
+  ["rain", "night", "light", 2], ["rain", "night", "heavy", 1],
+  ["fog", "day", "light", 1], ["fog", "night", "light", 1]
 ];
 
 // ---------------------------------------------------------------- rows
@@ -95,9 +94,8 @@ const USERS: [string, string, string, string, string][] = [
 ];
 
 const LABS: [string, string, string, number, number, number][] = [
-  [l(1), "Highbay 1", "LAB_BAY", 1, 4, 1],
-  [l(2), "Mock Warehouse", "LAB_BAY", 1, 4, 2],
-  [l(3), "Outdoor Test Pad", "OUTDOORS", 1, 3, 3],
+  [l(1), "AV Highway Sim", "OUTDOORS", 1, 7, 102],
+  [l(2), "AV Urban Track 1", "OUTDOORS", 1, 5, 101]
 ];
 
 const OPERATORS: [string, string, string, string, number, number][] = [
@@ -110,41 +108,26 @@ const OPERATORS: [string, string, string, string, number, number][] = [
 
 /** [id, code, name, platform, serial, status, safety, calib, commissioned, standby] */
 const ROBOTS: [string, string, string, string, string, string, number, number, number, number][] = [
-  [r(1),  "RB-Q-001", "Sable 01", "Sable Quadruped",     "SBL-1001", "ACTIVE",      1, 1, 1, 0],
-  [r(2),  "RB-Q-002", "Sable 02", "Sable Quadruped",     "SBL-1002", "ACTIVE",      1, 1, 1, 0],
-  [r(3),  "RB-Q-003", "Sable 03", "Sable Quadruped",     "SBL-1003", "ACTIVE",      1, 0, 1, 0],
-  [r(4),  "RB-Q-004", "Sable 04", "Sable Quadruped",     "SBL-1004", "POOL",        1, 1, 1, 1],
-  [r(5),  "RB-M-001", "Verge 01", "Verge Mobile Manip",  "VRG-2001", "ACTIVE",      1, 1, 1, 0],
-  [r(6),  "RB-M-002", "Verge 02", "Verge Mobile Manip",  "VRG-2002", "ACTIVE",      1, 1, 1, 0],
-  [r(7),  "RB-M-003", "Verge 03", "Verge Mobile Manip",  "VRG-2003", "MAINTENANCE", 0, 0, 1, 0],
-  [r(8),  "RB-M-004", "Verge 04", "Verge Mobile Manip",  "VRG-2004", "POOL",        1, 1, 1, 1],
-  [r(9),  "RB-A-001", "Trundle 01", "Trundle AMR",       "TRD-3001", "ACTIVE",      1, 1, 1, 0],
-  [r(10), "RB-A-002", "Trundle 02", "Trundle AMR",       "TRD-3002", "ACTIVE",      1, 1, 0, 0],
-  [r(11), "RB-A-003", "Trundle 03", "Trundle AMR",       "TRD-3003", "RETIRED",     0, 0, 0, 0],
+  [r(1), "AV-SEDAN-01", "Apollo", "Autonomous Sedan", "AV-S-001", "ACTIVE", 1, 1, 1, 0],
+  [r(2), "AV-SUV-01", "Artemis", "Autonomous SUV", "AV-X-001", "ACTIVE", 1, 1, 1, 0],
+  [r(3), "AV-TRUCK-01", "Atlas", "Autonomous Truck", "AV-T-001", "ACTIVE", 1, 1, 1, 0],
+  [r(4), "AV-TRUCK-02", "Athena", "Autonomous Truck", "AV-T-002", "POOL", 1, 1, 1, 1]
 ];
 
 /** [id, asset_name, sensor_type, status] — the sensor payloads mounted on robots. */
 const DEVICES: [string, string, string, string][] = [
-  [d(1),  "LIDAR-32-A",    "LIDAR_3D",     "OPERATIONAL"],
-  [d(2),  "LIDAR-32-B",    "LIDAR_3D",     "OPERATIONAL"],
-  [d(3),  "LIDAR-32-C",    "LIDAR_3D",     "MAINTENANCE"],
-  [d(4),  "STEREO-FRONT-A","STEREO_CAMERA","OPERATIONAL"],
-  [d(5),  "STEREO-FRONT-B","STEREO_CAMERA","OPERATIONAL"],
-  [d(6),  "RGBD-WRIST-A",  "DEPTH_CAMERA", "OPERATIONAL"],
-  [d(7),  "RGBD-WRIST-B",  "DEPTH_CAMERA", "DEGRADED"],
-  [d(8),  "IMU-9DOF-A",    "IMU",          "OPERATIONAL"],
-  [d(9),  "IMU-9DOF-B",    "IMU",          "OPERATIONAL"],
-  [d(10), "GNSS-RTK-A",    "GNSS_RTK",     "OPERATIONAL"],
-  [d(11), "THERMAL-640-A", "THERMAL",      "OPERATIONAL"],
-  [d(12), "FT-6AXIS-A",    "FORCE_TORQUE", "OPERATIONAL"],
-  [d(13), "MICARRAY-4-A",  "AUDIO_ARRAY",  "OPERATIONAL"],
-  [d(14), "ENCODER-SET-A", "ENCODER",      "OPERATIONAL"],
+  [d(1), "LIDAR-01", "LIDAR_3D", "OPERATIONAL"],
+  [d(2), "LIDAR-02", "LIDAR_3D", "OPERATIONAL"],
+  [d(3), "CAM-01", "STEREO_CAMERA", "OPERATIONAL"],
+  [d(4), "CAM-02", "STEREO_CAMERA", "OPERATIONAL"],
+  [d(5), "RADAR-01", "RADAR", "OPERATIONAL"],
+  [d(6), "RADAR-02", "RADAR", "OPERATIONAL"]
 ];
 
 const FLEETS: [string, string, string[]][] = [
-  [ID.fleetStd,     "Standard Perception Rig", [d(1), d(4), d(8), d(14)]],
-  [ID.fleetManip,   "Manipulation Rig",        [d(2), d(5), d(6), d(9), d(12)]],
-  [ID.fleetOutdoor, "Outdoor RTK Rig",         [d(2), d(5), d(9), d(10), d(11)]],
+  [ID.fleetStd, "Urban Perception A", [d(1), d(3), d(5)]],
+  [ID.fleetManip, "Highway Perception B", [d(2), d(4), d(6)]],
+  [ID.fleetOutdoor, "Rural Perception C", [d(1), d(4), d(5)]]
 ];
 
 // ---------------------------------------------------------------- QA expectation profile
@@ -245,37 +228,9 @@ const INVENTORY: [string, string, string, number, string, string][] = [
  * [id, code, name, group_id, group_label, duration, reps_target, reps_actual,
  *  review, risk, legal, instructions_complete, variants, steps, inventory]
  */
-const TASKS: [string, string, string, string, string, string, number, number, string, string, string, number, string, string, string[]][] = [
-  [t(1), "T1", "Traverse aisle, nominal lighting", ID.groupNav, "Navigation", "SHORT", 12, 4,
-    "APPROVED", "LOW", "NONE", 1, variants("Nominal lighting", "Sudden light change"),
-    steps("Place the robot at aisle entry marker A.", "Command traverse to marker B.", "Hold at B for 5 s."), [i(2)]],
-  [t(2), "T2", "Traverse aisle, low light", ID.groupNav, "Navigation", "SHORT", 12, 12,
-    "APPROVED", "LOW", "NONE", 1, variants("Low light", "Strobe interference"),
-    steps("Set bay lighting to 20 lux.", "Command traverse from A to B."), [i(2)]],
-  [t(3), "T3", "Dynamic obstacle avoidance", ID.groupNav, "Navigation", "MEDIUM", 8, 2,
-    "APPROVED", "POTENTIAL", "APPROVED", 1, variants("Single crossing obstacle", "Obstacle stops mid-path"),
-    steps("Position the obstacle cart at the midpoint.", "Command traverse; cross the path at 1 m/s."), [i(3)]],
-  [t(4), "T4", "Pallet approach and scan", ID.groupNav, "Navigation", "MEDIUM", 6, 0,
-    "APPROVED", "LOW", "NONE", 1, variants("Square approach", "Skewed pallet 15deg"),
-    steps("Place a euro pallet at the marked pose.", "Command approach and full scan sweep."), [i(3)]],
-  [t(5), "T5", "Tote pick from shelf, eye level", ID.groupManip, "Manipulation", "MEDIUM", 10, 3,
-    "APPROVED", "POTENTIAL", "APPROVED", 1, variants("Rigid tote", "Overfilled tote"),
-    steps("Load the tote at shelf level 3.", "Command pick.", "Command place on the cart."), [i(4), i(6)]],
-  [t(6), "T6", "Tote pick from floor", ID.groupManip, "Manipulation", "LONG", 6, 1,
-    "APPROVED", "POTENTIAL", "APPROVED", 1, variants("Clear floor", "Adjacent clutter"),
-    steps("Place the tote at floor marker C.", "Command pick from floor.", "Return to home pose."), [i(4)]],
-  [t(7), "T7", "Handover to operator", ID.groupManip, "Manipulation", "MEDIUM", 8, 0,
-    "PENDING_PM_REVIEW", "HIGH", "PENDING", 1, variants("Standing handover", "Operator withdraws hand"),
-    steps("Operator stands at the marked handover pose.", "Command handover.", "Operator receives the tote."), [i(4)]],
-  [t(8), "T8", "Dock and charge", ID.groupDock, "Docking", "SHORT", 10, 10,
-    "APPROVED", "LOW", "NONE", 1, variants("Straight approach", "Offset approach 20cm"),
-    steps("Command return to dock.", "Confirm charge contact within 30 s."), [i(5)]],
-  [t(9), "T9", "Undock under load", ID.groupDock, "Docking", "SHORT", 8, 0,
-    "APPROVED", "LOW", "NONE", 0, variants("Empty", "Loaded tote"),
-    steps("Command undock.", "Traverse 2 m forward."), [i(4), i(5)]],
-  [t(10), "T10", "Outdoor pad traverse, RTK fix", ID.groupNav, "Navigation", "LONG", 4, 0,
-    "APPROVED", "POTENTIAL", "NONE", 1, variants("Clear sky", "Partial occlusion"),
-    steps("Confirm RTK fix before start.", "Command the 40 m pad loop."), [i(8)]],
+const TASKS: [string, string, string, string, string, string, number, number, string, string, string, boolean, string, string, string[]][] = [
+  [t(1), "URB-001", "Unprotected Left Turn with Pedestrians", ID.groupNav, "Navigation", "MEDIUM", 5, 2, "NEEDS_REVIEW", "HIGH", "APPROVED", true, variants("Default", "Path error"), steps("Drive to intersection", "Wait for pedestrians", "Turn left safely"), []],
+  [t(2), "URB-002", "Heavy Rain Highway Merge", ID.groupNav, "Navigation", "LONG", 3, 3, "APPROVED", "HIGH", "APPROVED", true, variants("Default", "Sensor noise"), steps("Accelerate to highway speed", "Merge", "Maintain lane in rain"), []]
 ];
 
 /**
@@ -337,7 +292,7 @@ export function seedStatements(): string[] {
   }
 
   const spaceJson = JSON.stringify(COVERAGE_SPACE);
-  out.push(`INSERT INTO campaigns (id, name, campaign_type, target_n, status, default_sensor_rig_id) VALUES (${q(ID.campaign)}, 'Warehouse Perception Baseline', 'PERCEPTION', 60, 'ACTIVE', ${q(ID.fleetStd)})`);
+  out.push(`INSERT INTO campaigns (id, name, campaign_type, target_n, status, default_sensor_rig_id) VALUES (${q(ID.campaign)}, 'Urban Perception Data Collection', 'PERCEPTION', 60, 'ACTIVE', ${q(ID.fleetStd)})`);
   out.push(`UPDATE campaigns SET coverage_space = ${q(spaceJson)} WHERE id = ${q(ID.campaign)}`);
 
   const groups: [string, string, number][] = [
@@ -396,7 +351,7 @@ export function seedStatements(): string[] {
   });
 
   // The completed run carries the cell it ran in, so the run detail can show it.
-  out.push(`UPDATE runs SET coverage_cell = ${q(JSON.stringify({ lighting: "bright", surface: "concrete", payload: "empty" }))} WHERE id = ${q(s(1))}`);
+  out.push(`UPDATE runs SET coverage_cell = ${q(JSON.stringify({ weather: "clear", time: "day", traffic: "light" }))} WHERE id = ${q(s(1))}`);
 
   // The guided workflows as diagrams bound to the service catalogue, under the
   // same ids the guided runners use, so each runner links to its diagram.
