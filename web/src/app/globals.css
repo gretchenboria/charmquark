@@ -69,6 +69,7 @@ body {
   @apply antialiased;
 }
 
+@layer components {
 /* --- display voice: page titles and the wordmark carry the geometric sans --- */
 .cq-display {
   font-family: var(--font-display);
@@ -191,6 +192,8 @@ body {
   outline: 2px solid var(--cq-iris);
   outline-offset: 2px;
   border-radius: 8px;
+}
+
 }
 
 /* Print: hide the app chrome so Reports print as a clean document. */
